@@ -1609,24 +1609,28 @@ function _renderGameRecord(d) {
     html += '<div style="position:absolute;right:-10px;top:-10px;width:20px;height:20px;border-radius:50%;background:'+(d.dark?'#0A0E1A':'#E8ECF1')+';z-index:2"></div>';
     html += '</div>';
 
-    // ── 티켓 하단: 팀 로고 + 스코어 (사진처럼 크게) ──
+    // ── 티켓 하단: KIA 항상 왼쪽, 상대팀 오른쪽 ──
+    const kiaLabel = isHome ? 'HOME' : 'AWAY';
+    const oppLabel = isHome ? 'AWAY' : 'HOME';
+    const kiaShort = T['KIA'] ? T['KIA'].name.replace(/^[^ ]+ /,'') : 'KIA';
+    const oppShort = T[opp] ? T[opp].name.replace(/^[^ ]+ /,'') : opp;
     html += '<div style="padding:22px 20px 20px">';
     html += '<div style="display:flex;align-items:center;justify-content:space-between">';
-    // AWAY팀
+    // KIA (항상 왼쪽)
     html += '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1">';
-    html += logo(g.away, 68);
-    html += '<div style="font-size:14px;font-weight:800;color:'+(g.away==='KIA'?'#E31837':d.text)+'">'+awayShort+'</div>';
-    html += '<div style="font-size:11px;color:'+d.sub+';letter-spacing:0.05em">AWAY</div>';
+    html += logo('KIA', 68);
+    html += '<div style="font-size:14px;font-weight:800;color:#E31837">'+kiaShort+'</div>';
+    html += '<div style="font-size:11px;color:'+d.sub+';letter-spacing:0.05em">'+kiaLabel+'</div>';
     html += '</div>';
-    // 스코어
+    // 스코어 (KIA : 상대)
     html += '<div style="text-align:center;padding:0 8px">';
-    html += '<div style="font-size:36px;font-weight:900;color:'+d.text+';letter-spacing:-1px">'+(g.awayScore??0)+'<span style="font-size:22px;color:'+d.muted+';margin:0 6px">:</span>'+(g.homeScore??0)+'</div>';
+    html += '<div style="font-size:36px;font-weight:900;color:'+d.text+';letter-spacing:-1px">'+kiaScore+'<span style="font-size:22px;color:'+d.muted+';margin:0 6px">:</span>'+oppScore+'</div>';
     html += '</div>';
-    // HOME팀
+    // 상대팀 (항상 오른쪽)
     html += '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1">';
-    html += logo(g.home, 68);
-    html += '<div style="font-size:14px;font-weight:800;color:'+(g.home==='KIA'?'#E31837':d.text)+'">'+homeShort+'</div>';
-    html += '<div style="font-size:11px;color:'+d.sub+';letter-spacing:0.05em">HOME</div>';
+    html += logo(opp, 68);
+    html += '<div style="font-size:14px;font-weight:800;color:'+d.text+'">'+oppShort+'</div>';
+    html += '<div style="font-size:11px;color:'+d.sub+';letter-spacing:0.05em">'+oppLabel+'</div>';
     html += '</div>';
     html += '</div>';
     html += '</div>'; // 하단 스코어 끝
@@ -2760,22 +2764,34 @@ function renderModal(d) {
           </tr>
         </thead>
         <tbody>
+          ${(()=>{
+            // 야구 관례: AWAY(원정)가 위, HOME(홈)이 아래
+            const awayTeam = g.away, homeTeam = g.home;
+            const awayInn = g.awayInnings || Array(9).fill(-1);
+            const homeInn = g.homeInnings || Array(9).fill(-1);
+            const awayScore = g.awayScore ?? 0;
+            const homeScore = g.homeScore ?? 0;
+            const awayHit = g.awayHit ?? '-', homeHit = g.homeHit ?? '-';
+            const awayErr = g.awayError ?? '-', homeErr = g.homeError ?? '-';
+            const awayBall = g.awayBallFour ?? '-', homeBall = g.homeBallFour ?? '-';
+            return `
           <tr>
-            <td class="team-cell" style="color:${lTeam==='KIA'?'#ff6b6b':d.text}">${lTeam}</td>
-            ${lInn.map((s,i)=>cellSt(s,i,g.inning)).join('')}
-            <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${lScore}</td>
-            <td style="font-size:11px;color:${d.sub}">${lHit}</td>
-            <td style="font-size:11px;color:${lErr>0?'#E31837':d.sub}">${lErr}</td>
-            <td style="font-size:11px;color:${d.sub}">${lBall}</td>
+            <td class="team-cell" style="color:${awayTeam==='KIA'?'#ff6b6b':d.text}">${awayTeam}</td>
+            ${awayInn.map((s,i)=>cellSt(s,i,g.inning)).join('')}
+            <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${awayScore}</td>
+            <td style="font-size:11px;color:${d.sub}">${awayHit}</td>
+            <td style="font-size:11px;color:${awayErr>0?'#E31837':d.sub}">${awayErr}</td>
+            <td style="font-size:11px;color:${d.sub}">${awayBall}</td>
           </tr>
           <tr>
-            <td class="team-cell" style="color:${rTeam==='KIA'?'#ff6b6b':d.text}">${rTeam}</td>
-            ${rInn.map((s,i)=>cellSt(s,i,g.inning)).join('')}
-            <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${rScore}</td>
-            <td style="font-size:11px;color:${d.sub}">${rHit}</td>
-            <td style="font-size:11px;color:${rErr>0?'#E31837':d.sub}">${rErr}</td>
-            <td style="font-size:11px;color:${d.sub}">${rBall}</td>
-          </tr>
+            <td class="team-cell" style="color:${homeTeam==='KIA'?'#ff6b6b':d.text}">${homeTeam}</td>
+            ${homeInn.map((s,i)=>cellSt(s,i,g.inning)).join('')}
+            <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${homeScore}</td>
+            <td style="font-size:11px;color:${d.sub}">${homeHit}</td>
+            <td style="font-size:11px;color:${homeErr>0?'#E31837':d.sub}">${homeErr}</td>
+            <td style="font-size:11px;color:${d.sub}">${homeBall}</td>
+          </tr>`;
+          })()}
         </tbody>
       </table>
     </div>` : `<div style="text-align:center;padding:16px;color:${d.sub};font-size:12px">${isLive?`${g.inningInfo||g.inning+'회'||''} 진행 중`:'경기 예정 · 경기 후 스코어가 표시됩니다'}</div>`;
