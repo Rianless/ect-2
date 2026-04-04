@@ -1573,76 +1573,68 @@ function _renderGameRecord(d) {
     const [yr2,mo2,da2] = g.date.split('-');
     const dw2 = ['일','월','화','수','목','금','토'][new Date(g.date+'T12:00:00').getDay()];
 
-    // 팀명 짧게 (타이거즈 → 타이거즈)
-    const awayShort = T[g.away] ? T[g.away].name.replace(/^[^ ]+ /,'') : g.away;
-    const homeShort = T[g.home] ? T[g.home].name.replace(/^[^ ]+ /,'') : g.home;
-
-    // 티켓 전체 래퍼
-    html += '<div class="rec-ticket-card" onclick="if(!event.target.closest(\'[id^=slide-]\'))openGameByKey(this)" style="margin-bottom:20px;cursor:pointer;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.10);background:'+d.card+'" data-date="'+g.date+'" data-away="'+g.away+'" data-home="'+g.home+'">';
-
-    // ── 티켓 상단: 날짜 + 구장 + WIN/LOSE 배지 ──
-    html += '<div style="padding:18px 20px 16px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:flex-start">';
-    // 왼쪽: 날짜 + 구장
-    html += '<div>';
-    html += '<div style="font-size:20px;font-weight:900;color:'+d.text+';letter-spacing:-0.5px">'+yr2+'.'+mo2+'.'+da2+'</div>';
-    html += '<div style="display:flex;align-items:center;gap:4px;margin-top:4px">';
-    html += '<svg width="12" height="12" viewBox="0 0 24 24" fill="'+resultColor+'"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>';
-    html += '<div style="font-size:12px;color:'+d.sub+'">'+g.stad+'</div>';
-    html += '</div>';
-    html += '</div>';
-    // 오른쪽: WIN/LOSE 배지 (사진처럼 둥근 박스)
-    html += '<div style="background:'+resultBg+';border:1.5px solid '+resultColor+';border-radius:14px;padding:8px 16px;text-align:center;min-width:64px">';
-    html += '<div style="font-size:15px;font-weight:900;color:'+resultColor+'">'+resultEn+'</div>';
-    html += '<div style="font-size:11px;font-weight:600;color:'+resultColor+';margin-top:1px">'+resultKr+'</div>';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>'; // 상단 끝
-
-    // ── 점선 구분선 (노치 포함) ──
-    html += '<div style="position:relative;height:1px;margin:0 0">';
-    // 왼쪽 반원 노치
-    html += '<div style="position:absolute;left:-10px;top:-10px;width:20px;height:20px;border-radius:50%;background:'+(d.dark?'#0A0E1A':'#E8ECF1')+';z-index:2"></div>';
-    // 점선
-    html += '<div style="border-top:2px dashed '+(d.dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)')+';margin:0 10px"></div>';
-    // 오른쪽 반원 노치
-    html += '<div style="position:absolute;right:-10px;top:-10px;width:20px;height:20px;border-radius:50%;background:'+(d.dark?'#0A0E1A':'#E8ECF1')+';z-index:2"></div>';
-    html += '</div>';
-
-    // ── 티켓 하단: KIA 항상 왼쪽, 상대팀 오른쪽 ──
-    const kiaLabel = isHome ? 'HOME' : 'AWAY';
-    const oppLabel = isHome ? 'AWAY' : 'HOME';
-    const kiaShort = T['KIA'] ? T['KIA'].name.replace(/^[^ ]+ /,'') : 'KIA';
-    const oppShort = T[opp] ? T[opp].name.replace(/^[^ ]+ /,'') : opp;
-    html += '<div style="padding:22px 20px 20px">';
-    html += '<div style="display:flex;align-items:center;justify-content:space-between">';
-    // KIA (항상 왼쪽)
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1">';
-    html += logo('KIA', 68);
-    html += '<div style="font-size:14px;font-weight:800;color:#E31837">'+kiaShort+'</div>';
-    html += '<div style="font-size:11px;color:'+d.sub+';letter-spacing:0.05em">'+kiaLabel+'</div>';
-    html += '</div>';
-    // 스코어 (KIA : 상대)
-    html += '<div style="text-align:center;padding:0 8px">';
-    html += '<div style="font-size:36px;font-weight:900;color:'+d.text+';letter-spacing:-1px">'+kiaScore+'<span style="font-size:22px;color:'+d.muted+';margin:0 6px">:</span>'+oppScore+'</div>';
-    html += '</div>';
-    // 상대팀 (항상 오른쪽)
-    html += '<div style="display:flex;flex-direction:column;align-items:center;gap:8px;flex:1">';
-    html += logo(opp, 68);
-    html += '<div style="font-size:14px;font-weight:800;color:'+d.text+'">'+oppShort+'</div>';
-    html += '<div style="font-size:11px;color:'+d.sub+';letter-spacing:0.05em">'+oppLabel+'</div>';
-    html += '</div>';
-    html += '</div>';
-    html += '</div>'; // 하단 스코어 끝
-
-    // ── 메모 영역 ──
+    const kiaLabel = isHome ? '홈' : '원정';
+    const oppLabel = isHome ? '원정' : '홈';
+    const kiaFullName = T['KIA'] ? T['KIA'].name : 'KIA 타이거즈';
+    const oppFullName = T[opp] ? T[opp].name : opp;
+    const dashed = (d.dark?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.13)');
+    const monoFont = '"Courier New",Courier,monospace';
     const memoId = 'rec-memo-'+g.date+'-'+g.away+'-'+g.home;
     const safeD = g.date, safeA = g.away, safeH = g.home;
 
-    html += '<div style="border-top:1px solid '+d.bgB+';padding:14px 20px 18px" onclick="event.stopPropagation()">';
+    // ── 영수증 전체 래퍼 ──
+    html += '<div class="rec-ticket-card" onclick="if(!event.target.closest(\'textarea,label,button,[id^=slide-]\'))openGameByKey(this)" style="margin-bottom:20px;cursor:pointer;border-radius:14px;overflow:hidden;border:1px solid '+dashed+';background:'+d.card+'" data-date="'+g.date+'" data-away="'+g.away+'" data-home="'+g.home+'">';
+    html += '<div style="padding:20px 20px 0;font-family:'+monoFont+'">';
+
+    // 날짜 + 구장
+    html += '<div style="text-align:center;margin-bottom:14px">';
+    html += '<div style="font-size:11px;color:'+d.sub+';letter-spacing:0.12em">'+yr2+'.'+mo2+'.'+da2+' ('+dw2+')</div>';
+    html += '<div style="font-size:13px;font-weight:500;color:'+d.text+';margin-top:4px">'+g.stad+'</div>';
+    html += '</div>';
+
+    // 점선 구분
+    html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:12px"></div>';
+
+    // 홈/원정 팀 정보
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:6px">';
+    html += '<span style="color:'+d.sub+'">'+kiaLabel+'</span><span style="color:'+d.text+';font-weight:500">'+kiaFullName+'</span>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:14px">';
+    html += '<span style="color:'+d.sub+'">'+oppLabel+'</span><span style="color:'+d.text+';font-weight:500">'+oppFullName+'</span>';
+    html += '</div>';
+
+    // 점선 구분
+    html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:12px"></div>';
+
+    // FINAL SCORE
+    html += '<div style="text-align:center;margin-bottom:12px">';
+    html += '<div style="font-size:10px;color:'+d.sub+';letter-spacing:0.12em;margin-bottom:6px">FINAL SCORE</div>';
+    html += '<div style="font-size:30px;font-weight:500;color:'+d.text+';letter-spacing:6px">'+kiaScore+' : '+oppScore+'</div>';
+    html += '<div style="font-size:12px;font-weight:500;color:'+resultColor+';margin-top:6px;letter-spacing:0.05em">'+resultEn+' · '+resultKr+'</div>';
+    html += '</div>';
+
+    // 점선 구분
+    html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:10px"></div>';
+
+    // 투수 정보
+    if(g.winPitcher||g.losePitcher) {
+      if(g.winPitcher) {
+        html += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:5px">';
+        html += '<span style="color:'+d.sub+'">승리투수</span><span style="color:'+d.text+'">'+g.winPitcher+'</span>';
+        html += '</div>';
+      }
+      if(g.losePitcher) {
+        html += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:12px">';
+        html += '<span style="color:'+d.sub+'">패전투수</span><span style="color:'+d.text+'">'+g.losePitcher+'</span>';
+        html += '</div>';
+      }
+    }
+
+    // 점선 구분
+    html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:14px"></div>';
 
     // 직관/집관/미시청 버튼
-    html += '<div style="display:flex;gap:6px;margin-bottom:10px">';
+    html += '<div style="display:flex;gap:6px;margin-bottom:12px" onclick="event.stopPropagation()">';
     ['직관','집관','미시청'].forEach(function(v) {
       const sel = (memoData.watch||'') === v;
       const vc = v==='직관'?'#E31837':v==='집관'?'#0078ff':'rgba(0,0,0,0.3)';
@@ -1655,47 +1647,41 @@ function _renderGameRecord(d) {
     });
     html += '</div>';
 
-
-    // 대표사진: 첫 장만 안잘리게 크게 + 터치 시 전체화면 스와이프 뷰어
+    // 대표사진
     const recPhotos = memoData.photos || (memoData.photo ? [memoData.photo] : []);
     if(recPhotos.length > 0) {
       const pj = JSON.stringify(recPhotos).replace(/"/g,'&quot;');
       html += '<div onclick="event.stopPropagation()" style="margin-bottom:10px">';
       html += '<div style="position:relative;border-radius:10px;overflow:hidden;background:#111">';
       html += '<img src="'+recPhotos[0]+'" onclick="openPhotoViewer(JSON.parse(this.dataset.photos||&quot;[]&quot;),0)" '
-        + 'data-photos="'+pj+'" '
-        + 'style="width:100%;max-height:340px;object-fit:contain;display:block;cursor:zoom-in"/>';
-      // 삭제 버튼
+        + 'data-photos="'+pj+'" style="width:100%;max-height:340px;object-fit:contain;display:block;cursor:zoom-in"/>';
       html += '<button onclick="event.stopPropagation();recDeletePhoto(\''+safeD+'\',\''+safeA+'\',\''+safeH+'\',0)" '
         + 'style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;'
-        + 'width:28px;height:28px;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer;backdrop-filter:blur(4px)">✕</button>';
-      // 추가 사진 수 배지
+        + 'width:28px;height:28px;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>';
       if(recPhotos.length > 1) {
         html += '<div onclick="openPhotoViewer(JSON.parse(\''+pj.replace(/'/g,"\\'")+'\'),0)" '
           + 'style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;'
           + 'font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px;cursor:zoom-in">+'+(recPhotos.length-1)+'장 더</div>';
       }
-      html += '</div>';
-      html += '</div>';
+      html += '</div></div>';
     }
 
-
-    // 텍스트 메모 textarea (oninput → 즉시 저장)
+    // 후기 textarea
     html += '<textarea id="'+memoId+'" '
       + 'data-date="'+safeD+'" data-away="'+safeA+'" data-home="'+safeH+'" '
-      + 'placeholder="메모를 남겨보세요... ✍️" '
+      + 'placeholder="오늘 경기 후기를 남겨보세요 ✍️" '
       + 'oninput="saveRecordMemoEl(this)" '
       + 'onclick="event.stopPropagation()" '
       + 'ontouchstart="event.stopPropagation()" '
-      + 'style="width:100%;min-height:60px;padding:10px;background:'+d.bg+';border:1px solid '+d.bgB+';'
-      + 'border-radius:10px;color:'+d.text+';font-size:12px;line-height:1.6;resize:none;box-sizing:border-box;'
-      + 'font-family:\'Noto Sans KR\',sans-serif;margin-bottom:8px;-webkit-user-select:text;user-select:text">'
+      + 'style="width:100%;min-height:72px;padding:10px 12px;background:'+d.bg+';border:1px dashed '+dashed+';'
+      + 'border-radius:8px;color:'+d.text+';font-size:12px;line-height:1.7;resize:none;box-sizing:border-box;'
+      + 'font-family:\'Noto Sans KR\',sans-serif;margin-bottom:10px;-webkit-user-select:text;user-select:text">'
       + (memoData.text||'')+'</textarea>';
 
     // 사진 추가 버튼
     html += '<label onclick="event.stopPropagation()" '
-      + 'style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:'+d.bg+';border:1px solid '+d.bgB+';'
-      + 'border-radius:10px;cursor:pointer">';
+      + 'style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:'+d.bg+';border:1px dashed '+dashed+';'
+      + 'border-radius:8px;cursor:pointer;margin-bottom:20px">';
     html += '<span style="font-size:15px">📷</span>';
     html += '<span style="font-size:12px;color:'+d.sub+';flex:1">사진 추가</span>';
     html += '<input type="file" accept="image/*" multiple style="display:none" '
@@ -1703,8 +1689,8 @@ function _renderGameRecord(d) {
     html += '<span style="font-size:11px;color:#E31837;font-weight:700;border:1px solid #E31837;border-radius:6px;padding:3px 8px">선택</span>';
     html += '</label>';
 
-    html += '</div>'; // 메모 영역 끝
-    html += '</div>'; // 티켓 전체 끝
+    html += '</div>'; // 영수증 내용 끝
+    html += '</div>'; // 영수증 전체 끝
   });
 
   return html;
