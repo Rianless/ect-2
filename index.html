@@ -102,27 +102,40 @@
     body.dark #ticket-box{background:#0F1525}
     .ticket-link-btn{display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border-radius:12px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;text-decoration:none;border:1.5px solid transparent;transition:opacity 0.15s}
     .ticket-link-btn:active{opacity:0.7}
-    .rec-ticket-wrap{display:flex;justify-content:center;margin-bottom:24px}
-    .rec-ticket-outer{width:100%;max-width:290px;filter:drop-shadow(0 4px 14px rgba(0,0,0,0.15))}
-    /* 위쪽 톱니: 카드 배경으로 채워진 반원이 아래쪽 가장자리에 뚫린 것처럼 */
-    .rec-ticket-top{height:12px;background:var(--rc-bg,#fff);position:relative;overflow:visible}
-    .rec-ticket-top::after{
-      content:'';position:absolute;bottom:-6px;left:0;right:0;height:12px;
-      background:
-        radial-gradient(circle 6px at 7px 0px, transparent 6px, var(--rc-bg,#fff) 6px) repeat-x;
-      background-size:14px 12px;
-      background-position:0 0;
+    .rec-ticket-wrap{display:flex;justify-content:center;margin-bottom:28px}
+    .rec-ticket-outer{
+      width:100%;max-width:290px;
+      filter:drop-shadow(0 4px 16px rgba(0,0,0,0.14));
     }
-    /* 아래쪽 톱니 */
-    .rec-ticket-bottom{height:12px;background:var(--rc-bg,#fff);position:relative;overflow:visible}
-    .rec-ticket-bottom::before{
-      content:'';position:absolute;top:-6px;left:0;right:0;height:12px;
-      background:
-        radial-gradient(circle 6px at 7px 12px, transparent 6px, var(--rc-bg,#fff) 6px) repeat-x;
-      background-size:14px 12px;
-      background-position:0 0;
+    /* 영수증 전체: 위아래 톱니를 페이지 배경색 원으로 punch-out */
+    .rec-ticket-card{
+      position:relative;
+      background:var(--rc-bg,#fff);
+      padding:14px 0 14px;
     }
-    .rec-ticket-body{background:var(--rc-bg,#fff)}
+    /* 위 톱니 */
+    .rec-ticket-card::before{
+      content:'';
+      position:absolute;
+      top:-8px; left:0; right:0;
+      height:16px;
+      background:
+        radial-gradient(circle 8px at 50% 100%, var(--rc-page,#E8ECF1) 8px, var(--rc-bg,#fff) 8px) repeat-x;
+      background-size:18px 16px;
+      background-position:1px 0;
+    }
+    /* 아래 톱니 */
+    .rec-ticket-card::after{
+      content:'';
+      position:absolute;
+      bottom:-8px; left:0; right:0;
+      height:16px;
+      background:
+        radial-gradient(circle 8px at 50% 0%, var(--rc-page,#E8ECF1) 8px, var(--rc-bg,#fff) 8px) repeat-x;
+      background-size:18px 16px;
+      background-position:1px 0;
+    }
+    body.dark .rec-ticket-card{--rc-page:#0A0E1A}
   </style>
 
 </head>
@@ -1606,9 +1619,7 @@ function _renderGameRecord(d) {
     // ── 영수증 전체 래퍼 ──
     html += '<div class="rec-ticket-wrap">';
     html += '<div class="rec-ticket-outer">';
-    html += '<div class="rec-ticket-card" onclick="if(!event.target.closest(\'textarea,label,button,[id^=slide-]\'))openGameByKey(this)" style="cursor:pointer" data-date="'+g.date+'" data-away="'+g.away+'" data-home="'+g.home+'">';
-    html += '<div class="rec-ticket-top" style="--rc-bg:'+d.card+'"></div>';
-    html += '<div class="rec-ticket-body" style="--rc-bg:'+d.card+'">';
+    html += '<div class="rec-ticket-card" onclick="if(!event.target.closest(\'textarea,label,button,[id^=slide-]\'))openGameByKey(this)" style="cursor:pointer;--rc-bg:'+d.card+'" data-date="'+g.date+'" data-away="'+g.away+'" data-home="'+g.home+'">';
     html += '<div style="padding:4px 16px 0;font-family:'+monoFont+'">';
 
     // 날짜 + 구장
@@ -1715,8 +1726,6 @@ function _renderGameRecord(d) {
     html += '</label>';
 
     html += '</div>'; // padding div 끝
-    html += '</div>'; // rec-ticket-body 끝
-    html += '<div class="rec-ticket-bottom" style="--rc-bg:'+d.card+'"></div>';
     html += '</div>'; // rec-ticket-card 끝
     html += '</div>'; // rec-ticket-outer 끝
     html += '</div>'; // rec-ticket-wrap 끝
