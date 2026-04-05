@@ -1682,18 +1682,28 @@ function _renderGameRecord(d) {
       // 구분선
       html += '<tr><td colspan="'+(maxInn+2)+'" style="border-top:1px solid '+dashed+';padding:0"></td></tr>';
 
-      // KIA 행
+      // 원정팀 위, 홈팀 아래 (실제 스코어보드 순서)
+      const topTeam    = isHome ? opp   : 'KIA';
+      const botTeam    = isHome ? 'KIA' : opp;
+      const topInnArr  = isHome ? oppInnArr : kiaInnArr;
+      const botInnArr  = isHome ? kiaInnArr : oppInnArr;
+      const topScore   = isHome ? oppScore : kiaScore;
+      const botScore   = isHome ? kiaScore : oppScore;
+      const topIsKia   = !isHome;
+      const botIsKia   = isHome;
+
+      // 원정팀(위)
       html += '<tr>';
-      html += '<td style="'+teamStyle+d.text+';font-weight:700">KIA</td>';
-      innNums.forEach((_,i) => { html += '<td style="'+kiaStyle+'">'+innVal(kiaInnArr,i)+'</td>'; });
-      html += '<td style="'+rKiaStyle+'">'+kiaScore+'</td>';
+      html += '<td style="'+teamStyle+(topIsKia?d.text+';font-weight:700':d.sub)+'">'+topTeam.slice(0,3)+'</td>';
+      innNums.forEach((_,i) => { html += '<td style="'+(topIsKia?kiaStyle:oppStyle)+'">'+innVal(topInnArr,i)+'</td>'; });
+      html += '<td style="'+(topIsKia?rKiaStyle:rOppStyle)+'">'+topScore+'</td>';
       html += '</tr>';
 
-      // 상대팀 행
+      // 홈팀(아래)
       html += '<tr>';
-      html += '<td style="'+teamStyle+d.sub+'">'+opp.slice(0,3)+'</td>';
-      innNums.forEach((_,i) => { html += '<td style="'+oppStyle+'">'+innVal(oppInnArr,i)+'</td>'; });
-      html += '<td style="'+rOppStyle+'">'+oppScore+'</td>';
+      html += '<td style="'+teamStyle+(botIsKia?d.text+';font-weight:700':d.sub)+'">'+botTeam.slice(0,3)+'</td>';
+      innNums.forEach((_,i) => { html += '<td style="'+(botIsKia?kiaStyle:oppStyle)+'">'+innVal(botInnArr,i)+'</td>'; });
+      html += '<td style="'+(botIsKia?rKiaStyle:rOppStyle)+'">'+botScore+'</td>';
       html += '</tr>';
 
       html += '</table>';
