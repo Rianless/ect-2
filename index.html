@@ -1648,6 +1648,53 @@ function _renderGameRecord(d) {
     // 점선 구분
     html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:10px"></div>';
 
+    // 이닝별 스코어 (영수증 스타일 텍스트 테이블)
+    const awayInnArr = g.awayInnings || [];
+    const homeInnArr = g.homeInnings || [];
+    const hasInnData = awayInnArr.some(x=>x>=0) || homeInnArr.some(x=>x>=0);
+    if(hasInnData) {
+      const kiaInnArr  = isHome ? homeInnArr : awayInnArr;
+      const oppInnArr  = isHome ? awayInnArr : homeInnArr;
+      const maxInn = Math.max(awayInnArr.length, homeInnArr.length, 9);
+      const innNums = Array.from({length:maxInn},(_,i)=>i+1);
+
+      // 이닝 헤더 행: "      1  2  3 ..."
+      const colW = 3; // 각 이닝 칸 너비(문자)
+      const teamW = 4; // 팀명 칸 너비
+      const pad = (s,w) => { const str=String(s==null||s<0?'-':s); return str.padStart(w,' '); };
+      const padC = (s,w) => { const str=String(s==null||s<0?'-':s); const l=Math.floor((w-str.length)/2); return ' '.repeat(Math.max(0,l))+str+' '.repeat(Math.max(0,w-str.length-l)); };
+
+      let headerRow  = ' '.repeat(teamW+1);
+      let kiaRow     = 'KIA '.padEnd(teamW+1,' ');
+      let oppRow     = opp.slice(0,4).padEnd(teamW+1,' ');
+      let sepRow     = '-'.repeat(teamW+1);
+
+      innNums.forEach(function(n,i) {
+        headerRow += padC(n,colW);
+        kiaRow    += padC(kiaInnArr[i]!=null&&kiaInnArr[i]>=0?kiaInnArr[i]:'-', colW);
+        oppRow    += padC(oppInnArr[i]!=null&&oppInnArr[i]>=0?oppInnArr[i]:'-', colW);
+        sepRow    += '-'.repeat(colW);
+      });
+      // R (합계) 열
+      headerRow += '  R';
+      kiaRow    += '  '+pad(kiaScore,1);
+      oppRow    += '  '+pad(oppScore,1);
+      sepRow    += '---';
+
+      html += '<div style="font-size:10px;color:'+d.sub+';letter-spacing:0.12em;text-align:center;margin-bottom:6px">INNING SCORE</div>';
+      html += '<div style="font-family:\"Courier New\",Courier,monospace;font-size:10px;color:'+d.sub+';overflow-x:auto;margin-bottom:12px;letter-spacing:0.04em;white-space:pre;line-height:1.85;'
+        + 'text-shadow:0.3px 0.3px 0 rgba(0,0,0,0.15);-webkit-font-smoothing:none">'
+        + headerRow + '\n'
+        + sepRow    + '\n'
+        + '<span style="color:'+d.text+';font-weight:700">' + kiaRow + '</span>\n'
+        + oppRow    + '\n'
+        + sepRow
+        + '</div>';
+
+      // 점선 구분
+      html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:10px"></div>';
+    }
+
     // 투수 정보
     if(g.winPitcher||g.losePitcher) {
       if(g.winPitcher) {
