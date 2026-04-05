@@ -1648,48 +1648,56 @@ function _renderGameRecord(d) {
     // 점선 구분
     html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:10px"></div>';
 
-    // 이닝별 스코어 (영수증 스타일 텍스트 테이블)
+    // 이닝별 스코어 (영수증 스타일 HTML 테이블)
     const awayInnArr = g.awayInnings || [];
     const homeInnArr = g.homeInnings || [];
     const hasInnData = awayInnArr.some(x=>x>=0) || homeInnArr.some(x=>x>=0);
     if(hasInnData) {
-      const kiaInnArr  = isHome ? homeInnArr : awayInnArr;
-      const oppInnArr  = isHome ? awayInnArr : homeInnArr;
+      const kiaInnArr = isHome ? homeInnArr : awayInnArr;
+      const oppInnArr = isHome ? awayInnArr : homeInnArr;
       const maxInn = Math.max(awayInnArr.length, homeInnArr.length, 9);
       const innNums = Array.from({length:maxInn},(_,i)=>i+1);
+      const cellStyle = 'text-align:center;padding:3px 0;font-size:10px;min-width:18px;font-family:"Courier New",Courier,monospace;';
+      const headStyle = cellStyle+'color:'+d.sub+';';
+      const kiaStyle  = cellStyle+'color:'+d.text+';font-weight:700;';
+      const oppStyle  = cellStyle+'color:'+d.sub+';';
+      const rLabelStyle = cellStyle+'color:'+d.sub+';border-left:1px solid '+dashed+';padding-left:6px;';
+      const rKiaStyle   = cellStyle+'color:'+resultColor+';font-weight:700;border-left:1px solid '+dashed+';padding-left:6px;';
+      const rOppStyle   = cellStyle+'color:'+d.sub+';border-left:1px solid '+dashed+';padding-left:6px;';
+      const teamStyle = 'text-align:left;font-size:10px;font-family:"Courier New",Courier,monospace;padding-right:6px;white-space:nowrap;color:';
 
-      // 이닝 헤더 행: "      1  2  3 ..."
-      const colW = 3; // 각 이닝 칸 너비(문자)
-      const teamW = 4; // 팀명 칸 너비
-      const pad = (s,w) => { const str=String(s==null||s<0?'-':s); return str.padStart(w,' '); };
-      const padC = (s,w) => { const str=String(s==null||s<0?'-':s); const l=Math.floor((w-str.length)/2); return ' '.repeat(Math.max(0,l))+str+' '.repeat(Math.max(0,w-str.length-l)); };
-
-      let headerRow  = ' '.repeat(teamW+1);
-      let kiaRow     = 'KIA '.padEnd(teamW+1,' ');
-      let oppRow     = opp.slice(0,4).padEnd(teamW+1,' ');
-      let sepRow     = '-'.repeat(teamW+1);
-
-      innNums.forEach(function(n,i) {
-        headerRow += padC(n,colW);
-        kiaRow    += padC(kiaInnArr[i]!=null&&kiaInnArr[i]>=0?kiaInnArr[i]:'-', colW);
-        oppRow    += padC(oppInnArr[i]!=null&&oppInnArr[i]>=0?oppInnArr[i]:'-', colW);
-        sepRow    += '-'.repeat(colW);
-      });
-      // R (합계) 열
-      headerRow += '  R';
-      kiaRow    += '  '+pad(kiaScore,1);
-      oppRow    += '  '+pad(oppScore,1);
-      sepRow    += '---';
+      const innVal = (arr,i) => { const v=arr[i]; return (v==null||v<0)?'-':String(v); };
 
       html += '<div style="font-size:10px;color:'+d.sub+';letter-spacing:0.12em;text-align:center;margin-bottom:6px">INNING SCORE</div>';
-      html += '<div style="font-family:\"Courier New\",Courier,monospace;font-size:10px;color:'+d.sub+';overflow-x:auto;margin-bottom:12px;letter-spacing:0.04em;white-space:pre;line-height:1.85;'
-        + 'text-shadow:0.3px 0.3px 0 rgba(0,0,0,0.15);-webkit-font-smoothing:none">'
-        + headerRow + '\n'
-        + sepRow    + '\n'
-        + '<span style="color:'+d.text+';font-weight:700">' + kiaRow + '</span>\n'
-        + oppRow    + '\n'
-        + sepRow
-        + '</div>';
+      html += '<div style="overflow-x:auto;margin-bottom:12px;-webkit-font-smoothing:none">';
+      html += '<table style="width:100%;border-collapse:collapse;table-layout:auto">';
+
+      // 헤더 행
+      html += '<tr>';
+      html += '<td style="'+teamStyle+d.sub+'"></td>';
+      innNums.forEach(n => { html += '<td style="'+headStyle+'">'+n+'</td>'; });
+      html += '<td style="'+rLabelStyle+'">R</td>';
+      html += '</tr>';
+
+      // 구분선
+      html += '<tr><td colspan="'+(maxInn+2)+'" style="border-top:1px solid '+dashed+';padding:0"></td></tr>';
+
+      // KIA 행
+      html += '<tr>';
+      html += '<td style="'+teamStyle+d.text+';font-weight:700">KIA</td>';
+      innNums.forEach((_,i) => { html += '<td style="'+kiaStyle+'">'+innVal(kiaInnArr,i)+'</td>'; });
+      html += '<td style="'+rKiaStyle+'">'+kiaScore+'</td>';
+      html += '</tr>';
+
+      // 상대팀 행
+      html += '<tr>';
+      html += '<td style="'+teamStyle+d.sub+'">'+opp.slice(0,3)+'</td>';
+      innNums.forEach((_,i) => { html += '<td style="'+oppStyle+'">'+innVal(oppInnArr,i)+'</td>'; });
+      html += '<td style="'+rOppStyle+'">'+oppScore+'</td>';
+      html += '</tr>';
+
+      html += '</table>';
+      html += '</div>';
 
       // 점선 구분
       html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:10px"></div>';
