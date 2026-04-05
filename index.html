@@ -102,6 +102,8 @@
     body.dark #ticket-box{background:#0F1525}
     .ticket-link-btn{display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border-radius:12px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;text-decoration:none;border:1.5px solid transparent;transition:opacity 0.15s}
     .ticket-link-btn:active{opacity:0.7}
+    .rec-ticket-card::before{content:'';display:block;height:12px;background:radial-gradient(circle at 50% 0,transparent 6px,var(--rc-border,rgba(0,0,0,0.13)) 6px) repeat-x;background-size:16px 12px;margin-bottom:0}
+    .rec-ticket-card::after{content:'';display:block;height:12px;background:radial-gradient(circle at 50% 100%,transparent 6px,var(--rc-border,rgba(0,0,0,0.13)) 6px) repeat-x;background-size:16px 12px;background-position:0 100%;margin-top:4px}
   </style>
 
 </head>
@@ -1583,8 +1585,9 @@ function _renderGameRecord(d) {
     const safeD = g.date, safeA = g.away, safeH = g.home;
 
     // ── 영수증 전체 래퍼 ──
-    html += '<div class="rec-ticket-card" onclick="if(!event.target.closest(\'textarea,label,button,[id^=slide-]\'))openGameByKey(this)" style="margin-bottom:20px;cursor:pointer;border-radius:14px;overflow:hidden;border:1px solid '+dashed+';background:'+d.card+'" data-date="'+g.date+'" data-away="'+g.away+'" data-home="'+g.home+'">';
-    html += '<div style="padding:20px 20px 0;font-family:'+monoFont+'">';
+    html += '<div style="display:flex;justify-content:center;margin-bottom:24px">';
+    html += '<div class="rec-ticket-card" onclick="if(!event.target.closest(\'textarea,label,button,[id^=slide-]\'))openGameByKey(this)" style="width:100%;max-width:300px;cursor:pointer;border-radius:6px;overflow:hidden;border:1px solid '+dashed+';background:'+d.card+';box-shadow:0 2px 12px rgba(0,0,0,0.08)" data-date="'+g.date+'" data-away="'+g.away+'" data-home="'+g.home+'">';
+    html += '<div style="padding:18px 16px 0;font-family:'+monoFont+'">';
 
     // 날짜 + 구장
     html += '<div style="text-align:center;margin-bottom:14px">';
@@ -1654,7 +1657,7 @@ function _renderGameRecord(d) {
       html += '<div onclick="event.stopPropagation()" style="margin-bottom:10px">';
       html += '<div style="position:relative;border-radius:10px;overflow:hidden;background:#111">';
       html += '<img src="'+recPhotos[0]+'" onclick="openPhotoViewer(JSON.parse(this.dataset.photos||&quot;[]&quot;),0)" '
-        + 'data-photos="'+pj+'" style="width:100%;max-height:340px;object-fit:contain;display:block;cursor:zoom-in"/>';
+        + 'data-photos="'+pj+'" style="width:100%;max-height:220px;object-fit:contain;display:block;cursor:zoom-in"/>';
       html += '<button onclick="event.stopPropagation();recDeletePhoto(\''+safeD+'\',\''+safeA+'\',\''+safeH+'\',0)" '
         + 'style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;'
         + 'width:28px;height:28px;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>';
@@ -1691,6 +1694,7 @@ function _renderGameRecord(d) {
 
     html += '</div>'; // 영수증 내용 끝
     html += '</div>'; // 영수증 전체 끝
+    html += '</div>'; // 중앙 정렬 래퍼 끝
   });
 
   return html;
