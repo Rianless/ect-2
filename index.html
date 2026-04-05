@@ -47,6 +47,38 @@
     .card{background:#fff;border:1px solid rgba(0,0,0,0.1);border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:8px}
     body.dark .card{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.07)}
     .card.kia{background:rgba(227,24,55,0.08);border-color:rgba(227,24,55,0.25)}
+    /* 영수증 열전사 프린터 스타일 */
+    @font-face{font-family:'Receipt';src:local('Courier New'),local('Courier'),local('monospace')}
+    .rec-print-wrap{position:relative;margin-bottom:10px}
+    .rec-print-display{
+      width:100%;min-height:72px;padding:10px 12px;border-radius:8px;
+      font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.75;
+      word-break:break-all;white-space:pre-wrap;cursor:text;
+      letter-spacing:0.03em;
+      /* 열전사 프린터 느낌: 픽셀 깨짐, 잉크 번짐 */
+      image-rendering:pixelated;
+      text-shadow:0.4px 0.4px 0 rgba(0,0,0,0.18),-0.2px 0 0 rgba(0,0,0,0.08),0 0.3px 0 rgba(0,0,0,0.12);
+      filter:contrast(1.15) brightness(0.97);
+      -webkit-font-smoothing:none;
+      font-smooth:never;
+      position:relative;
+    }
+    .rec-print-display::after{
+      content:'';position:absolute;inset:0;border-radius:8px;pointer-events:none;
+      background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.018) 2px,rgba(0,0,0,0.018) 3px);
+    }
+    .rec-print-display.empty-hint::before{
+      content:attr(data-placeholder);color:rgba(0,0,0,0.28);font-family:'Courier New',Courier,monospace;font-size:11.5px;
+    }
+    body.dark .rec-print-display.empty-hint::before{color:rgba(255,255,255,0.25)}
+    .rec-print-textarea{
+      position:absolute;inset:0;width:100%;height:100%;opacity:0;resize:none;
+      font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.75;
+      border:none;background:transparent;z-index:2;cursor:text;
+      -webkit-user-select:text;user-select:text;
+    }
+    .rec-print-wrap.editing .rec-print-display{opacity:0;pointer-events:none}
+    .rec-print-wrap.editing .rec-print-textarea{opacity:1}
     .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
     .cal-sticky{position:sticky;top:0;z-index:10;background:inherit;}
     .cal-week-only .cal-grid#cal-grid-body .cal-cell:not(.current-week){display:none}
@@ -1666,17 +1698,28 @@ function _renderGameRecord(d) {
       html += '</div></div>';
     }
 
-    // 후기 textarea
-    html += '<textarea id="'+memoId+'" '
+    // 후기 - 영수증 열전사 프린터 스타일
+    const memoText = memoData.text||'';
+    html += '<div class="rec-print-wrap" onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()">';
+    // 영수증 글자 표시 div
+    html += '<div class="rec-print-display'+(memoText?'':' empty-hint')+'" '
+      + 'id="recdisplay-'+memoId+'" '
+      + 'data-placeholder="오늘 경기 후기를 남겨보세요 ✍️" '
+      + 'onclick="var ta=document.getElementById(\''+memoId+'\');if(ta){this.closest(\'.rec-print-wrap\').classList.add(\'editing\');ta.focus();ta.setSelectionRange(ta.value.length,ta.value.length)}" '
+      + 'style="background:'+d.bg+';border:1px dashed '+dashed+';color:'+d.text+'">'
+      + memoText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
+      + '</div>';
+    // 실제 textarea (편집시에만 visible)
+    html += '<textarea class="rec-print-textarea" id="'+memoId+'" '
       + 'data-date="'+safeD+'" data-away="'+safeA+'" data-home="'+safeH+'" '
       + 'placeholder="오늘 경기 후기를 남겨보세요 ✍️" '
-      + 'oninput="saveRecordMemoEl(this)" '
-      + 'onclick="event.stopPropagation()" '
-      + 'ontouchstart="event.stopPropagation()" '
-      + 'style="width:100%;min-height:72px;padding:10px 12px;background:'+d.bg+';border:1px dashed '+dashed+';'
-      + 'border-radius:8px;color:'+d.text+';font-size:12px;line-height:1.7;resize:none;box-sizing:border-box;'
-      + 'font-family:\'Noto Sans KR\',sans-serif;margin-bottom:10px;-webkit-user-select:text;user-select:text">'
+      + 'oninput="saveRecordMemoEl(this);recUpdatePrintDisplay(this)" '
+      + 'onfocus="this.closest(\'.rec-print-wrap\').classList.add(\'editing\')" '
+      + 'onblur="recBlurPrintDisplay(this)" '
+      + 'style="padding:10px 12px;background:'+d.bg+';border:1px dashed '+dashed+';'
+      + 'color:'+d.text+';line-height:1.75;box-sizing:border-box;">'
       + (memoData.text||'')+'</textarea>';
+    html += '</div>';
 
     // 사진 추가 버튼
     html += '<label onclick="event.stopPropagation()" '
@@ -1696,6 +1739,22 @@ function _renderGameRecord(d) {
   return html;
 }
 // _renderGameRecord 끝 (renderBaseballRecord에서 호출됨)
+
+window.recUpdatePrintDisplay = function(el) {
+  const memoId = el.id;
+  const display = document.getElementById('recdisplay-'+memoId);
+  if(!display) return;
+  const val = el.value;
+  display.innerHTML = val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+  if(val) display.classList.remove('empty-hint');
+  else display.classList.add('empty-hint');
+};
+
+window.recBlurPrintDisplay = function(el) {
+  const wrap = el.closest('.rec-print-wrap');
+  if(wrap) wrap.classList.remove('editing');
+  recUpdatePrintDisplay(el);
+};
 
 window.saveRecordMemoEl = function(el) {
   const date = el.dataset.date, away = el.dataset.away, home = el.dataset.home;
