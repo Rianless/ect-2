@@ -1797,7 +1797,9 @@ function renderMemos(d) {
     html += '<div class="card'+(isKia?' kia':'')+'" onclick="openGameByKey(this)" data-date="'+m.date+'" data-away="'+m.away+'" data-home="'+m.home+'">';
     html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
     html += logo(m.away,20);
-    html += '<span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+m.away+' vs '+m.home+'</span>';
+    const _mLeft = (m.home==='KIA') ? m.home : m.away;
+    const _mRight = (m.home==='KIA') ? m.away : m.home;
+    html += '<span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+_mLeft+' vs '+_mRight+'</span>';
     html += logo(m.home,20);
     html += '<span style="font-size:10px;color:'+d.sub+';margin-left:auto">'+m.date+'</span>';
     html += '</div>';
@@ -4301,7 +4303,10 @@ function updateRelayUI() {
   // 헤더 업데이트
   const title = document.getElementById('relay-title');
   const sub = document.getElementById('relay-sub');
-  if (title) title.textContent = `${_relayAway} vs ${_relayHome}`;
+  const _kiaIsHome = _relayHome === 'KIA';
+  const _titleLeft = _kiaIsHome ? _relayHome : _relayAway;
+  const _titleRight = _kiaIsHome ? _relayAway : _relayHome;
+  if (title) title.textContent = `${_titleLeft} vs ${_titleRight}`;
   if (sub) sub.textContent = inningInfoStr;
 
   // 다이아몬드 업데이트
@@ -4631,7 +4636,9 @@ window.openTicketPanel = function(stad, date, away, home) {
 
   stadEl.textContent = '📍 ' + info.label;
   stadEl.style.color = dark ? '#fff' : '#0A0E1A';
-  infoEl.textContent = `${dateStr} · ${away} vs ${home}`;
+  const _tLeft = home === 'KIA' ? home : away;
+  const _tRight = home === 'KIA' ? away : home;
+  infoEl.textContent = `${dateStr} · ${_tLeft} vs ${_tRight}`;
   infoEl.style.color = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
 
   const subColor = dark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.4)';
