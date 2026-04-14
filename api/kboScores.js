@@ -131,7 +131,23 @@ export default async function handler(req, res) {
     const away = mapTeam(g.awayTeamCode) || g.awayTeamName;
     const home = mapTeam(g.homeTeamCode) || g.homeTeamName;
     const sc = g.statusCode || '';
-    const status = (sc==='BEFORE'||sc==='READY')?'SCHEDULED': (sc==='STARTED'||sc==='LIVE')?'LIVE': (sc==='RESULT'||sc==='FINAL')?'FINAL':'SCHEDULED';
+    const si = g.statusInfo || '';
+
+    // 우천취소 감지
+    const isCanceled = /^(CANCEL|PPD|RAINOUT|POSTPONE|SUSPENDED|DELAY|CANCELED|CANCELLED)$/i.test(sc)
+      || /CANCEL|PPD|취소|우천|연기|POSTPONE|SUSPEND/i.test(sc)
+      || /취소|우천|연기|PPD|CANCEL/i.test(si);
+
+    // 알 수 없는 statusCode 로깅 (우천취소 실제 값 확인용)
+    if (sc && !['BEFORE','READY','STARTED','LIVE','RESULT','FINAL'].includes(sc)) {
+      console.log(`[KBO] 특수 statusCode: "${sc}" | statusInfo: "${si}" | gameId: ${g.gameId} | isCanceled: ${isCanceled}`);
+    }
+
+    const status = isCanceled ? 'CANCELED'
+      : (sc==='BEFORE'||sc==='READY') ? 'SCHEDULED'
+      : (sc==='STARTED'||sc==='LIVE') ? 'LIVE'
+      : (sc==='RESULT'||sc==='FINAL') ? 'FINAL'
+      : 'SCHEDULED';
 
     const gameData = detail?.game || g;
     const awayInnRaw = gameData.awayTeamScoreByInning || g.awayTeamScoreByInning || [];
@@ -254,6 +270,8 @@ export default async function handler(req, res) {
       time: g.gameDateTime?.split('T')[1]?.slice(0,5) || g.gameTime || g.startTime || g.schedule?.startTime || null,
       away, home,
       status,
+      statusCode: sc,
+      statusInfo: si || null,
       awayScore: g.awayTeamScore!=null ? Number(g.awayTeamScore) : null,
       homeScore: g.homeTeamScore!=null ? Number(g.homeTeamScore) : null,
       awayInnings, homeInnings,
