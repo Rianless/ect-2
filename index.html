@@ -1262,10 +1262,21 @@ function renderCalSplit(d) {
     const isKiaHome = kg&&kg.home==='KIA';
     const isKiaGame = !!kg&&!!oppKey;
     const statusBadge = kg&&kg.status==='LIVE'?'<div style="font-size:6px;background:#E31837;color:#fff;border-radius:2px;padding:0 2px;font-weight:700;line-height:1.4">LIVE</div>':'';
+    const kiaScore = kg ? (isHome ? kg.homeScore : kg.awayScore) : null;
+    const oppScore = kg ? (isHome ? kg.awayScore : kg.homeScore) : null;
+    const kiaFinal = kg && kg.status==='FINAL' && kiaScore!=null && oppScore!=null;
+    const kiaWon  = kiaFinal && kiaScore > oppScore;
+    const kiaDraw = kiaFinal && kiaScore === oppScore;
     const calTimeLabel = kg
       ? kg.status==='CANCELED'
         ? `<div id="cal-time-${ds}" style="font-size:7px;color:#2979FF;font-weight:700;line-height:1">우취</div>`
-        : `<div id="cal-time-${ds}" style="font-size:7px;color:${d.sub};font-weight:600;line-height:1">${kg.time}</div>`
+        : kiaFinal
+          ? kiaWon
+            ? `<div id="cal-time-${ds}" style="font-size:7px;color:#E31837;font-weight:800;line-height:1">승리</div>`
+            : kiaDraw
+              ? `<div id="cal-time-${ds}" style="font-size:7px;color:#FF9500;font-weight:800;line-height:1">무승부</div>`
+              : `<div id="cal-time-${ds}" style="font-size:7px;color:#3B9EF5;font-weight:800;line-height:1">패배</div>`
+          : `<div id="cal-time-${ds}" style="font-size:7px;color:${d.sub};font-weight:600;line-height:1">${kg.time}</div>`
       : '';
     // 날짜 스타일: 홈경기=빨간동그라미, 원정=기본, 선택=배경만
     const dayExtraStyle = isKiaGame&&isKiaHome ? 'background:rgba(227,24,55,0.15);border-color:#E31837;' : '';
