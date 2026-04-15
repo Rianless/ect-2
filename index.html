@@ -4177,8 +4177,27 @@ async function fetchTodayScores(targetDate='') {
   }
 }
 
+// 이번 달 과거 KIA 경기 중 점수가 없는 날짜 일괄 fetch
+async function fetchPastMissingScores() {
+  const now = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Seoul'}));
+  const todayStr = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+  const missingDates = [...new Set(
+    SCH.filter(g => {
+      if (g.away !== 'KIA' && g.home !== 'KIA') return false;
+      if (g.date >= todayStr) return false;
+      return g.awayScore == null || g.homeScore == null;
+    }).map(g => g.date)
+  )].sort().slice(-14);
+  for (const date of missingDates) {
+    try { await fetchTodayScores(date); } catch(e) {}
+  }
+  if (missingDates.length > 0) render();
+}
+
 // 앱 시작 시 즉시 스코어 가져오기 (render 전 실행)
 const _initFetch = fetchTodayScores();
+// 과거 누락 점수 보완 (1.5초 후)
+setTimeout(fetchPastMissingScores, 1500);
 // 30초마다 갱신
 setInterval(fetchTodayScores, 30000);
 
