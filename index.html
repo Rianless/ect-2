@@ -1262,8 +1262,12 @@ function renderCalSplit(d) {
     const isKiaHome = kg&&kg.home==='KIA';
     const isKiaGame = !!kg&&!!oppKey;
     const statusBadge = kg&&kg.status==='LIVE'?'<div style="font-size:6px;background:#E31837;color:#fff;border-radius:2px;padding:0 2px;font-weight:700;line-height:1.4">LIVE</div>':'';
-    const kiaScore = kg ? (isHome ? kg.homeScore : kg.awayScore) : null;
-    const oppScore = kg ? (isHome ? kg.awayScore : kg.homeScore) : null;
+    const _rawKia = kg ? (isHome ? kg.homeScore : kg.awayScore) : null;
+    const _rawOpp = kg ? (isHome ? kg.awayScore : kg.homeScore) : null;
+    // 점수가 null이면 이닝 스코어 합산으로 백업
+    const _sumArr = arr => Array.isArray(arr) ? arr.filter(x=>x>=0).reduce((a,b)=>a+b,0) : null;
+    const kiaScore = _rawKia!=null ? _rawKia : (kg && kg.status==='FINAL' ? (isHome ? _sumArr(kg.homeInnings) : _sumArr(kg.awayInnings)) : null);
+    const oppScore = _rawOpp!=null ? _rawOpp : (kg && kg.status==='FINAL' ? (isHome ? _sumArr(kg.awayInnings) : _sumArr(kg.homeInnings)) : null);
     const kiaFinal = kg && kg.status==='FINAL' && kiaScore!=null && oppScore!=null;
     const kiaWon  = kiaFinal && kiaScore > oppScore;
     const kiaDraw = kiaFinal && kiaScore === oppScore;
@@ -1280,7 +1284,7 @@ function renderCalSplit(d) {
       : '';
     // 날짜 스타일: 홈경기=빨간동그라미, 원정=기본, 선택=배경만
     const dayExtraStyle = isKiaGame&&isKiaHome ? 'background:rgba(227,24,55,0.15);border-color:#E31837;' : '';
-    const kiaLost = kg&&kg.status==='FINAL'&&(()=>{const ks=isHome?kg.homeScore:kg.awayScore,os=isHome?kg.awayScore:kg.homeScore;return ks!=null&&os!=null&&ks<os;})();
+    const kiaLost = kiaFinal && kiaScore < oppScore;
     const logoGrayStyle = kiaLost?'filter:grayscale(1);opacity:0.72;':'';
     cells+=`<div class="cal-cell${isSel?' sel':''}${isPast?' past':''}${isCurrentWeek?' current-week':''}" onclick="selDate('${ds}')">
       <div class="cal-day${isToday?' today':''}${dow===5?' sat':dow===6?' sun':''}" style="color:${dayColor};${dayExtraStyle}">${i}</div>
@@ -5184,3 +5188,4 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
