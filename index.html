@@ -4191,13 +4191,32 @@ async function fetchPastMissingScores() {
   for (const date of missingDates) {
     try { await fetchTodayScores(date); } catch(e) {}
   }
+  // 달력 셀 DOM 직접 업데이트
+  SCH.forEach(g => {
+    if (g.away !== 'KIA' && g.home !== 'KIA') return;
+    if (g.status !== 'FINAL' && g.status !== 'CANCELED') return;
+    const el = document.getElementById('cal-time-' + g.date);
+    if (!el) return;
+    if (g.status === 'CANCELED') {
+      el.textContent = '우취'; el.style.color = '#2979FF';
+    } else {
+      const isHome = g.home === 'KIA';
+      const kScore = isHome ? g.homeScore : g.awayScore;
+      const oScore = isHome ? g.awayScore : g.homeScore;
+      if (kScore != null && oScore != null) {
+        if (kScore > oScore)       { el.textContent = '승리'; el.style.color = '#E31837'; el.style.fontWeight = '800'; }
+        else if (kScore === oScore) { el.textContent = '무승부'; el.style.color = '#FF9500'; el.style.fontWeight = '800'; }
+        else                        { el.textContent = '패배'; el.style.color = '#3B9EF5'; el.style.fontWeight = '800'; }
+      } else {
+        el.textContent = '종료'; el.style.color = '#888';
+      }
+    }
+  });
   if (missingDates.length > 0) render();
 }
 
-// 앱 시작 시 즉시 스코어 가져오기 (render 전 실행)
-const _initFetch = fetchTodayScores();
-// 과거 누락 점수 보완 (1.5초 후)
-setTimeout(fetchPastMissingScores, 1500);
+// 앱 시작 시 즉시 스코어 가져오기 → 완료 후 과거 누락 점수 보완
+const _initFetch = fetchTodayScores().finally(() => fetchPastMissingScores());
 // 30초마다 갱신
 setInterval(fetchTodayScores, 30000);
 
