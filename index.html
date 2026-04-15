@@ -1268,9 +1268,11 @@ function renderCalSplit(d) {
     const _sumArr = arr => Array.isArray(arr) ? arr.filter(x=>x>=0).reduce((a,b)=>a+b,0) : null;
     const kiaScore = _rawKia!=null ? _rawKia : (kg && kg.status==='FINAL' ? (isHome ? _sumArr(kg.homeInnings) : _sumArr(kg.awayInnings)) : null);
     const oppScore = _rawOpp!=null ? _rawOpp : (kg && kg.status==='FINAL' ? (isHome ? _sumArr(kg.awayInnings) : _sumArr(kg.homeInnings)) : null);
-    const kiaFinal = kg && kg.status==='FINAL' && kiaScore!=null && oppScore!=null;
-    const kiaWon  = kiaFinal && kiaScore > oppScore;
-    const kiaDraw = kiaFinal && kiaScore === oppScore;
+    const kiaFinal = kg && kg.status==='FINAL';
+    const kiaScoreValid = kiaScore!=null && oppScore!=null;
+    const kiaWon  = kiaFinal && kiaScoreValid && kiaScore > oppScore;
+    const kiaDraw = kiaFinal && kiaScoreValid && kiaScore === oppScore;
+    const kiaLose = kiaFinal && kiaScoreValid && kiaScore < oppScore;
     const calTimeLabel = kg
       ? kg.status==='CANCELED'
         ? `<div id="cal-time-${ds}" style="font-size:7px;color:#2979FF;font-weight:700;line-height:1">우취</div>`
@@ -1279,13 +1281,14 @@ function renderCalSplit(d) {
             ? `<div id="cal-time-${ds}" style="font-size:7px;color:#E31837;font-weight:800;line-height:1">승리</div>`
             : kiaDraw
               ? `<div id="cal-time-${ds}" style="font-size:7px;color:#FF9500;font-weight:800;line-height:1">무승부</div>`
-              : `<div id="cal-time-${ds}" style="font-size:7px;color:#3B9EF5;font-weight:800;line-height:1">패배</div>`
+              : kiaLose
+                ? `<div id="cal-time-${ds}" style="font-size:7px;color:#3B9EF5;font-weight:800;line-height:1">패배</div>`
+                : `<div id="cal-time-${ds}" style="font-size:7px;color:${d.sub};font-weight:600;line-height:1">종료</div>`
           : `<div id="cal-time-${ds}" style="font-size:7px;color:${d.sub};font-weight:600;line-height:1">${kg.time}</div>`
       : '';
     // 날짜 스타일: 홈경기=빨간동그라미, 원정=기본, 선택=배경만
     const dayExtraStyle = isKiaGame&&isKiaHome ? 'background:rgba(227,24,55,0.15);border-color:#E31837;' : '';
-    const kiaLost = kiaFinal && kiaScore < oppScore;
-    const logoGrayStyle = kiaLost?'filter:grayscale(1);opacity:0.72;':'';
+    const logoGrayStyle = kiaLose?'filter:grayscale(1);opacity:0.72;':'';
     cells+=`<div class="cal-cell${isSel?' sel':''}${isPast?' past':''}${isCurrentWeek?' current-week':''}" onclick="selDate('${ds}')">
       <div class="cal-day${isToday?' today':''}${dow===5?' sat':dow===6?' sun':''}" style="color:${dayColor};${dayExtraStyle}">${i}</div>
       ${isKiaGame?`<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
@@ -5188,4 +5191,5 @@ if ('serviceWorker' in navigator) {
 </script>
 </body>
 </html>
+
 
