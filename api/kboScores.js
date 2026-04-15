@@ -272,8 +272,10 @@ export default async function handler(req, res) {
       status,
       statusCode: sc,
       statusInfo: si || null,
-      awayScore: g.awayTeamScore!=null ? Number(g.awayTeamScore) : null,
-      homeScore: g.homeTeamScore!=null ? Number(g.homeTeamScore) : null,
+      awayScore: g.awayTeamScore!=null ? Number(g.awayTeamScore)
+        : awayInnings.some(x=>x>=0) ? awayInnings.filter(x=>x>=0).reduce((a,b)=>a+b,0) : null,
+      homeScore: g.homeTeamScore!=null ? Number(g.homeTeamScore)
+        : homeInnings.some(x=>x>=0) ? homeInnings.filter(x=>x>=0).reduce((a,b)=>a+b,0) : null,
       awayInnings, homeInnings,
       inningInfo: g.statusInfo || null,
       currentGameState: enrichedGs,
@@ -413,7 +415,7 @@ export default async function handler(req, res) {
     await Promise.all(rawGames.map(async g => {
       try {
         if (g.statusCode === 'STARTED' || g.statusCode === 'LIVE' || g.statusCode === 'RESULT' || g.statusCode === 'FINAL') {
-          const inn = g.statusCode === 'RESULT' ? 9 : 1;
+          const inn = (g.statusCode === 'RESULT' || g.statusCode === 'FINAL') ? 9 : 1;
           const d = await fetchGameDetail(g.gameId, inn);
           if (d) detailMap[g.gameId] = d;
         } else {
@@ -431,3 +433,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
