@@ -2882,9 +2882,8 @@ function renderModal(d) {
     if (g.home === 'KIA') return [home, away];
     return [away, home];
   })();
-  // lt 기본값: state에 없으면 KIA 쪽 key로 설정
-  if (!state.modalLt) state.modalLt = g.away === 'KIA' ? 'away' : 'home';
-  const lt=state.modalLt;
+  // lt: openModal에서 항상 KIA 쪽으로 설정됨
+  const lt=state.modalLt || (g.away === 'KIA' ? 'away' : 'home');
   const cur=buildDisplayLineup(lt==='away'?(g.lineup?.away?.batters||[]):(g.lineup?.home?.batters||[]));
   const lTeam=kiaHome?g.home:g.away, rTeam=kiaHome?g.away:g.home;
   const lLabel=kiaHome?'HOME':'AWAY', rLabel=kiaHome?'AWAY':'HOME';
@@ -3741,12 +3740,12 @@ async function fetchLineupDirect(gameId, inning) {
       enrichedGs = {
         ...gs,
         _inningInfo: info,
-        // pcodeMap으로 ID를 이름으로 변환, 숫자 ID가 이름 필드에 남아있으면 비움
         pitcherName: pcodeMap[gs.pitcher] || (!_numId(gs.pitcherName) ? gs.pitcherName : null) || null,
         batterName:  pcodeMap[gs.batter]  || (!_numId(gs.batterName)  ? gs.batterName  : null) || null,
-        base1Name: atkOM[gs.base1] || null,
-        base2Name: atkOM[gs.base2] || null,
-        base3Name: atkOM[gs.base3] || null,
+        // 주자 이름: pcode → 이름 우선, 없으면 타순맵
+        base1Name: pcodeMap[gs.base1] || atkOM[gs.base1] || null,
+        base2Name: pcodeMap[gs.base2] || atkOM[gs.base2] || null,
+        base3Name: pcodeMap[gs.base3] || atkOM[gs.base3] || null,
       };
     }
 
@@ -3897,7 +3896,10 @@ function closeModal() {
   box.classList.add('closing');
   setTimeout(()=>{
     document.getElementById('modal-overlay').classList.remove('open');
-    box.classList.remove('closing'); state.modalGame=null;
+    box.classList.remove('closing');
+    state.modalGame=null;
+    state.modalLt=null;
+    state.modalRecTab=null;
     document.body.style.overflow='';
   },280);
 }
