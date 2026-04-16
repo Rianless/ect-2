@@ -3381,45 +3381,53 @@ function renderModal(d) {
           let html2 = '';
           if (batters.length) {
             html2 += `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:12px;overflow:hidden;margin-bottom:8px">`;
-            html2 += `<div style="padding:8px 12px;border-bottom:1px solid ${d.bgB};display:flex">`;
-            html2 += `<span style="flex:1;font-size:10px;font-weight:700;color:${d.sub}">타자</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">타수</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">안타</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">타점</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">볼넷</span>`;
-            html2 += `</div>`;
+            html2 += `<table style="width:100%;border-collapse:collapse">`;
+            html2 += `<thead><tr style="border-bottom:1px solid ${d.bgB}">`;
+            html2 += `<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:${d.sub};width:100%">타자</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">타수</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">안타</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">타점</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
+            html2 += `</tr></thead><tbody>`;
             batters.filter(p=>p.p!=='P'&&p.pos!=='P').slice(0,9).forEach(p => {
-              html2 += `<div style="padding:7px 12px;border-bottom:1px solid ${d.bgB};display:flex;align-items:center;gap:6px">`;
+              html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+              html2 += `<td style="padding:7px 12px">`;
+              html2 += `<div style="display:flex;align-items:center;gap:6px">`;
               html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">${p.n||p.order}</span>`;
-              html2 += `<span style="flex:1;font-size:12px;font-weight:700;color:${d.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.sub?p.name+' ←'+p.sub:p.name}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;color:${d.sub}">${p.ab||0}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;font-weight:${p.rbi>0?700:400};color:${p.rbi>0?sideColor:d.sub}">${p.rbi||0}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;color:${p.bb>0?sideColor:d.sub};font-weight:${p.bb>0?700:400}">${p.bb||0}</span>`;
-              html2 += `</div>`;
+              html2 += `<span style="font-size:12px;font-weight:700;color:${d.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.sub?p.name+' ←'+p.sub:p.name}</span>`;
+              html2 += `</div></td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.ab||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.rbi>0?700:400};color:${p.rbi>0?sideColor:d.sub}">${p.rbi||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?sideColor:d.sub}">${p.bb||0}</td>`;
+              html2 += `</tr>`;
             });
-            html2 += `</div>`;
+            html2 += `</tbody></table></div>`;
           }
           if (pitchers.length) {
             html2 += `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:12px;overflow:hidden">`;
-            html2 += `<div style="padding:8px 12px;border-bottom:1px solid ${d.bgB};display:flex">`;
-            html2 += `<span style="flex:1;font-size:10px;font-weight:700;color:${d.sub}">투수</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">이닝</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">삼진</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">볼넷</span>`;
-            html2 += `<span style="width:30px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">실점</span>`;
-            html2 += `</div>`;
+            html2 += `<table style="width:100%;border-collapse:collapse">`;
+            html2 += `<thead><tr style="border-bottom:1px solid ${d.bgB}">`;
+            html2 += `<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:${d.sub};width:100%">투수</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">이닝</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">삼진</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">실점</th>`;
+            html2 += `</tr></thead><tbody>`;
             pitchers.forEach(p => {
-              html2 += `<div style="padding:7px 12px;border-bottom:1px solid ${d.bgB};display:flex;align-items:center;gap:6px">`;
+              html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+              html2 += `<td style="padding:7px 12px">`;
+              html2 += `<div style="display:flex;align-items:center;gap:6px">`;
               html2 += `<span style="font-size:9px;font-weight:900;min-width:16px;text-align:center;color:${sideColor};background:${sideColor}22;border-radius:4px;padding:1px 4px">P</span>`;
-              html2 += `<span style="flex:1;font-size:12px;font-weight:700;color:${d.text}">${p.name}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;color:${d.sub}">${p.inn||0}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;color:${d.sub}">${p.kk||0}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;color:${p.bb>0?'#E31837':d.sub};font-weight:${p.bb>0?700:400}">${p.bb||0}</span>`;
-              html2 += `<span style="width:30px;text-align:center;font-size:12px;font-weight:${p.er>0?700:400};color:${p.er>0?'#E31837':d.sub}">${p.er||0}</span>`;
-              html2 += `</div>`;
+              html2 += `<span style="font-size:12px;font-weight:700;color:${d.text}">${p.name}</span>`;
+              html2 += `</div></td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.inn||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.kk||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?'#E31837':d.sub}">${p.bb||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.er>0?700:400};color:${p.er>0?'#E31837':d.sub}">${p.er||0}</td>`;
+              html2 += `</tr>`;
             });
-            html2 += `</div>`;
+            html2 += `</tbody></table></div>`;
           }
           if (!batters.length && !pitchers.length) {
             html2 = `<div style="text-align:center;padding:20px;color:${d.sub};font-size:12px">기록 데이터가 없습니다</div>`;
@@ -4765,43 +4773,41 @@ function renderScoringPlays(plays, dark) {
 async function fetchAllScoringPlays(gameId, maxInn) {
   const plays = [];
   const seen = new Set();
-  // 이닝 순서대로 fetch (1회부터)
+  let prevAwayScore = 0, prevHomeScore = 0;
   for (let i = 1; i <= maxInn; i++) {
     try {
       const data = await fetchRelayData(gameId, i);
       if (!data) continue;
-      const relays = data.textRelays || [];
-      // 이 이닝의 relay에서 득점 장면 추출
-      [...relays].reverse().forEach(item => {
+      const relays = [...(data.textRelays || [])].reverse();
+      relays.forEach(item => {
         const allItems = [item, ...(item.textOptions||[])];
         allItems.forEach(it => {
           const title = it.title || it.text || '';
-          if (!title) return;
-          const isScoring = /홈런|타점|득점|희생플라이|밀어내기/.test(title)
-            || (/(?:2루타|3루타|안타|1루타)/.test(title) && (Number(it.rbi||0) > 0));
-          if (!isScoring) return;
+          if (!title || title.startsWith('=')) return;
+          const gs = it.currentGameState || item.currentGameState;
+          const awayS = Number(gs?.awayScore ?? -1);
+          const homeS = Number(gs?.homeScore ?? -1);
+          const scored = (awayS > prevAwayScore) || (homeS > prevHomeScore);
+          const isKeyword = /홈런|타점|득점|희생플라이|밀어내기|끝내기/.test(title);
+          if (!scored && !isKeyword) return;
           const key = title.trim();
           if (seen.has(key)) return;
           seen.add(key);
-          const gs = it.currentGameState || item.currentGameState;
+          if (awayS >= 0) prevAwayScore = awayS;
+          if (homeS >= 0) prevHomeScore = homeS;
           plays.push({
-            title,
-            desc: it.resultText || item.resultText || '',
-            inning: `${i}회`,
-            awayScore: gs?.awayScore ?? '',
-            homeScore: gs?.homeScore ?? '',
+            title, inning: i+'회',
+            awayScore: awayS >= 0 ? awayS : '',
+            homeScore: homeS >= 0 ? homeS : '',
+            isHR: /홈런/.test(title),
           });
         });
       });
-      // fetch 도중 중간중간 UI 업데이트 (진행 표시)
-      const body = document.getElementById('relay-body');
-      if (body && _relayTab === 'score') {
+      if (_relayTab === 'score') {
+        const body = document.getElementById('relay-body');
         const pct = Math.round((i / maxInn) * 100);
         const _dark = state.dark;
-        body.innerHTML = `<div style="text-align:center;padding:40px">
-          <div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div>
-          <div style="font-size:13px;color:${_dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.4)'};margin-top:8px">${i}회 분석 중... (${pct}%)</div>
-        </div>`;
+        if (body) body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div><div style="font-size:13px;color:'+(_dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.35)')+';margin-top:8px">'+i+'회 분석 중... ('+pct+'%)</div></div>';
       }
     } catch(e) {}
   }
