@@ -3253,24 +3253,44 @@ function renderModal(d) {
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
             html2 += `</tr></thead><tbody>`;
             batters.filter(p=>p.p!=='P'&&p.pos!=='P').slice(0,9).forEach(p => {
-              html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
-              html2 += `<td style="padding:7px 12px">`;
-              html2 += `<div style="display:flex;align-items:center;gap:6px">`;
-              html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">${p.n||p.order}</span>`;
               if (p.sub) {
-                html2 += `<div style="display:flex;flex-direction:column;gap:1px;overflow:hidden">`;
-                html2 += `<span style="font-size:12px;font-weight:700;color:${d.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.sub}</span>`;
-                html2 += `<span style="font-size:10px;color:${d.sub};display:flex;align-items:center;gap:2px"><span style="font-size:9px">▼</span>${p.name}</span>`;
-                html2 += `</div>`;
+                // 교체 전 선수 (sub) 행
+                html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+                html2 += `<td style="padding:7px 12px">`;
+                html2 += `<div style="display:flex;align-items:center;gap:6px">`;
+                html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">${p.n||p.order}</span>`;
+                html2 += `<span style="font-size:12px;font-weight:700;color:${d.text}">${p.sub}</span>`;
+                html2 += `</div></td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.subAb||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subHit>0?700:400};color:${p.subHit>0?sideColor:d.sub}">${p.subHit||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subRbi>0?700:400};color:${p.subRbi>0?sideColor:d.sub}">${p.subRbi||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subBb>0?700:400};color:${p.subBb>0?sideColor:d.sub}">${p.subBb||0}</td>`;
+                html2 += `</tr>`;
+                // 교체 후 선수 (cur) 행
+                html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+                html2 += `<td style="padding:5px 12px 7px 12px">`;
+                html2 += `<div style="display:flex;align-items:center;gap:6px">`;
+                html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">▼</span>`;
+                html2 += `<span style="font-size:12px;font-weight:700;color:${d.sub}">${p.name}</span>`;
+                html2 += `</div></td>`;
+                html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.curAb||0}</td>`;
+                html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curHit>0?700:400};color:${p.curHit>0?sideColor:d.sub}">${p.curHit||0}</td>`;
+                html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curRbi>0?700:400};color:${p.curRbi>0?sideColor:d.sub}">${p.curRbi||0}</td>`;
+                html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curBb>0?700:400};color:${p.curBb>0?sideColor:d.sub}">${p.curBb||0}</td>`;
+                html2 += `</tr>`;
               } else {
-                html2 += `<span style="font-size:12px;font-weight:700;color:${d.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.name}</span>`;
+                html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+                html2 += `<td style="padding:7px 12px">`;
+                html2 += `<div style="display:flex;align-items:center;gap:6px">`;
+                html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">${p.n||p.order}</span>`;
+                html2 += `<span style="font-size:12px;font-weight:700;color:${d.text}">${p.name}</span>`;
+                html2 += `</div></td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.ab||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.rbi>0?700:400};color:${p.rbi>0?sideColor:d.sub}">${p.rbi||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?sideColor:d.sub}">${p.bb||0}</td>`;
+                html2 += `</tr>`;
               }
-              html2 += `</div></td>`;
-              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.ab||0}</td>`;
-              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</td>`;
-              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.rbi>0?700:400};color:${p.rbi>0?sideColor:d.sub}">${p.rbi||0}</td>`;
-              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?sideColor:d.sub}">${p.bb||0}</td>`;
-              html2 += `</tr>`;
             });
             html2 += `</tbody></table></div>`;
           }
@@ -3488,20 +3508,27 @@ function _parseBatters(src) {
       || ps[ps.length-1];
     const replaced = ps.find(p=>(p.cout==='true'||p.cout===true) && p!==cur);
     const starter = replaced || cur;
-    // 같은 타순의 모든 선수 기록 합산 (교체 전/후 선수 모두 포함)
-    const totalHit = ps.reduce((s,p)=>s+Number(p.hit||0),0);
-    const totalAb  = ps.reduce((s,p)=>s+Number(p.ab||0),0);
-    const totalRbi = ps.reduce((s,p)=>s+Number(p.rbi||0),0);
-    const totalBb  = ps.reduce((s,p)=>s+Number(p.bb||p.walk||0),0);
     return {
       n:+o, order:+o,
       name: cur.name || cur.playerName || '',
       p: cur.posName || cur.position || '',
       pos: cur.posName || cur.position || '',
-      sub: replaced ? replaced.name : null,
+      sub: replaced ? (replaced.name || replaced.playerName) : null,
       starterName: starter.name || cur.name || '',
       starterPos: starter.posName || starter.position || cur.posName || '',
-      hit: totalHit, ab: totalAb, rbi: totalRbi, bb: totalBb,
+      // 교체 전 선수(sub) 기록
+      subHit: replaced ? Number(replaced.hit||0) : 0,
+      subAb:  replaced ? Number(replaced.ab||0)  : 0,
+      subRbi: replaced ? Number(replaced.rbi||0) : 0,
+      subBb:  replaced ? Number(replaced.bb||replaced.walk||0) : 0,
+      // 현재 선수(cur) 기록
+      curHit: Number(cur.hit||0),
+      curAb:  Number(cur.ab||0),
+      curRbi: Number(cur.rbi||0),
+      curBb:  Number(cur.bb||cur.walk||0),
+      // 단일 선수일 때 쓰는 통합 기록
+      hit: Number(cur.hit||0), ab: Number(cur.ab||0),
+      rbi: Number(cur.rbi||0), bb: Number(cur.bb||cur.walk||0),
     };
   });
 }
@@ -3882,11 +3909,6 @@ function parseBrowserBatters(batters) {
       const current = players.find(p => p.cin === 'true') || players.find(p => !p.cout) || players[players.length - 1];
       const replaced = players.find(p => p.cout === 'true' && p !== current);
       const starterForPos = replaced || current;
-      // 같은 타순 모든 선수 기록 합산
-      const totalHit = players.reduce((s,p)=>s+Number(p.hit||0),0);
-      const totalAb  = players.reduce((s,p)=>s+Number(p.ab||0),0);
-      const totalRbi = players.reduce((s,p)=>s+Number(p.rbi||0),0);
-      const totalBb  = players.reduce((s,p)=>s+Number(p.bb||p.walk||0),0);
       return {
         n: Number(order),
         order: Number(order),
@@ -3896,10 +3918,21 @@ function parseBrowserBatters(batters) {
         sub: replaced?.name || null,
         starterName: starterForPos?.name || current?.name || '',
         starterPos: starterForPos?.posName || current?.posName || '',
-        hit: totalHit,
-        ab: totalAb,
-        rbi: totalRbi,
-        bb: totalBb,
+        // 교체 전 선수(sub) 기록
+        subHit: replaced ? Number(replaced.hit||0) : 0,
+        subAb:  replaced ? Number(replaced.ab||0)  : 0,
+        subRbi: replaced ? Number(replaced.rbi||0) : 0,
+        subBb:  replaced ? Number(replaced.bb||replaced.walk||0) : 0,
+        // 현재 선수(cur) 기록
+        curHit: Number(current?.hit||0),
+        curAb:  Number(current?.ab||0),
+        curRbi: Number(current?.rbi||0),
+        curBb:  Number(current?.bb||current?.walk||0),
+        // 단일 선수일 때 통합 기록
+        hit: Number(current?.hit||0),
+        ab:  Number(current?.ab||0),
+        rbi: Number(current?.rbi||0),
+        bb:  Number(current?.bb||current?.walk||0),
       };
     });
 }
