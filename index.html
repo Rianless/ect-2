@@ -3481,6 +3481,11 @@ function _parseBatters(src) {
       || ps[ps.length-1];
     const replaced = ps.find(p=>(p.cout==='true'||p.cout===true) && p!==cur);
     const starter = replaced || cur;
+    // 같은 타순의 모든 선수 기록 합산 (교체 전/후 선수 모두 포함)
+    const totalHit = ps.reduce((s,p)=>s+Number(p.hit||0),0);
+    const totalAb  = ps.reduce((s,p)=>s+Number(p.ab||0),0);
+    const totalRbi = ps.reduce((s,p)=>s+Number(p.rbi||0),0);
+    const totalBb  = ps.reduce((s,p)=>s+Number(p.bb||p.walk||0),0);
     return {
       n:+o, order:+o,
       name: cur.name || cur.playerName || '',
@@ -3489,7 +3494,7 @@ function _parseBatters(src) {
       sub: replaced ? replaced.name : null,
       starterName: starter.name || cur.name || '',
       starterPos: starter.posName || starter.position || cur.posName || '',
-      hit: cur.hit||0, ab: cur.ab||0, rbi: cur.rbi||0,
+      hit: totalHit, ab: totalAb, rbi: totalRbi, bb: totalBb,
     };
   });
 }
@@ -3868,9 +3873,13 @@ function parseBrowserBatters(batters) {
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([order, players]) => {
       const current = players.find(p => p.cin === 'true') || players.find(p => !p.cout) || players[players.length - 1];
-      // cout=true인 선수(교체된 선발)가 있으면 그 선수의 포지션을 starterPos로 사용
       const replaced = players.find(p => p.cout === 'true' && p !== current);
-      const starterForPos = replaced || current; // 교체된 선수가 없으면 현재 선수 자체
+      const starterForPos = replaced || current;
+      // 같은 타순 모든 선수 기록 합산
+      const totalHit = players.reduce((s,p)=>s+Number(p.hit||0),0);
+      const totalAb  = players.reduce((s,p)=>s+Number(p.ab||0),0);
+      const totalRbi = players.reduce((s,p)=>s+Number(p.rbi||0),0);
+      const totalBb  = players.reduce((s,p)=>s+Number(p.bb||p.walk||0),0);
       return {
         n: Number(order),
         order: Number(order),
@@ -3880,9 +3889,10 @@ function parseBrowserBatters(batters) {
         sub: replaced?.name || null,
         starterName: starterForPos?.name || current?.name || '',
         starterPos: starterForPos?.posName || current?.posName || '',
-        hit: current?.hit || 0,
-        ab: current?.ab || 0,
-        rbi: current?.rbi || 0,
+        hit: totalHit,
+        ab: totalAb,
+        rbi: totalRbi,
+        bb: totalBb,
       };
     });
 }
