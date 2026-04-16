@@ -2879,14 +2879,14 @@ function renderModal(d) {
   const lineupSides = (()=>{
     const away = { key:'away', team:g.away, meta:aw };
     const home  = { key:'home', team:g.home, meta:hw };
-    // KIA가 항상 왼쪽(첫 번째) — 홈/원정 무관
     if (g.away === 'KIA') return [away, home];
     if (g.home === 'KIA') return [home, away];
     return [away, home];
   })();
-  // lt: openModal에서 항상 KIA 쪽으로 설정됨
   const lt=state.modalLt;
   const cur=buildDisplayLineup(lt==='away'?(g.lineup?.away?.batters||[]):(g.lineup?.home?.batters||[]));
+  const ct=lt==='away'?aw:hw;
+  const kiaHome=g.home==='KIA';
   const lTeam=kiaHome?g.home:g.away, rTeam=kiaHome?g.away:g.home;
   const lLabel=kiaHome?'HOME':'AWAY', rLabel=kiaHome?'AWAY':'HOME';
   const lScore=kiaHome?(g.homeScore??0):(g.awayScore??0);
