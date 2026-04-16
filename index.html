@@ -2879,7 +2879,8 @@ function renderModal(d) {
       { key:'away', team:g.away, meta:aw },
       { key:'home', team:g.home, meta:hw },
     ];
-    if ((g.away === 'NC' && g.home === 'KIA') || (g.away === 'KIA' && g.home === 'NC')) {
+    // KIA가 항상 먼저 오도록 (홈/원정 무관)
+    if (g.away === 'KIA' || g.home === 'KIA') {
       return base.sort((a,b)=>(a.team === 'KIA' ? -1 : 1));
     }
     return base;
@@ -3345,6 +3346,131 @@ function renderModal(d) {
           </div>
         </div>
       </div>` : ''}
+
+      ${isFinal && g.lineup ? `
+      <!-- ── 타자/투수 기록 섹션 ── -->
+      <div style="margin-bottom:18px;margin-left:16px;margin-right:16px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
+          <span style="font-size:15px">📊</span>
+          <span style="font-size:13px;font-weight:800;color:${d.text}">경기 기록</span>
+        </div>
+        <!-- 팀 선택 탭 -->
+        <div style="display:flex;gap:4px;margin-bottom:10px">
+          ${(()=>{
+            const kiaRecKey = g.home==='KIA'?'home':'away';
+            const oppRecKey = g.home==='KIA'?'away':'home';
+            const oppTeam = g.home==='KIA'?g.away:g.home;
+            const curRecTab = state.modalRecTab || kiaRecKey;
+            const tabs = [
+              {key: kiaRecKey, team:'KIA', meta: T['KIA']||{color:'#E31837'}},
+              {key: oppRecKey, team: oppTeam, meta: T[oppTeam]||{color:'#888'}},
+            ];
+            return tabs.map(({key,team,meta}) => {
+              const active = curRecTab === key;
+              return `<button onclick="setModalRecTab('${key}')" style="padding:4px 12px;background:${active?meta.color:d.bg};border:1px solid ${active?meta.color:d.bgB};border-radius:8px;color:${active?'#fff':d.text};font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif">${team}</button>`;
+            }).join('');
+          })()}
+        </div>
+        ${(()=>{
+          const recKey = state.modalRecTab || (g.home==='KIA'?'home':'away');
+          const kiaKey = g.home==='KIA'?'home':'away';
+          const oppKey = g.home==='KIA'?'away':'home';
+          const actualKey = recKey;
+          const lineupSide = g.lineup?.[actualKey];
+          const batters = lineupSide?.batters || [];
+          const pitchers = lineupSide?.pitchers || [];
+          const isKiaSide = actualKey === kiaKey;
+          const sideColor = isKiaSide ? '#E31837' : (T[actualKey==='home'?g.home:g.away]?.color||'#888');
+
+          let html2 = '';
+          if (batters.length) {
+            html2 += `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:12px;overflow:hidden;margin-bottom:8px">`;
+            html2 += `<div style="padding:8px 12px;border-bottom:1px solid ${d.bgB};display:flex;gap:0">`;
+            html2 += `<span style="flex:1;font-size:10px;font-weight:700;color:${d.sub}">타자</span>`;
+            html2 += `<span style="width:34px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">타수</span>`;
+            html2 += `<span style="width:34px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">안타</span>`;
+            html2 += `<span style="width:34px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">타점</span>`;
+            html2 += `</div>`;
+            batters.filter(p=>p.p!=='P').slice(0,9).forEach(p => {
+              const hasHit = p.hit > 0;
+              html2 += `<div style="padding:7px 12px;border-bottom:1px solid ${d.bgB};display:flex;align-items:center;gap:6px">`;
+              html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">${p.n}</span>`;
+              html2 += `<span style="flex:1;font-size:12px;font-weight:700;color:${d.text};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${p.sub?p.name+' ←'+p.sub:p.name}</span>`;
+              html2 += `<span style="width:34px;text-align:center;font-size:12px;color:${d.sub}">${p.ab||0}</span>`;
+              html2 += `<span style="width:34px;text-align:center;font-size:12px;font-weight:${hasHit?700:400};color:${hasHit?sideColor:d.sub}">${p.hit||0}</span>`;
+              html2 += `<span style="width:34px;text-align:center;font-size:12px;color:${p.rbi>0?sideColor:d.sub};font-weight:${p.rbi>0?700:400}">${p.rbi||0}</span>`;
+              html2 += `</div>`;
+            });
+            html2 += `</div>`;
+          }
+          if (pitchers.length) {
+            html2 += `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:12px;overflow:hidden">`;
+            html2 += `<div style="padding:8px 12px;border-bottom:1px solid ${d.bgB};display:flex;gap:0">`;
+            html2 += `<span style="flex:1;font-size:10px;font-weight:700;color:${d.sub}">투수</span>`;
+            html2 += `<span style="width:34px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">이닝</span>`;
+            html2 += `<span style="width:34px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">삼진</span>`;
+            html2 += `<span style="width:34px;text-align:center;font-size:10px;font-weight:700;color:${d.sub}">실점</span>`;
+            html2 += `</div>`;
+            pitchers.forEach(p => {
+              const hasEr = p.er > 0;
+              html2 += `<div style="padding:7px 12px;border-bottom:1px solid ${d.bgB};display:flex;align-items:center;gap:6px">`;
+              html2 += `<span style="font-size:9px;font-weight:900;min-width:16px;text-align:center;color:${sideColor};background:${sideColor}22;border-radius:4px;padding:1px 4px">P</span>`;
+              html2 += `<span style="flex:1;font-size:12px;font-weight:700;color:${d.text}">${p.name}</span>`;
+              html2 += `<span style="width:34px;text-align:center;font-size:12px;color:${d.sub}">${p.inn||0}</span>`;
+              html2 += `<span style="width:34px;text-align:center;font-size:12px;color:${d.sub}">${p.kk||0}</span>`;
+              html2 += `<span style="width:34px;text-align:center;font-size:12px;font-weight:${hasEr?700:400};color:${hasEr?'#E31837':d.sub}">${p.er||0}</span>`;
+              html2 += `</div>`;
+            });
+            html2 += `</div>`;
+          }
+          if (!batters.length && !pitchers.length) {
+            html2 = `<div style="text-align:center;padding:20px;color:${d.sub};font-size:12px">기록 데이터가 없습니다</div>`;
+          }
+          return html2;
+        })()}
+      </div>
+
+      <!-- ── 득점 상황 섹션 ── -->
+      <div style="margin-bottom:18px;margin-left:16px;margin-right:16px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:15px">🏃</span>
+            <span style="font-size:13px;font-weight:800;color:${d.text}">득점 상황</span>
+          </div>
+          <button onclick="openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1})" style="padding:4px 10px;background:rgba(227,24,55,0.08);border:1px solid rgba(227,24,55,0.25);border-radius:8px;color:#E31837;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">전체 중계 보기</button>
+        </div>
+        ${(()=>{
+          // 득점 관련 relay 항목만 필터 (홈런, 안타+득점, 타점)
+          const allRelays = g._scoringPlays || [];
+          const awayColor2 = (T[g.away]||{}).color||'#888';
+          const homeColor2 = (T[g.home]||{}).color||'#888';
+          if (!allRelays.length) {
+            return `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:12px;padding:16px;text-align:center;color:${d.sub};font-size:12px">
+              득점 기록을 불러오려면 <b style="color:#E31837">전체 중계 보기</b>를 탭하세요
+            </div>`;
+          }
+          return `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:12px;overflow:hidden">` +
+            allRelays.map(item => {
+              const isHR = /홈런/.test(item.title||'');
+              const bdColor = isHR?'#E31837':'#FF9500';
+              const bdBg = isHR?'rgba(227,24,55,0.1)':'rgba(255,149,0,0.08)';
+              const badge = isHR?'홈런 🔴':'득점';
+              const awayS = item.awayScore??'';
+              const homeS = item.homeScore??'';
+              const scoreDisp = (awayS!==''&&homeS!=='') ?
+                `<span style="font-size:11px;color:${d.sub}">${g.away} <b style="color:${awayColor2}">${awayS}</b> : <b style="color:${homeColor2}">${homeS}</b> ${g.home}</span>` : '';
+              return `<div style="padding:10px 12px;border-bottom:1px solid ${d.bgB};display:flex;align-items:flex-start;gap:8px">
+                <span style="flex-shrink:0;font-size:10px;font-weight:700;color:${bdColor};background:${bdBg};border:1px solid ${bdColor}33;border-radius:5px;padding:2px 7px;margin-top:2px;white-space:nowrap">${badge}</span>
+                <div style="flex:1;min-width:0">
+                  <div style="font-size:12px;color:${d.text};line-height:1.5">${item.title||''}</div>
+                  ${scoreDisp?`<div style="margin-top:2px">${scoreDisp}</div>`:''}
+                  ${item.desc?`<div style="font-size:11px;color:${d.sub};margin-top:2px">${item.desc}</div>`:''}
+                </div>
+              </div>`;
+            }).join('') + `</div>`;
+        })()}
+      </div>` : ''}
+
       <div style="margin-left:16px;margin-right:16px">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:6px">
@@ -3685,9 +3811,11 @@ function openModal(idx,date) {
   const dayGs=SCH.filter(g=>g.date===date);
   const sorted=[...dayGs.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
   state.modalGame=sorted[idx];
-  state.modalLt = ((state.modalGame.away === 'NC' && state.modalGame.home === 'KIA') || (state.modalGame.away === 'KIA' && state.modalGame.home === 'NC'))
-    ? (state.modalGame.away === 'KIA' ? 'away' : 'home')
-    : 'away';
+  // 기본 라인업 탭: KIA가 항상 먼저 (홈/원정 무관)
+  const g0 = state.modalGame;
+  state.modalLt = (g0.away === 'KIA') ? 'away' : (g0.home === 'KIA') ? 'home' : 'away';
+  // 기본 기록 탭: KIA
+  state.modalRecTab = (g0.home === 'KIA') ? 'home' : 'away';
   const overlay=document.getElementById('modal-overlay');
   const box=document.getElementById('modal-box');
   box.classList.remove('closing'); overlay.classList.add('open');
@@ -3730,6 +3858,21 @@ function openModal(idx,date) {
         renderModal(D());
       }
     });
+
+    // FINAL 경기이고 득점 상황이 없으면 relay에서 자동 fetch
+    if (g.status === 'FINAL' && !g._scoringPlays) {
+      fetchRelayData(g.gameId, g.inning || 9).then(relayData => {
+        if (!relayData) return;
+        const idx2 = SCH.findIndex(s => String(s.gameId) === String(g.gameId));
+        if (idx2 !== -1) {
+          SCH[idx2]._scoringPlays = extractScoringPlays(relayData);
+          if (state.modalGame?.gameId === g.gameId) {
+            state.modalGame = SCH[idx2];
+            renderModal(D());
+          }
+        }
+      });
+    }
   }
 
   let ty=null, txStart=0, canSwipeClose=false;
@@ -3763,6 +3906,37 @@ function closeModal() {
 }
 
 function setModalLt(lt){state.modalLt=lt;renderModal(D());}
+function setModalRecTab(key){state.modalRecTab=key;renderModal(D());}
+
+function extractScoringPlays(relayData) {
+  if (!relayData) return [];
+  const relays = relayData.textRelays || [];
+  const plays = [];
+  relays.forEach(item => {
+    const opts = item.textOptions || [];
+    const allItems = [item, ...opts];
+    allItems.forEach(it => {
+      const title = it.title || it.text || '';
+      const isScoring = /홈런|타점|득점|희생플라이|밀어내기/.test(title) ||
+        (/안타|2루타|3루타/.test(title) && (it.rbi > 0 || opts.some(o => o.rbi > 0)));
+      if (isScoring && title) {
+        const gs = it.currentGameState || item.currentGameState;
+        plays.push({
+          title,
+          desc: it.resultText || '',
+          awayScore: gs?.awayScore ?? '',
+          homeScore: gs?.homeScore ?? '',
+        });
+      }
+    });
+  });
+  const seen = new Set();
+  return plays.filter(p => {
+    if (seen.has(p.title)) return false;
+    seen.add(p.title);
+    return true;
+  });
+}
 
 document.getElementById('modal-overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('modal-overlay'))closeModal();
@@ -4630,6 +4804,8 @@ window.openRelay = async function(gameId, away, home, inn) {
         if (_infoS.includes('말')) SCH[_idx3].awayPitcher = _pName;
         else SCH[_idx3].homePitcher = _pName;
       }
+      // 득점 상황 추출하여 저장
+      SCH[_idx3]._scoringPlays = extractScoringPlays(data);
     }
     // lineup fetch에서 얻은 pcodeMap을 relay 데이터에 병합 (타자 이름 변환용)
     if (luData?.pcodeMap) {
