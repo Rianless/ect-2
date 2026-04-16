@@ -831,6 +831,8 @@ let state = {
 };
 // 중계 전체보기 전역 변수
 let _relayGameId = null, _relayAway = '', _relayHome = '', _relayInn = 1, _relayData = null, _relayInterval = null;
+let _relayTab = 'inn'; // 'inn' | 'score'
+let _scoringCache = null; // { gameId, plays[] }
 
 // 용여찾기 로드
 
@@ -2883,7 +2885,7 @@ function renderModal(d) {
     return [away, home];
   })();
   // lt: openModal에서 항상 KIA 쪽으로 설정됨
-  const lt=state.modalLt || (g.away === 'KIA' ? 'away' : 'home');
+  const lt=state.modalLt;
   const cur=buildDisplayLineup(lt==='away'?(g.lineup?.away?.batters||[]):(g.lineup?.home?.batters||[]));
   const lTeam=kiaHome?g.home:g.away, rTeam=kiaHome?g.away:g.home;
   const lLabel=kiaHome?'HOME':'AWAY', rLabel=kiaHome?'AWAY':'HOME';
@@ -3807,11 +3809,12 @@ function openModal(idx,date) {
   const dayGs=SCH.filter(g=>g.date===date);
   const sorted=[...dayGs.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
   state.modalGame=sorted[idx];
-  // 기본 라인업 탭: KIA가 항상 먼저 (홈/원정 무관)
-  const g0 = state.modalGame;
-  state.modalLt = (g0.away === 'KIA') ? 'away' : (g0.home === 'KIA') ? 'home' : 'away';
+  // KIA가 있는 경기면 항상 KIA 탭을 기본 선택
+  if (state.modalGame.away === 'KIA') state.modalLt = 'away';
+  else if (state.modalGame.home === 'KIA') state.modalLt = 'home';
+  else state.modalLt = 'away';
   // 기본 기록 탭: KIA
-  state.modalRecTab = (g0.home === 'KIA') ? 'home' : 'away';
+  state.modalRecTab = (state.modalGame.home === 'KIA') ? 'home' : 'away';
   const overlay=document.getElementById('modal-overlay');
   const box=document.getElementById('modal-box');
   box.classList.remove('closing'); overlay.classList.add('open');
@@ -3898,7 +3901,7 @@ function closeModal() {
     document.getElementById('modal-overlay').classList.remove('open');
     box.classList.remove('closing');
     state.modalGame=null;
-    state.modalLt=null;
+    state.modalLt='away';
     state.modalRecTab=null;
     document.body.style.overflow='';
   },280);
@@ -4703,10 +4706,16 @@ function updateRelayUI() {
     tabs.style.borderColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
     let maxInn = 9;
     if (game.inning && parseInt(game.inning) > 9) maxInn = parseInt(game.inning);
-    
-    let tabHtml = '';
+
+    // 득점 탭 (맨 앞)
+    const scoreSel = _relayTab === 'score';
+    let tabHtml = `<button onclick="switchRelayTab('score')" style="flex-shrink:0;padding:5px 12px;background:${scoreSel?'#E31837':'transparent'};color:${scoreSel?'#fff':dark?'rgba(255,255,255,0.45)':'rgba(0,0,0,0.4)'};border:${scoreSel?'none':dark?'1px solid rgba(255,255,255,0.12)':'1px solid rgba(0,0,0,0.12)'};border-radius:20px;font-size:12px;font-weight:${scoreSel?700:400};cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-bottom:6px">🏃 득점</button>`;
+
+    // 구분선
+    tabHtml += `<span style="flex-shrink:0;width:1px;height:20px;background:${dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.1)'};margin:0 2px;align-self:center"></span>`;
+
     for (let i = 1; i <= maxInn; i++) {
-      const sel = i === _relayInn;
+      const sel = _relayTab === 'inn' && i === _relayInn;
       tabHtml += `<button onclick="switchRelayInn(${i})" style="flex-shrink:0;padding:5px 12px;background:${sel?'#E31837':'transparent'};color:${sel?'#fff':dark?'rgba(255,255,255,0.45)':'rgba(0,0,0,0.4)'};border:${sel?'none':dark?'1px solid rgba(255,255,255,0.12)':'1px solid rgba(0,0,0,0.12)'};border-radius:20px;font-size:12px;font-weight:${sel?700:400};cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-bottom:6px">${i}회</button>`;
     }
     tabs.innerHTML = tabHtml;
@@ -4715,7 +4724,14 @@ function updateRelayUI() {
   // 중계 텍스트 업데이트
   const body = document.getElementById('relay-body');
   if (body) {
-    if (!_relayData) {
+    if (_relayTab === 'score') {
+      // 득점 탭: 캐시 있으면 바로 표시, 없으면 로딩 표시 (fetchAllScoringPlays가 채워줌)
+      if (_scoringCache && _scoringCache.gameId === _relayGameId) {
+        body.innerHTML = renderScoringPlays(_scoringCache.plays, dark);
+      } else {
+        body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div><div style="font-size:13px;color:rgba(0,0,0,0.35);margin-top:8px">전 이닝 득점 장면 불러오는 중...</div></div>';
+      }
+    } else if (!_relayData) {
       body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(0,0,0,0.35)">⏳ 불러오는 중...</div>';
     } else {
       const relays = [...(game.textRelays || [])].reverse();
@@ -4749,7 +4765,110 @@ window.refreshRelay = async function() {
   if (btn) { btn.style.animation = ''; btn.textContent = '🔄'; }
 };
 
+// 득점 장면 렌더링
+function renderScoringPlays(plays, dark) {
+  const awayColor = (T[_relayAway]||{}).color||'#888';
+  const homeColor = (T[_relayHome]||{}).color||'#888';
+  if (!plays || !plays.length) {
+    return `<div style="text-align:center;padding:60px 20px">
+      <div style="font-size:36px;margin-bottom:12px">🤐</div>
+      <div style="font-size:14px;font-weight:700;color:${dark?'#fff':'#0A0E1A'}">득점 장면이 없어요</div>
+      <div style="font-size:12px;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.4)'};margin-top:6px">무득점 경기이거나 데이터가 없습니다</div>
+    </div>`;
+  }
+  return plays.map(p => {
+    const isHR = /홈런/.test(p.title);
+    const is3 = /3루타/.test(p.title);
+    const is2 = /2루타/.test(p.title);
+    const isHit = /1루타|안타/.test(p.title) && !isHR;
+    const bdColor = isHR ? '#E31837' : is3 ? '#E31837' : is2 ? '#E31837' : isHit ? '#E31837' : '#FF9500';
+    const bdBg   = isHR ? 'rgba(227,24,55,0.12)' : is3||is2||isHit ? 'rgba(227,24,55,0.08)' : 'rgba(255,149,0,0.08)';
+    const badge  = isHR ? '홈런 🔴' : is3 ? '3루타' : is2 ? '2루타' : isHit ? '안타' : '득점';
+    const inningLabel = p.inning ? `<span style="font-size:10px;color:${dark?'rgba(255,255,255,0.35)':'rgba(0,0,0,0.3)'};margin-left:4px">${p.inning}</span>` : '';
+    const scoreDisp = (p.awayScore!==''&&p.homeScore!=='') ?
+      `<div style="margin-top:4px;font-size:11px;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.4)'}">
+        ${_relayAway} <b style="color:${awayColor}">${p.awayScore}</b>
+        <span style="margin:0 3px">:</span>
+        <b style="color:${homeColor}">${p.homeScore}</b> ${_relayHome}
+      </div>` : '';
+    const descHtml = p.desc ? `<div style="font-size:11px;color:${dark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.45)'};margin-top:3px;line-height:1.5">${p.desc}</div>` : '';
+    return `<div style="padding:12px 16px;border-bottom:1px solid ${dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)'};display:flex;align-items:flex-start;gap:10px">
+      <span style="flex-shrink:0;font-size:10px;font-weight:700;color:${bdColor};background:${bdBg};border:1px solid ${bdColor}33;border-radius:5px;padding:2px 7px;margin-top:2px;white-space:nowrap">${badge}</span>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;color:${dark?'#fff':'#0A0E1A'};line-height:1.5;font-weight:500">${p.title}${inningLabel}</div>
+        ${descHtml}${scoreDisp}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// 전 이닝 득점 장면 수집
+async function fetchAllScoringPlays(gameId, maxInn) {
+  const plays = [];
+  const seen = new Set();
+  // 이닝 순서대로 fetch (1회부터)
+  for (let i = 1; i <= maxInn; i++) {
+    try {
+      const data = await fetchRelayData(gameId, i);
+      if (!data) continue;
+      const relays = data.textRelays || [];
+      // 이 이닝의 relay에서 득점 장면 추출
+      [...relays].reverse().forEach(item => {
+        const allItems = [item, ...(item.textOptions||[])];
+        allItems.forEach(it => {
+          const title = it.title || it.text || '';
+          if (!title) return;
+          const isScoring = /홈런|타점|득점|희생플라이|밀어내기/.test(title)
+            || (/(?:2루타|3루타|안타|1루타)/.test(title) && (Number(it.rbi||0) > 0));
+          if (!isScoring) return;
+          const key = title.trim();
+          if (seen.has(key)) return;
+          seen.add(key);
+          const gs = it.currentGameState || item.currentGameState;
+          plays.push({
+            title,
+            desc: it.resultText || item.resultText || '',
+            inning: `${i}회`,
+            awayScore: gs?.awayScore ?? '',
+            homeScore: gs?.homeScore ?? '',
+          });
+        });
+      });
+      // fetch 도중 중간중간 UI 업데이트 (진행 표시)
+      const body = document.getElementById('relay-body');
+      if (body && _relayTab === 'score') {
+        const pct = Math.round((i / maxInn) * 100);
+        const _dark = state.dark;
+        body.innerHTML = `<div style="text-align:center;padding:40px">
+          <div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div>
+          <div style="font-size:13px;color:${_dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.4)'};margin-top:8px">${i}회 분석 중... (${pct}%)</div>
+        </div>`;
+      }
+    } catch(e) {}
+  }
+  return plays;
+}
+
+window.switchRelayTab = async function(tab) {
+  _relayTab = tab;
+  updateRelayUI();
+  if (tab === 'score') {
+    // 캐시 없으면 fetch
+    if (!_scoringCache || _scoringCache.gameId !== _relayGameId) {
+      const schGame = SCH.find(s => String(s.gameId) === String(_relayGameId));
+      // 최대 이닝 계산
+      const infoStr = schGame?.inningInfo || '';
+      const infoMatch = infoStr.match(/(\d+)회/);
+      const maxInn = (infoMatch ? parseInt(infoMatch[1]) : null) || schGame?.inning || 9;
+      const plays = await fetchAllScoringPlays(_relayGameId, Math.max(maxInn, 9));
+      _scoringCache = { gameId: _relayGameId, plays };
+      if (_relayTab === 'score') updateRelayUI(); // 완료 후 최종 렌더
+    }
+  }
+};
+
 window.switchRelayInn = async function(inn) {
+  _relayTab = 'inn';
   _relayInn = inn;
   _relayData = null;
   updateRelayUI();
@@ -4766,6 +4885,9 @@ window.switchRelayInn = async function(inn) {
 window.openRelay = async function(gameId, away, home, inn) {
   _relayGameId = gameId; _relayAway = away; _relayHome = home;
   _relayData = null;
+  _relayTab = 'inn'; // 항상 이닝 탭으로 시작
+  // 다른 경기면 득점 캐시 초기화
+  if (_scoringCache && _scoringCache.gameId !== gameId) _scoringCache = null;
 
   // 현재 경기 이닝으로 자동 설정
   const schGame = SCH.find(s => String(s.gameId) === String(gameId));
