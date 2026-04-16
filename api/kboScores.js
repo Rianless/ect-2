@@ -118,10 +118,36 @@ export default async function handler(req, res) {
         const data = await r.json();
         if (!data?.result) continue;
         const res = data.result;
-        // 어떤 URL이 유효한 라인업을 줬는지 로깅
-        // result가 비어있지 않으면 반환 (hasData 조건 제거 — 구조 파싱은 extractLineupPair에서)
         console.log('[fetchLineup]', url.split('/').slice(-1)[0], '→ keys:', JSON.stringify(Object.keys(res)).slice(0,200));
         if (res && Object.keys(res).length > 0) return res;
+      } catch(e) {}
+    }
+    return null;
+  }
+
+  // 타자/투수 기록이 포함된 데이터를 game-polling inning=9 에서 가져옴 (FINAL 전용)
+  async function fetchGameRecord(gameId) {
+    const urls = [
+      `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=9&isHighlight=false`,
+      `https://api-gw.sports.naver.com/schedule/games/${gameId}/text-relay?inning=9&isHighlight=false`,
+    ];
+    for (const url of urls) {
+      try {
+        const r = await fetch(url, { headers: HEADERS });
+        if (!r.ok) continue;
+        const data = await r.json();
+        const res = data?.result;
+        if (!res) continue;
+        // 타자 배열 존재 여부 확인
+        const td = res.textRelayData || res;
+        const gd = res.game || {};
+        const homeL = td.homeLineup || res.homeLineup || gd.homeLineup || null;
+        const awayL = td.awayLineup || res.awayLineup || gd.awayLineup || null;
+        const hasBatters = (homeL?.batter?.length || 0) + (awayL?.batter?.length || 0) > 0;
+        if (hasBatters) {
+          console.log('[fetchGameRecord] found from:', url.split('games/')[1]);
+          return res;
+        }
       } catch(e) {}
     }
     return null;
@@ -342,6 +368,38 @@ export default async function handler(req, res) {
         return { home, away };
       }
 
+      // 타자 배열 파싱 — 기록 필드(ab/hit/rbi) 포함
+      function parseBatters(arr) {
+        if (!arr?.length) return [];
+        return arr.map(p => ({
+          batOrder: p.batOrder || p.orderNum || p.order || 0,
+          name: p.name || p.playerName || '',
+          posName: p.posName || p.position || p.pos || '',
+          cin: p.cin,
+          cout: p.cout,
+          pcode: p.pcode || '',
+          ab:  Number(p.ab  ?? p.atBat  ?? 0),
+          hit: Number(p.hit ?? p.hits   ?? 0),
+          rbi: Number(p.rbi ?? p.rbis   ?? 0),
+          run: Number(p.run ?? p.runs   ?? 0),
+        }));
+      }
+
+      // 투수 배열 파싱 — 기록 필드(inn/kk/er/bb) 포함
+      function parsePitchers(arr) {
+        if (!arr?.length) return [];
+        return arr.map(p => ({
+          seqno: p.seqno || p.orderNum || 0,
+          name: p.name || p.playerName || '',
+          pcode: p.pcode || '',
+          inn: p.inn || p.inning || p.innings || '0',
+          kk:  Number(p.kk  ?? p.so    ?? p.strikeout ?? 0),
+          bb:  Number(p.bb  ?? p.walk  ?? p.walks     ?? 0),
+          er:  Number(p.er  ?? p.earnedRun ?? p.earnedRuns ?? 0),
+          hit: Number(p.hit ?? p.hits  ?? 0),
+        }));
+      }
+
       // 1차: /lineup 전용 API (타자 배열 포함)
       const lineupRaw = await fetchLineup(gameId, inn);
       let { home: homeLineup, away: awayLineup } = extractLineupPair(lineupRaw);
@@ -352,6 +410,20 @@ export default async function handler(req, res) {
         const pair = extractLineupPair(pollRaw);
         homeLineup = pair.home;
         awayLineup = pair.away;
+      }
+
+      // 3차: FINAL 경기 기록용 — inning=9 game-polling에서 기록 필드 보완
+      const isFinalInn = inn >= 9;
+      let recordRaw = null;
+      if (isFinalInn || !homeLineup) {
+        recordRaw = await fetchGameRecord(gameId);
+        if (recordRaw) {
+          const pair = extractLineupPair(recordRaw);
+          // 기록 필드가 있는 쪽 우선 사용
+          const hasStats = arr => (arr?.batter || arr?.batters || []).some(p => p.ab > 0 || p.hit > 0 || p.rbi > 0);
+          if (!homeLineup || hasStats(pair.home)) homeLineup = pair.home || homeLineup;
+          if (!awayLineup || hasStats(pair.away)) awayLineup = pair.away || awayLineup;
+        }
       }
 
       // 타자 배열이 없으면 라인업 미발표
@@ -366,10 +438,11 @@ export default async function handler(req, res) {
 
       // pcode → 이름 맵
       const pcodeMap = {};
-      const allPlayers = [
-        ...(homeLineup?.batter || []), ...(homeLineup?.pitcher || []),
-        ...(awayLineup?.batter || []), ...(awayLineup?.pitcher || []),
-      ];
+      const homeBatterArr = homeLineup?.batter || homeLineup?.batters || [];
+      const awayBatterArr = awayLineup?.batter || awayLineup?.batters || [];
+      const homePitcherArr = homeLineup?.pitcher || homeLineup?.pitchers || [];
+      const awayPitcherArr = awayLineup?.pitcher || awayLineup?.pitchers || [];
+      const allPlayers = [...homeBatterArr, ...awayBatterArr, ...homePitcherArr, ...awayPitcherArr];
       allPlayers.forEach(p => { if (p.pcode) pcodeMap[String(p.pcode)] = p.name || p.playerName || ''; });
 
       if (gs) {
@@ -386,11 +459,18 @@ export default async function handler(req, res) {
         };
       }
 
-      console.log('[action=lineup] homeB:', homeLineup?.batter?.length, 'awayB:', awayLineup?.batter?.length);
+      console.log('[action=lineup] homeB:', homeBatterArr.length, 'awayB:', awayBatterArr.length,
+        'homeP:', homePitcherArr.length, 'awayP:', awayPitcherArr.length);
 
       return res.status(200).json({
-        homeLineup,
-        awayLineup,
+        homeLineup: {
+          batter:  parseBatters(homeBatterArr),
+          pitcher: parsePitchers(homePitcherArr),
+        },
+        awayLineup: {
+          batter:  parseBatters(awayBatterArr),
+          pitcher: parsePitchers(awayPitcherArr),
+        },
         currentGameState: gs,
         pcodeMap,
         _raw_keys: Object.keys(td).slice(0, 20),
@@ -433,4 +513,3 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
-
