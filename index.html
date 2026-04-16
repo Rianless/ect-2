@@ -972,88 +972,6 @@ function getDday() {
 const pad = n => String(n).padStart(2,'0');
 const dim = (y,m) => new Date(y,m,0).getDate();
 
-// ── 경기장 날씨 ──────────────────────────────────────────────
-const STAD_COORDS = {
-  '잠실':               {lat:37.5122,lon:127.0719,city:'서울'},
-  '광주 기아챔피언스필드': {lat:35.1683,lon:126.8892,city:'광주'},
-  '대구 삼성라이온즈파크': {lat:35.8413,lon:128.6813,city:'대구'},
-  '인천 SSG랜더스필드':   {lat:37.4370,lon:126.6931,city:'인천'},
-  '창원 NC파크':          {lat:35.2225,lon:128.5822,city:'창원'},
-  '대전 한화생명이글스파크':{lat:36.3170,lon:127.4286,city:'대전'},
-  '수원 KT위즈파크':      {lat:37.2997,lon:127.0100,city:'수원'},
-  '고척 스카이돔':        {lat:37.4983,lon:126.8674,city:'서울'},
-  '사직':               {lat:35.1941,lon:129.0611,city:'부산'},
-};
-const _weatherCache = {};
-async function fetchWeather(stad, gameTime) {
-  if (!stad) return null;
-  const cacheKey = stad + (gameTime||'');
-  const cached = _weatherCache[cacheKey];
-  if (cached && Date.now() - cached._ts < 5*60*1000) return cached;
-  const c = STAD_COORDS[stad];
-  if (!c) return null;
-  try {
-    const url = `https://api.open-meteo.com/v1/forecast?latitude=${c.lat}&longitude=${c.lon}&hourly=temperature_2m,precipitation,weathercode,windspeed_10m&current=temperature_2m,precipitation,weathercode,windspeed_10m&timezone=Asia%2FSeoul&forecast_days=7`;
-    const r = await fetch(url);
-    if (!r.ok) return null;
-    const data = await r.json();
-    let wcode, precip, temp, wind;
-    if (gameTime && data?.hourly?.time) {
-      const kst = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
-      const dateStr = kst.getFullYear()+'-'+String(kst.getMonth()+1).padStart(2,'0')+'-'+String(kst.getDate()).padStart(2,'0');
-      const targetHour = parseInt((gameTime||'18:30').split(':')[0]);
-      const times = data.hourly.time;
-      let maxPrecip=0, maxWcode=0, sumTemp=0, sumWind=0, cnt=0;
-      for(let i=0;i<times.length;i++) {
-        if(!times[i].startsWith(dateStr)) continue;
-        const h = parseInt(times[i].split('T')[1]);
-        if(h>=targetHour-1 && h<=targetHour+2) {
-          maxPrecip = Math.max(maxPrecip, data.hourly.precipitation[i]||0);
-          maxWcode  = Math.max(maxWcode,  data.hourly.weathercode[i]||0);
-          sumTemp  += data.hourly.temperature_2m[i]||0;
-          sumWind  += data.hourly.windspeed_10m[i]||0;
-          cnt++;
-        }
-      }
-      if(cnt>0){ wcode=maxWcode; precip=maxPrecip; temp=Math.round(sumTemp/cnt); wind=Math.round(sumWind/cnt); }
-    }
-    if(wcode==null) {
-      const cur = data?.current; if(!cur) return null;
-      wcode=cur.weathercode??0; precip=cur.precipitation||0;
-      temp=Math.round(cur.temperature_2m); wind=Math.round(cur.windspeed_10m);
-    }
-    let icon, desc;
-    if      (wcode===0) {icon='☀️'; desc='맑음';}
-    else if (wcode<=2)  {icon='🌤️'; desc='구름조금';}
-    else if (wcode===3) {icon='☁️'; desc='흐림';}
-    else if (wcode<=49) {icon='🌫️'; desc='안개';}
-    else if (wcode<=55) {icon='☁️'; desc='흐림';}
-    else if (wcode<=65) {icon='🌧️'; desc='비';}
-    else if (wcode<=77) {icon='❄️'; desc='눈';}
-    else if (wcode<=82) {icon='🌦️'; desc='소나기';}
-    else if (wcode<=99) {icon='⛈️'; desc='뇌우';}
-    else                {icon='🌡️'; desc='';}
-    const isRain = precip>=1 || wcode>=61;
-    const result = { icon, desc, temp, wind, precip:parseFloat((precip||0).toFixed(1)), isRain, city:c.city, _ts:Date.now() };
-    _weatherCache[cacheKey] = result;
-    return result;
-  } catch(e){ return null; }
-}
-function weatherHtml(w, dark) {
-  if (!w) return '';
-  const sub = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
-  const rainAlert = w.isRain
-    ? `<span style="background:rgba(30,120,255,0.15);color:#2979FF;border-radius:4px;padding:1px 6px;font-size:9px;font-weight:700;border:1px solid rgba(30,120,255,0.3)">☔ 우취주의</span>`
-    : '';
-  return `<div style="display:flex;align-items:center;justify-content:center;gap:6px;padding:7px 0 2px;flex-wrap:wrap">
-    <span style="font-size:18px;line-height:1">${w.icon}</span>
-    <span style="font-size:11px;font-weight:700;color:${dark?'#fff':'#0A0E1A'}">${w.temp}°C</span>
-    <span style="font-size:10px;color:${sub}">${w.desc}</span>
-    <span style="font-size:10px;color:${sub}">💨${w.wind}km/h</span>
-    ${w.precip>0?`<span style="font-size:10px;color:#2979FF">🌂${w.precip}mm</span>`:''}
-    ${rainAlert}
-  </div>`;
-}
 // ────────────────────────────────────────────────────────────
 const fdow = (y,m) => new Date(y,m-1,1).getDay();
 const logo = (team,size) => {
@@ -1182,50 +1100,6 @@ function renderContent(d) {
   else if(state.tab==='stand') el.innerHTML=renderBaseballRecord(d);
   else if(state.tab==='my') el.innerHTML=renderMyPage(d);
   else el.innerHTML=renderCal(d);
-  // 캘린더 탭이면 카드 날씨 비동기 채우기
-  if(state.tab==='cal'||!state.tab) _fillCardWeathers(d);
-}
-
-function _fillCardWeathers(d) {
-  const {sel, yr, mo} = state;
-  const selGs = SCH.filter(g => g.date === sel);
-  selGs.forEach(g => {
-    if (g.status === 'CANCELED') return; // 이미 카드에 우취 표시됨
-    if (!g.stad) return;
-    const el = document.getElementById('card-weather-' + g.gameId);
-    if (!el) return;
-    fetchWeather(g.stad, g.time).then(w => {
-      if (!w) return;
-      const sub = d.sub;
-      const rainAlert = w.isRain
-        ? `<span style="background:rgba(30,120,255,0.13);color:#2979FF;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;border:1px solid rgba(30,120,255,0.3)">☔우취</span>`
-        : '';
-      el.innerHTML = `<span style="font-size:13px;line-height:1">${w.icon}</span><span style="font-weight:700;color:${d.text};font-size:10px">${w.temp}°</span><span style="color:${sub};font-size:10px">${w.desc}</span>${rainAlert}`;
-      el.style.display = 'flex';
-      el.style.alignItems = 'center';
-      el.style.gap = '3px';
-      // 날씨 예보 기반 달력 셀 우취 주의
-      if(w.isRain && (g.away==='KIA'||g.home==='KIA') && (!g.status||g.status==='SCHEDULED'||g.status==='BEFORE')) {
-        const timeEl = document.getElementById('cal-time-' + g.date);
-        if(timeEl) { timeEl.textContent='우취'; timeEl.style.color='#2979FF'; timeEl.style.fontWeight='700'; }
-      }
-    });
-  });
-  // 이번 달 달력에 보이는 모든 KIA 경기 날씨도 업데이트 (선택 날짜 외)
-  const kiaCalGames = SCH.filter(g => {
-    if(g.away!=='KIA'&&g.home!=='KIA') return false;
-    if(g.date===sel||g.status==='FINAL'||g.status==='CANCELED') return false;
-    const [gy,gm]=g.date.split('-').map(Number);
-    return gy===yr&&gm===mo;
-  });
-  kiaCalGames.forEach(g => {
-    if(!g.stad) return;
-    fetchWeather(g.stad, g.time).then(w => {
-      if(!w||!w.isRain) return;
-      const timeEl = document.getElementById('cal-time-' + g.date);
-      if(timeEl) { timeEl.textContent='우취'; timeEl.style.color='#2979FF'; timeEl.style.fontWeight='700'; }
-    });
-  });
 }
 
 function renderCalSplit(d) {
@@ -1350,7 +1224,7 @@ function renderCalSplit(d) {
         ${(g.awayStarter||g.homeStarter)?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.07)">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="font-size:10px;color:${d.sub}">선발 <span style="font-weight:700;color:${lKey==='KIA'?'#ff6b6b':d.text}">${(lKey===g.away?g.awayStarter:g.homeStarter)||'미정'}</span></div>
-            <div id="card-weather-${g.gameId}" style="font-size:10px;color:${d.sub}"></div>
+            <div id="card-weather-${g.gameId}"></div>
             <div style="font-size:10px;color:${d.sub}"><span style="font-weight:700;color:${rKey==='KIA'?'#ff6b6b':d.text}">${(rKey===g.away?g.awayStarter:g.homeStarter)||'미정'}</span> 선발</div>
           </div>
         </div>`:''}
@@ -3010,17 +2884,6 @@ function renderModal(d) {
       </div>
     </div>
     <div style="padding:18px">
-      ${g.stad?`<div style="margin-bottom:18px">
-        <div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:12px 16px">
-          <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px">
-            <span style="font-size:13px">📍</span>
-            <span style="font-size:11px;font-weight:700;color:${d.sub}">${g.stad} · 현재 날씨</span>
-          </div>
-          <div id="modal-weather-${g.gameId}" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-            <span style="font-size:11px;color:${d.sub}">불러오는 중...</span>
-          </div>
-        </div>
-      </div>`:''}
       ${(g.awayStarter||g.homeStarter||g.winPitcher||g.losePitcher||g.awayPitcher||g.homePitcher)?`<div style="margin-bottom:18px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
           <span style="font-size:15px">⚾</span>
@@ -3558,26 +3421,6 @@ function renderModal(d) {
     saveMemoData(data);
   });
 
-  // 날씨 비동기 채우기 (모달)
-  if (g.stad) {
-    fetchWeather(g.stad, g.time).then(w => {
-      const el = document.getElementById('modal-weather-' + g.gameId);
-      if (!el || !w) return;
-      const rainAlert = w.isRain
-        ? `<span style="background:rgba(30,120,255,0.13);color:#2979FF;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;border:1px solid rgba(30,120,255,0.3)">☔ 우천취소 주의</span>`
-        : `<span style="background:rgba(0,200,100,0.1);color:#00C864;border-radius:6px;padding:2px 8px;font-size:10px;font-weight:700;border:1px solid rgba(0,200,100,0.25)">✅ 경기 진행 가능</span>`;
-      el.innerHTML = `
-        <span style="font-size:28px;line-height:1">${w.icon}</span>
-        <div>
-          <div style="display:flex;align-items:baseline;gap:5px">
-            <span style="font-size:22px;font-weight:900;color:${d.text}">${w.temp}°C</span>
-            <span style="font-size:12px;color:${d.sub}">${w.desc}</span>
-          </div>
-          <div style="font-size:11px;color:${d.sub};margin-top:3px">💨 바람 ${w.wind}km/h${w.precip>0?' · 🌂 강수 '+w.precip+'mm':''}</div>
-        </div>
-        <div style="margin-left:auto">${rainAlert}</div>`;
-    });
-  }
 }
 
 
