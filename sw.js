@@ -1,4 +1,4 @@
-const CACHE_NAME = 'horang2-v1';
+const CACHE_NAME = 'horang2-v20260417';
 const STATIC_ASSETS = [
   '/',
   '/index.html'
@@ -20,10 +20,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
-
-  // http/https 아닌 요청(chrome-extension 등)은 무시
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
-
   // API 요청은 항상 네트워크 우선
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
@@ -33,8 +30,14 @@ self.addEventListener('fetch', (event) => {
     );
     return;
   }
-
-  // 정적 파일은 캐시 우선, 없으면 네트워크
+  // HTML은 항상 네트워크 우선 (캐시 안 함)
+  if (request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(request).catch(() => caches.match(request))
+    );
+    return;
+  }
+  // 나머지 정적 파일은 캐시 우선
   event.respondWith(
     caches.match(request).then((cached) => {
       if (cached) return cached;
