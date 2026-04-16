@@ -2884,6 +2884,7 @@ function renderModal(d) {
     return [away, home];
   })();
   const lt=state.modalLt;
+  console.log('[DEBUG] modalLt='+lt+' away='+g.away+' home='+g.home+' lineupSides[0]='+lineupSides[0].team);
   const cur=buildDisplayLineup(lt==='away'?(g.lineup?.away?.batters||[]):(g.lineup?.home?.batters||[]));
   const ct=lt==='away'?aw:hw;
   const kiaHome=g.home==='KIA';
