@@ -868,9 +868,8 @@ const buildDisplayLineup = lineup => {
   // 1단계: 각 batOrder별 최초(선발) 포지션 수집
   const orderToStarterPos = {};
   lineup.forEach(player => {
-    const order = player.order != null ? player.order : (player.batOrder != null ? player.batOrder : player.n);
-    const orderNum = (order === 0 ? 1 : +order);
-    if (!orderNum) return;
+    const order = player.order || player.batOrder || player.n;
+    if (!order) return;
     if (orderToStarterPos[order]) return; // 이미 선발 포지션 있음
     const sp = normalizePositionLabel(player.starterPos || player.pos || player.p || '');
     if (isFieldPos(sp)) orderToStarterPos[order] = sp;
@@ -881,8 +880,7 @@ const buildDisplayLineup = lineup => {
     const currentName = player.name || starterName;
     const starterPos = normalizePositionLabel(player.starterPos || '');
     const currentPos = normalizePositionLabel(player.pos || player.p || '');
-    const _o = player.order != null ? player.order : (player.batOrder != null ? player.batOrder : player.n);
-    const order = (_o === 0 ? 1 : (+_o || idx + 1));
+    const order = player.order || player.batOrder || player.n || idx + 1;
     // 현재 포지션이 비필드이면: starterPos → 같은 타순 선발포지션 → 빈 문자열 순으로 폴백
     const displayPos = isFieldPos(currentPos) ? currentPos
       : isFieldPos(starterPos) ? starterPos
@@ -3423,7 +3421,7 @@ function renderModal(d) {
             <div style="font-size:10px;font-weight:700;color:${d.sub};margin-bottom:6px;padding-left:2px">타 순 · ${ct.name||''}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
               ${(()=>{
-                const batterCards = cur.filter(p => p.p !== 'P').sort((a,b)=>a.n-b.n).slice(0,9);
+                const batterCards = cur.filter(p => p.p !== 'P').slice(0,9);
                 const pitcherName = lt==='away' ? (g.awayStarter||g.awayPitcher||'-') : (g.homeStarter||g.homePitcher||'-');
                 const cards = batterCards.map((p,idx) =>
                   `<div style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:9px;background:${d.card||d.bg};border:1px solid ${d.bgB}">
@@ -3488,7 +3486,7 @@ function renderModal(d) {
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">타점</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
             html2 += `</tr></thead><tbody>`;
-            batters.filter(p=>p.p!=='P'&&p.pos!=='P').sort((a,b)=>a.n-b.n).slice(0,9).forEach(p => {
+            batters.filter(p=>p.p!=='P'&&p.pos!=='P').slice(0,9).forEach(p => {
               if (p.sub) {
                 // 교체 전 선수 (sub) 행
                 html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
@@ -3739,8 +3737,7 @@ function _parseBatters(src) {
   if (!arr.length) return [];
   const om = {};
   arr.forEach(p => {
-    const _k = p.batOrder != null ? p.batOrder : (p.order != null ? p.order : p.n);
-    const key = (_k === 0 ? 1 : _k);
+    const key = p.batOrder || p.order || p.n;
     if (!om[key]) om[key] = [];
     om[key].push(p);
   });
@@ -4144,8 +4141,7 @@ function parseBrowserBatters(batters) {
   if (!batters?.length) return [];
   const orderMap = {};
   batters.forEach(p => {
-    const _ord = p.batOrder;
-    const order = (_ord === 0 ? 1 : _ord);
+    const order = p.batOrder;
     if (!orderMap[order]) orderMap[order] = [];
     orderMap[order].push(p);
   });
