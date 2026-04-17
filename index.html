@@ -21,7 +21,19 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{background:#E8ECF1;color:#0A0E1A;font-family:'Noto Sans KR',sans-serif;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
+    :root{
+      --c-text:#0A0E1A;--c-sub:rgba(0,0,0,0.5);--c-muted:rgba(0,0,0,0.2);
+      --c-card:#fff;--c-card-b:rgba(0,0,0,0.1);
+      --c-bg:rgba(0,0,0,0.03);--c-bg-b:rgba(0,0,0,0.08);
+      --c-surface:#E8ECF1;
+    }
+    body.dark{
+      --c-text:#fff;--c-sub:rgba(255,255,255,0.4);--c-muted:rgba(255,255,255,0.15);
+      --c-card:rgba(255,255,255,0.04);--c-card-b:rgba(255,255,255,0.07);
+      --c-bg:rgba(255,255,255,0.03);--c-bg-b:rgba(255,255,255,0.08);
+      --c-surface:#0A0E1A;
+    }
+    body{background:var(--c-surface);color:var(--c-text);font-family:'Noto Sans KR',sans-serif;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
     body.dark{background:#0A0E1A;color:#fff}
     button{cursor:pointer;border:none;outline:none;background:none;-webkit-appearance:none}
     textarea{outline:none;font-family:'Noto Sans KR',sans-serif}
@@ -36,16 +48,13 @@
     #modal-box{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;animation:slideUp 0.3s ease}
     #modal-box.closing{animation:slideDown 0.28s ease forwards}
     body.dark #modal-box{background:#0F1525}
-    .nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid rgba(0,0,0,0.1);display:flex;padding-bottom:6px;z-index:50}
-    body.dark .nav{background:#111827;border-color:rgba(255,255,255,0.08)}
-    .nav button{flex:1;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:3px;color:rgba(0,0,0,0.4);font-size:9px;font-family:'Noto Sans KR',sans-serif}
-    body.dark .nav button{color:rgba(255,255,255,0.35)}
+    .nav{position:fixed;bottom:0;left:0;right:0;background:var(--c-card);border-top:1px solid var(--c-card-b);display:flex;padding-bottom:6px;z-index:50}
+    .nav button{flex:1;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--c-sub);font-size:9px;font-family:'Noto Sans KR',sans-serif}
     .nav button.active{color:#E31837}
     .nav button span.icon{font-size:18px}
      .tab{display:none;animation:fadeIn 0.3s}
     .tab.active{display:block}
-    .card{background:#fff;border:1px solid rgba(0,0,0,0.1);border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:8px}
-    body.dark .card{background:rgba(255,255,255,0.04);border-color:rgba(255,255,255,0.07)}
+    .card{background:var(--c-card);border:1px solid var(--c-card-b);border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:8px}
     .card.kia{background:rgba(227,24,55,0.08);border-color:rgba(227,24,55,0.25)}
     /* 영수증 열전사 프린터 스타일 */
     @font-face{font-family:'Receipt';src:local('Courier New'),local('Courier'),local('monospace')}
@@ -217,594 +226,12 @@ const T = {
   NC:{name:"NC 다이노스",color:"#071D3B"},
   키움:{name:"키움 히어로즈",color:"#570514"},
 };
-const SCH = [
-  {date:"2026-03-28",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-03-28",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-03-28",away:"롯데",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-03-28",away:"두산",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-03-28",away:"KT",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-03-29",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-03-29",away:"KT",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-03-29",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-03-29",away:"롯데",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-03-29",away:"두산",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-03-31",away:"KIA",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-03-31",away:"키움",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-03-31",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-03-31",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-03-31",away:"롯데",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-01",away:"KIA",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-01",away:"키움",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-01",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-01",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-04-01",away:"롯데",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-02",away:"KIA",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-02",away:"키움",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-02",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-02",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-04-02",away:"롯데",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-03",away:"NC",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-03",away:"한화",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-03",away:"LG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-04-03",away:"삼성",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-03",away:"SSG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-04",away:"NC",home:"KIA",stad:"광주 기아챔피언스필드",time:"17:00"},
-  {date:"2026-04-04",away:"한화",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-04-04",away:"LG",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-04-04",away:"삼성",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-04-04",away:"SSG",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-04-05",away:"NC",home:"KIA",stad:"광주 기아챔피언스필드",time:"14:00"},
-  {date:"2026-04-05",away:"한화",home:"두산",stad:"잠실",time:"14:00"},
-  {date:"2026-04-05",away:"LG",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-04-05",away:"삼성",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-04-05",away:"SSG",home:"롯데",stad:"사직",time:"14:00"},
-  {date:"2026-04-07",away:"삼성",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-07",away:"키움",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-07",away:"한화",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-07",away:"KT",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-07",away:"LG",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-08",away:"삼성",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-08",away:"키움",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-08",away:"한화",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-08",away:"KT",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-08",away:"LG",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-09",away:"삼성",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-09",away:"키움",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-09",away:"한화",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-09",away:"KT",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-09",away:"LG",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-10",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-10",away:"SSG",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-10",away:"롯데",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-04-10",away:"두산",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-10",away:"NC",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-04-11",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-04-11",away:"SSG",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-04-11",away:"롯데",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-04-11",away:"두산",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-04-11",away:"NC",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-04-12",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-04-12",away:"SSG",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-04-12",away:"롯데",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-04-12",away:"두산",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-04-12",away:"NC",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-04-14",away:"키움",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-14",away:"롯데",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-14",away:"두산",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-14",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-14",away:"KT",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-15",away:"키움",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-15",away:"롯데",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-15",away:"두산",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-15",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-15",away:"KT",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-16",away:"키움",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-16",away:"롯데",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-16",away:"두산",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-16",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-16",away:"KT",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-17",away:"KIA",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-17",away:"한화",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-17",away:"키움",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-17",away:"LG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-04-17",away:"SSG",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-18",away:"KIA",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-04-18",away:"한화",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-04-18",away:"키움",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-04-18",away:"LG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-04-18",away:"SSG",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-04-19",away:"KIA",home:"두산",stad:"잠실",time:"14:00"},
-  {date:"2026-04-19",away:"한화",home:"롯데",stad:"사직",time:"14:00"},
-  {date:"2026-04-19",away:"키움",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-04-19",away:"LG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-04-19",away:"SSG",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-04-21",away:"KIA",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-21",away:"한화",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-21",away:"NC",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-04-21",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-04-21",away:"두산",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-22",away:"KIA",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-22",away:"한화",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-22",away:"NC",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-04-22",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-04-22",away:"두산",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-23",away:"KIA",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-23",away:"한화",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-04-23",away:"NC",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-04-23",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-04-23",away:"두산",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-24",away:"롯데",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-04-24",away:"LG",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-24",away:"삼성",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-04-24",away:"KT",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-04-24",away:"NC",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-25",away:"롯데",home:"KIA",stad:"광주 기아챔피언스필드",time:"17:00"},
-  {date:"2026-04-25",away:"LG",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-04-25",away:"삼성",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-04-25",away:"KT",home:"SSG",stad:"인천 SSG랜더스필드",time:"17:00"},
-  {date:"2026-04-25",away:"NC",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-04-26",away:"롯데",home:"KIA",stad:"광주 기아챔피언스필드",time:"14:00"},
-  {date:"2026-04-26",away:"LG",home:"두산",stad:"잠실",time:"14:00"},
-  {date:"2026-04-26",away:"삼성",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-04-26",away:"KT",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-04-26",away:"NC",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-04-28",away:"KIA",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-28",away:"삼성",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-28",away:"LG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-28",away:"SSG",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-28",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-29",away:"KIA",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-29",away:"삼성",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-29",away:"LG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-29",away:"SSG",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-29",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-04-30",away:"KIA",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-04-30",away:"삼성",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-04-30",away:"LG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-04-30",away:"SSG",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-04-30",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-
-  {date:"2026-05-01",away:"KT",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-01",away:"NC",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-01",away:"두산",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-01",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-05-01",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-02",away:"KT",home:"KIA",stad:"광주 기아챔피언스필드",time:"17:00"},
-  {date:"2026-05-02",away:"NC",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-05-02",away:"두산",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-05-02",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"17:00"},
-  {date:"2026-05-02",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-05-03",away:"KT",home:"KIA",stad:"광주 기아챔피언스필드",time:"14:00"},
-  {date:"2026-05-03",away:"NC",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-05-03",away:"두산",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-05-03",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-05-03",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-05-05",away:"한화",home:"KIA",stad:"광주 기아챔피언스필드",time:"14:00"},
-  {date:"2026-05-05",away:"두산",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-05-05",away:"NC",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-05-05",away:"롯데",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-05-05",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-05-06",away:"한화",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-06",away:"두산",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-06",away:"NC",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-05-06",away:"롯데",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-05-06",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-07",away:"한화",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-07",away:"두산",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-07",away:"NC",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-05-07",away:"롯데",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-05-07",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-08",away:"KIA",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-08",away:"SSG",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-08",away:"KT",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-08",away:"LG",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-05-08",away:"삼성",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-05-09",away:"KIA",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-05-09",away:"SSG",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-05-09",away:"KT",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-05-09",away:"LG",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-05-09",away:"삼성",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-05-10",away:"KIA",home:"롯데",stad:"사직",time:"14:00"},
-  {date:"2026-05-10",away:"SSG",home:"두산",stad:"잠실",time:"14:00"},
-  {date:"2026-05-10",away:"KT",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-05-10",away:"LG",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-05-10",away:"삼성",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-05-12",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-12",away:"삼성",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-12",away:"한화",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-12",away:"SSG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-05-12",away:"NC",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-13",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-13",away:"삼성",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-13",away:"한화",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-13",away:"SSG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-05-13",away:"NC",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-14",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-14",away:"삼성",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-14",away:"한화",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-14",away:"SSG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-05-14",away:"NC",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-15",away:"KIA",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-15",away:"롯데",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-15",away:"LG",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-05-15",away:"한화",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-05-15",away:"키움",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-05-16",away:"KIA",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-05-16",away:"롯데",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-05-16",away:"LG",home:"SSG",stad:"인천 SSG랜더스필드",time:"17:00"},
-  {date:"2026-05-16",away:"한화",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-05-16",away:"키움",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-05-17",away:"KIA",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-05-17",away:"롯데",home:"두산",stad:"잠실",time:"14:00"},
-  {date:"2026-05-17",away:"LG",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-05-17",away:"한화",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-05-17",away:"키움",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-05-19",away:"LG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-19",away:"NC",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-19",away:"SSG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-19",away:"롯데",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-05-19",away:"KT",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-20",away:"LG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-20",away:"NC",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-20",away:"SSG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-20",away:"롯데",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-05-20",away:"KT",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-21",away:"LG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-21",away:"NC",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-21",away:"SSG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-21",away:"롯데",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-05-21",away:"KT",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-22",away:"SSG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-05-22",away:"키움",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-22",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-05-22",away:"두산",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-05-22",away:"삼성",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-23",away:"SSG",home:"KIA",stad:"광주 기아챔피언스필드",time:"17:00"},
-  {date:"2026-05-23",away:"키움",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-05-23",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-05-23",away:"두산",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-05-23",away:"삼성",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-05-24",away:"SSG",home:"KIA",stad:"광주 기아챔피언스필드",time:"14:00"},
-  {date:"2026-05-24",away:"키움",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-05-24",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-05-24",away:"두산",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-05-24",away:"삼성",home:"롯데",stad:"사직",time:"14:00"},
-  {date:"2026-05-26",away:"KIA",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-26",away:"KT",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-26",away:"삼성",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-05-26",away:"LG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-26",away:"한화",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-05-27",away:"KIA",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-27",away:"KT",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-27",away:"삼성",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-05-27",away:"LG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-27",away:"한화",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-05-28",away:"KIA",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-28",away:"KT",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-05-28",away:"삼성",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-05-28",away:"LG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-05-28",away:"한화",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-05-29",away:"KIA",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-05-29",away:"KT",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-05-29",away:"SSG",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-05-29",away:"롯데",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-05-29",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-05-30",away:"KIA",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-05-30",away:"KT",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-05-30",away:"SSG",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-05-30",away:"롯데",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-05-30",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-05-31",away:"KIA",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-05-31",away:"KT",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-05-31",away:"SSG",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-05-31",away:"롯데",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-05-31",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-06-02",away:"NC",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-02",away:"한화",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-02",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-02",away:"LG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-02",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-03",away:"NC",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-03",away:"한화",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-03",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-03",away:"LG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-03",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-04",away:"NC",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-04",away:"한화",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-04",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-04",away:"LG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-04",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-05",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-05",away:"키움",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-05",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-05",away:"KT",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-05",away:"LG",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-06-06",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"17:00"},
-  {date:"2026-06-06",away:"키움",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-06-06",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-06-06",away:"KT",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-06-06",away:"LG",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-06-07",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-06-07",away:"키움",home:"두산",stad:"잠실",time:"14:00"},
-  {date:"2026-06-07",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-06-07",away:"KT",home:"롯데",stad:"사직",time:"14:00"},
-  {date:"2026-06-07",away:"LG",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-06-09",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-09",away:"SSG",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-09",away:"NC",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-09",away:"삼성",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-09",away:"두산",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-10",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-10",away:"SSG",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-10",away:"NC",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-10",away:"삼성",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-10",away:"두산",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-11",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-11",away:"SSG",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-11",away:"NC",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-11",away:"삼성",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-11",away:"두산",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-12",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-12",away:"롯데",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-12",away:"한화",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-12",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-12",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-13",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"17:00"},
-  {date:"2026-06-13",away:"롯데",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-06-13",away:"한화",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-06-13",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-06-13",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-06-14",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"14:00"},
-  {date:"2026-06-14",away:"롯데",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-06-14",away:"한화",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-06-14",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-06-14",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-06-16",away:"LG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-16",away:"KT",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-16",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-16",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-16",away:"한화",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-06-17",away:"LG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-17",away:"KT",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-17",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-17",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-17",away:"한화",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-06-18",away:"LG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-18",away:"KT",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-18",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-18",away:"키움",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-18",away:"한화",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-06-19",away:"KIA",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-19",away:"두산",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-19",away:"롯데",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-19",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-19",away:"SSG",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-06-20",away:"KIA",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-06-20",away:"두산",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-06-20",away:"롯데",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-06-20",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-06-20",away:"SSG",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-06-21",away:"KIA",home:"KT",stad:"수원 KT위즈파크",time:"14:00"},
-  {date:"2026-06-21",away:"두산",home:"LG",stad:"잠실",time:"14:00"},
-  {date:"2026-06-21",away:"롯데",home:"키움",stad:"고척 스카이돔",time:"14:00"},
-  {date:"2026-06-21",away:"삼성",home:"한화",stad:"대전 한화생명이글스파크",time:"14:00"},
-  {date:"2026-06-21",away:"SSG",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-06-23",away:"KIA",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-23",away:"삼성",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-23",away:"SSG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-23",away:"두산",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-23",away:"NC",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-24",away:"KIA",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-24",away:"삼성",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-24",away:"SSG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-24",away:"두산",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-24",away:"NC",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-25",away:"KIA",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-25",away:"삼성",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-06-25",away:"SSG",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-06-25",away:"두산",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-25",away:"NC",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-26",away:"KIA",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-26",away:"한화",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-06-26",away:"KT",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-06-26",away:"LG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-06-26",away:"키움",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-06-27",away:"KIA",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-06-27",away:"한화",home:"SSG",stad:"인천 SSG랜더스필드",time:"17:00"},
-  {date:"2026-06-27",away:"KT",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-06-27",away:"LG",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-06-27",away:"키움",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-06-28",away:"KIA",home:"두산",stad:"잠실",time:"14:00"},
-  {date:"2026-06-28",away:"한화",home:"SSG",stad:"인천 SSG랜더스필드",time:"14:00"},
-  {date:"2026-06-28",away:"KT",home:"삼성",stad:"대구 삼성라이온즈파크",time:"14:00"},
-  {date:"2026-06-28",away:"LG",home:"롯데",stad:"사직",time:"14:00"},
-  {date:"2026-06-28",away:"키움",home:"NC",stad:"창원 NC파크",time:"14:00"},
-  {date:"2026-06-30",away:"SSG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-06-30",away:"롯데",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-06-30",away:"LG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-06-30",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-06-30",away:"삼성",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-01",away:"SSG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-07-01",away:"롯데",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-07-01",away:"LG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-07-01",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-01",away:"삼성",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-02",away:"SSG",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-07-02",away:"롯데",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-07-02",away:"LG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-07-02",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-02",away:"삼성",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-07",away:"KIA",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-07-07",away:"SSG",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-07-07",away:"키움",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-07",away:"LG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-07",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-08",away:"KIA",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-07-08",away:"SSG",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-07-08",away:"키움",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-08",away:"LG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-08",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-09",away:"KIA",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-07-09",away:"SSG",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-07-09",away:"키움",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-09",away:"LG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-09",away:"KT",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-16",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-07-16",away:"KT",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-16",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-16",away:"롯데",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-16",away:"두산",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-17",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-07-17",away:"KT",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-17",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-17",away:"롯데",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-17",away:"두산",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-18",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:00"},
-  {date:"2026-07-18",away:"KT",home:"LG",stad:"잠실",time:"18:00"},
-  {date:"2026-07-18",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"18:00"},
-  {date:"2026-07-18",away:"롯데",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:00"},
-  {date:"2026-07-18",away:"두산",home:"NC",stad:"창원 NC파크",time:"18:00"},
-  {date:"2026-07-19",away:"KIA",home:"SSG",stad:"인천 SSG랜더스필드",time:"17:00"},
-  {date:"2026-07-19",away:"KT",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-07-19",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-07-19",away:"롯데",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-07-19",away:"두산",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-07-21",away:"한화",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-07-21",away:"NC",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-21",away:"삼성",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-07-21",away:"두산",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-07-21",away:"SSG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-07-22",away:"한화",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-07-22",away:"NC",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-22",away:"삼성",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-07-22",away:"두산",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-07-22",away:"SSG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-07-23",away:"한화",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-07-23",away:"NC",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-23",away:"삼성",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-07-23",away:"두산",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-07-23",away:"SSG",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-07-24",away:"키움",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-07-24",away:"삼성",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-07-24",away:"NC",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-07-24",away:"LG",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-24",away:"KT",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-07-25",away:"키움",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:00"},
-  {date:"2026-07-25",away:"삼성",home:"두산",stad:"잠실",time:"18:00"},
-  {date:"2026-07-25",away:"NC",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:00"},
-  {date:"2026-07-25",away:"LG",home:"한화",stad:"대전 한화생명이글스파크",time:"18:00"},
-  {date:"2026-07-25",away:"KT",home:"롯데",stad:"사직",time:"18:00"},
-  {date:"2026-07-26",away:"키움",home:"KIA",stad:"광주 기아챔피언스필드",time:"17:00"},
-  {date:"2026-07-26",away:"삼성",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-07-26",away:"NC",home:"SSG",stad:"인천 SSG랜더스필드",time:"17:00"},
-  {date:"2026-07-26",away:"LG",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-07-26",away:"KT",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-07-28",away:"KIA",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-28",away:"키움",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-28",away:"두산",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-07-28",away:"롯데",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-28",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-07-29",away:"KIA",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-29",away:"키움",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-29",away:"두산",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-07-29",away:"롯데",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-29",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-07-30",away:"KIA",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-07-30",away:"키움",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-07-30",away:"두산",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-07-30",away:"롯데",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-07-30",away:"NC",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-07-31",away:"KIA",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-07-31",away:"LG",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-07-31",away:"SSG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-07-31",away:"한화",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-07-31",away:"삼성",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-01",away:"KIA",home:"NC",stad:"창원 NC파크",time:"18:00"},
-  {date:"2026-08-01",away:"LG",home:"두산",stad:"잠실",time:"18:00"},
-  {date:"2026-08-01",away:"SSG",home:"키움",stad:"고척 스카이돔",time:"18:00"},
-  {date:"2026-08-01",away:"한화",home:"KT",stad:"수원 KT위즈파크",time:"18:00"},
-  {date:"2026-08-01",away:"삼성",home:"롯데",stad:"사직",time:"18:00"},
-  {date:"2026-08-02",away:"KIA",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-08-02",away:"LG",home:"두산",stad:"잠실",time:"17:00"},
-  {date:"2026-08-02",away:"SSG",home:"키움",stad:"고척 스카이돔",time:"17:00"},
-  {date:"2026-08-02",away:"한화",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-08-02",away:"삼성",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-08-04",away:"KT",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-08-04",away:"NC",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-08-04",away:"LG",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-08-04",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-04",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-05",away:"KT",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-08-05",away:"NC",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-08-05",away:"LG",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-08-05",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-05",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-06",away:"KT",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-08-06",away:"NC",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-08-06",away:"LG",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-08-06",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-06",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-07",away:"KIA",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-08-07",away:"롯데",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-08-07",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-08-07",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-07",away:"SSG",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-08-08",away:"KIA",home:"LG",stad:"잠실",time:"18:00"},
-  {date:"2026-08-08",away:"롯데",home:"KT",stad:"수원 KT위즈파크",time:"18:00"},
-  {date:"2026-08-08",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"18:00"},
-  {date:"2026-08-08",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:00"},
-  {date:"2026-08-08",away:"SSG",home:"NC",stad:"창원 NC파크",time:"18:00"},
-  {date:"2026-08-09",away:"KIA",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-08-09",away:"롯데",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-08-09",away:"키움",home:"한화",stad:"대전 한화생명이글스파크",time:"17:00"},
-  {date:"2026-08-09",away:"두산",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-08-09",away:"SSG",home:"NC",stad:"창원 NC파크",time:"17:00"},
-  {date:"2026-08-11",away:"삼성",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-08-11",away:"한화",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-08-11",away:"LG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-08-11",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-08-11",away:"KT",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-08-12",away:"삼성",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-08-12",away:"한화",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-08-12",away:"LG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-08-12",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-08-12",away:"KT",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-08-13",away:"삼성",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-08-13",away:"한화",home:"두산",stad:"잠실",time:"18:30"},
-  {date:"2026-08-13",away:"LG",home:"키움",stad:"고척 스카이돔",time:"18:30"},
-  {date:"2026-08-13",away:"롯데",home:"SSG",stad:"인천 SSG랜더스필드",time:"18:30"},
-  {date:"2026-08-13",away:"KT",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-08-14",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:30"},
-  {date:"2026-08-14",away:"SSG",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-08-14",away:"키움",home:"KT",stad:"수원 KT위즈파크",time:"18:30"},
-  {date:"2026-08-14",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-14",away:"NC",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-15",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"18:00"},
-  {date:"2026-08-15",away:"SSG",home:"LG",stad:"잠실",time:"18:00"},
-  {date:"2026-08-15",away:"키움",home:"KT",stad:"수원 KT위즈파크",time:"18:00"},
-  {date:"2026-08-15",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:00"},
-  {date:"2026-08-15",away:"NC",home:"롯데",stad:"사직",time:"18:00"},
-  {date:"2026-08-16",away:"두산",home:"KIA",stad:"광주 기아챔피언스필드",time:"17:00"},
-  {date:"2026-08-16",away:"SSG",home:"LG",stad:"잠실",time:"17:00"},
-  {date:"2026-08-16",away:"키움",home:"KT",stad:"수원 KT위즈파크",time:"17:00"},
-  {date:"2026-08-16",away:"한화",home:"삼성",stad:"대구 삼성라이온즈파크",time:"17:00"},
-  {date:"2026-08-16",away:"NC",home:"롯데",stad:"사직",time:"17:00"},
-  {date:"2026-08-18",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-08-18",away:"KT",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-08-18",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-18",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-18",away:"두산",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-08-19",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-08-19",away:"KT",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-08-19",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-19",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-19",away:"두산",home:"NC",stad:"창원 NC파크",time:"18:30"},
-  {date:"2026-08-20",away:"KIA",home:"한화",stad:"대전 한화생명이글스파크",time:"18:30"},
-  {date:"2026-08-20",away:"KT",home:"LG",stad:"잠실",time:"18:30"},
-  {date:"2026-08-20",away:"SSG",home:"삼성",stad:"대구 삼성라이온즈파크",time:"18:30"},
-  {date:"2026-08-20",away:"키움",home:"롯데",stad:"사직",time:"18:30"},
-  {date:"2026-08-20",away:"두산",home:"NC",stad:"창원 NC파크",time:"18:30"},
-];
+// 경기 일정 데이터 (인라인, 외부 fetch 없음)
+const SCH = [{"date":"2026-03-28","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-03-28","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-03-28","away":"롯데","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-03-28","away":"두산","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-03-28","away":"KT","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-03-29","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-03-29","away":"KT","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-03-29","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-03-29","away":"롯데","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-03-29","away":"두산","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-03-31","away":"KIA","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-03-31","away":"키움","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-03-31","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-03-31","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-03-31","away":"롯데","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-01","away":"KIA","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-01","away":"키움","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-01","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-01","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-04-01","away":"롯데","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-02","away":"KIA","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-02","away":"키움","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-02","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-02","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-04-02","away":"롯데","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-03","away":"NC","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-03","away":"한화","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-03","away":"LG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-04-03","away":"삼성","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-03","away":"SSG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-04","away":"NC","home":"KIA","stad":"광주 기아챔피언스필드","time":"17:00"},{"date":"2026-04-04","away":"한화","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-04-04","away":"LG","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-04-04","away":"삼성","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-04-04","away":"SSG","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-04-05","away":"NC","home":"KIA","stad":"광주 기아챔피언스필드","time":"14:00"},{"date":"2026-04-05","away":"한화","home":"두산","stad":"잠실","time":"14:00"},{"date":"2026-04-05","away":"LG","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-04-05","away":"삼성","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-04-05","away":"SSG","home":"롯데","stad":"사직","time":"14:00"},{"date":"2026-04-07","away":"삼성","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-07","away":"키움","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-07","away":"한화","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-07","away":"KT","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-07","away":"LG","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-08","away":"삼성","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-08","away":"키움","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-08","away":"한화","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-08","away":"KT","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-08","away":"LG","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-09","away":"삼성","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-09","away":"키움","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-09","away":"한화","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-09","away":"KT","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-09","away":"LG","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-10","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-10","away":"SSG","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-10","away":"롯데","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-04-10","away":"두산","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-10","away":"NC","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-04-11","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-04-11","away":"SSG","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-04-11","away":"롯데","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-04-11","away":"두산","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-04-11","away":"NC","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-04-12","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-04-12","away":"SSG","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-04-12","away":"롯데","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-04-12","away":"두산","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-04-12","away":"NC","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-04-14","away":"키움","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-14","away":"롯데","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-14","away":"두산","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-14","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-14","away":"KT","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-15","away":"키움","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-15","away":"롯데","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-15","away":"두산","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-15","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-15","away":"KT","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-16","away":"키움","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-16","away":"롯데","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-16","away":"두산","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-16","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-16","away":"KT","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-17","away":"KIA","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-17","away":"한화","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-17","away":"키움","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-17","away":"LG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-04-17","away":"SSG","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-18","away":"KIA","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-04-18","away":"한화","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-04-18","away":"키움","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-04-18","away":"LG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-04-18","away":"SSG","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-04-19","away":"KIA","home":"두산","stad":"잠실","time":"14:00"},{"date":"2026-04-19","away":"한화","home":"롯데","stad":"사직","time":"14:00"},{"date":"2026-04-19","away":"키움","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-04-19","away":"LG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-04-19","away":"SSG","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-04-21","away":"KIA","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-21","away":"한화","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-21","away":"NC","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-04-21","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-04-21","away":"두산","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-22","away":"KIA","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-22","away":"한화","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-22","away":"NC","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-04-22","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-04-22","away":"두산","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-23","away":"KIA","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-23","away":"한화","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-04-23","away":"NC","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-04-23","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-04-23","away":"두산","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-24","away":"롯데","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-04-24","away":"LG","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-24","away":"삼성","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-04-24","away":"KT","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-04-24","away":"NC","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-25","away":"롯데","home":"KIA","stad":"광주 기아챔피언스필드","time":"17:00"},{"date":"2026-04-25","away":"LG","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-04-25","away":"삼성","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-04-25","away":"KT","home":"SSG","stad":"인천 SSG랜더스필드","time":"17:00"},{"date":"2026-04-25","away":"NC","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-04-26","away":"롯데","home":"KIA","stad":"광주 기아챔피언스필드","time":"14:00"},{"date":"2026-04-26","away":"LG","home":"두산","stad":"잠실","time":"14:00"},{"date":"2026-04-26","away":"삼성","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-04-26","away":"KT","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-04-26","away":"NC","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-04-28","away":"KIA","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-28","away":"삼성","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-28","away":"LG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-28","away":"SSG","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-28","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-29","away":"KIA","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-29","away":"삼성","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-29","away":"LG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-29","away":"SSG","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-29","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-04-30","away":"KIA","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-04-30","away":"삼성","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-04-30","away":"LG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-04-30","away":"SSG","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-04-30","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-01","away":"KT","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-01","away":"NC","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-01","away":"두산","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-01","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-05-01","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-02","away":"KT","home":"KIA","stad":"광주 기아챔피언스필드","time":"17:00"},{"date":"2026-05-02","away":"NC","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-05-02","away":"두산","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-05-02","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"17:00"},{"date":"2026-05-02","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-05-03","away":"KT","home":"KIA","stad":"광주 기아챔피언스필드","time":"14:00"},{"date":"2026-05-03","away":"NC","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-05-03","away":"두산","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-05-03","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-05-03","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-05-05","away":"한화","home":"KIA","stad":"광주 기아챔피언스필드","time":"14:00"},{"date":"2026-05-05","away":"두산","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-05-05","away":"NC","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-05-05","away":"롯데","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-05-05","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-05-06","away":"한화","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-06","away":"두산","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-06","away":"NC","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-05-06","away":"롯데","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-05-06","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-07","away":"한화","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-07","away":"두산","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-07","away":"NC","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-05-07","away":"롯데","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-05-07","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-08","away":"KIA","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-08","away":"SSG","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-08","away":"KT","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-08","away":"LG","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-05-08","away":"삼성","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-05-09","away":"KIA","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-05-09","away":"SSG","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-05-09","away":"KT","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-05-09","away":"LG","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-05-09","away":"삼성","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-05-10","away":"KIA","home":"롯데","stad":"사직","time":"14:00"},{"date":"2026-05-10","away":"SSG","home":"두산","stad":"잠실","time":"14:00"},{"date":"2026-05-10","away":"KT","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-05-10","away":"LG","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-05-10","away":"삼성","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-05-12","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-12","away":"삼성","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-12","away":"한화","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-12","away":"SSG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-05-12","away":"NC","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-13","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-13","away":"삼성","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-13","away":"한화","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-13","away":"SSG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-05-13","away":"NC","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-14","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-14","away":"삼성","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-14","away":"한화","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-14","away":"SSG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-05-14","away":"NC","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-15","away":"KIA","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-15","away":"롯데","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-15","away":"LG","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-05-15","away":"한화","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-05-15","away":"키움","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-05-16","away":"KIA","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-05-16","away":"롯데","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-05-16","away":"LG","home":"SSG","stad":"인천 SSG랜더스필드","time":"17:00"},{"date":"2026-05-16","away":"한화","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-05-16","away":"키움","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-05-17","away":"KIA","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-05-17","away":"롯데","home":"두산","stad":"잠실","time":"14:00"},{"date":"2026-05-17","away":"LG","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-05-17","away":"한화","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-05-17","away":"키움","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-05-19","away":"LG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-19","away":"NC","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-19","away":"SSG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-19","away":"롯데","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-05-19","away":"KT","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-20","away":"LG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-20","away":"NC","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-20","away":"SSG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-20","away":"롯데","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-05-20","away":"KT","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-21","away":"LG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-21","away":"NC","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-21","away":"SSG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-21","away":"롯데","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-05-21","away":"KT","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-22","away":"SSG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-05-22","away":"키움","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-22","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-05-22","away":"두산","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-05-22","away":"삼성","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-23","away":"SSG","home":"KIA","stad":"광주 기아챔피언스필드","time":"17:00"},{"date":"2026-05-23","away":"키움","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-05-23","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-05-23","away":"두산","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-05-23","away":"삼성","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-05-24","away":"SSG","home":"KIA","stad":"광주 기아챔피언스필드","time":"14:00"},{"date":"2026-05-24","away":"키움","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-05-24","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-05-24","away":"두산","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-05-24","away":"삼성","home":"롯데","stad":"사직","time":"14:00"},{"date":"2026-05-26","away":"KIA","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-26","away":"KT","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-26","away":"삼성","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-05-26","away":"LG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-26","away":"한화","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-05-27","away":"KIA","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-27","away":"KT","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-27","away":"삼성","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-05-27","away":"LG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-27","away":"한화","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-05-28","away":"KIA","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-28","away":"KT","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-05-28","away":"삼성","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-05-28","away":"LG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-05-28","away":"한화","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-05-29","away":"KIA","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-05-29","away":"KT","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-05-29","away":"SSG","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-05-29","away":"롯데","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-05-29","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-05-30","away":"KIA","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-05-30","away":"KT","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-05-30","away":"SSG","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-05-30","away":"롯데","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-05-30","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-05-31","away":"KIA","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-05-31","away":"KT","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-05-31","away":"SSG","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-05-31","away":"롯데","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-05-31","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-06-02","away":"NC","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-02","away":"한화","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-02","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-02","away":"LG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-02","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-03","away":"NC","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-03","away":"한화","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-03","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-03","away":"LG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-03","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-04","away":"NC","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-04","away":"한화","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-04","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-04","away":"LG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-04","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-05","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-05","away":"키움","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-05","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-05","away":"KT","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-05","away":"LG","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-06-06","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"17:00"},{"date":"2026-06-06","away":"키움","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-06-06","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-06-06","away":"KT","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-06-06","away":"LG","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-06-07","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-06-07","away":"키움","home":"두산","stad":"잠실","time":"14:00"},{"date":"2026-06-07","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-06-07","away":"KT","home":"롯데","stad":"사직","time":"14:00"},{"date":"2026-06-07","away":"LG","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-06-09","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-09","away":"SSG","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-09","away":"NC","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-09","away":"삼성","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-09","away":"두산","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-10","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-10","away":"SSG","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-10","away":"NC","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-10","away":"삼성","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-10","away":"두산","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-11","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-11","away":"SSG","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-11","away":"NC","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-11","away":"삼성","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-11","away":"두산","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-12","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-12","away":"롯데","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-12","away":"한화","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-12","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-12","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-13","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"17:00"},{"date":"2026-06-13","away":"롯데","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-06-13","away":"한화","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-06-13","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-06-13","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-06-14","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"14:00"},{"date":"2026-06-14","away":"롯데","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-06-14","away":"한화","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-06-14","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-06-14","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-06-16","away":"LG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-16","away":"KT","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-16","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-16","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-16","away":"한화","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-06-17","away":"LG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-17","away":"KT","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-17","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-17","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-17","away":"한화","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-06-18","away":"LG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-18","away":"KT","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-18","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-18","away":"키움","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-18","away":"한화","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-06-19","away":"KIA","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-19","away":"두산","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-19","away":"롯데","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-19","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-19","away":"SSG","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-06-20","away":"KIA","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-06-20","away":"두산","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-06-20","away":"롯데","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-06-20","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-06-20","away":"SSG","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-06-21","away":"KIA","home":"KT","stad":"수원 KT위즈파크","time":"14:00"},{"date":"2026-06-21","away":"두산","home":"LG","stad":"잠실","time":"14:00"},{"date":"2026-06-21","away":"롯데","home":"키움","stad":"고척 스카이돔","time":"14:00"},{"date":"2026-06-21","away":"삼성","home":"한화","stad":"대전 한화생명이글스파크","time":"14:00"},{"date":"2026-06-21","away":"SSG","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-06-23","away":"KIA","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-23","away":"삼성","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-23","away":"SSG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-23","away":"두산","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-23","away":"NC","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-24","away":"KIA","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-24","away":"삼성","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-24","away":"SSG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-24","away":"두산","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-24","away":"NC","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-25","away":"KIA","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-25","away":"삼성","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-06-25","away":"SSG","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-06-25","away":"두산","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-25","away":"NC","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-26","away":"KIA","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-26","away":"한화","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-06-26","away":"KT","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-06-26","away":"LG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-06-26","away":"키움","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-06-27","away":"KIA","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-06-27","away":"한화","home":"SSG","stad":"인천 SSG랜더스필드","time":"17:00"},{"date":"2026-06-27","away":"KT","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-06-27","away":"LG","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-06-27","away":"키움","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-06-28","away":"KIA","home":"두산","stad":"잠실","time":"14:00"},{"date":"2026-06-28","away":"한화","home":"SSG","stad":"인천 SSG랜더스필드","time":"14:00"},{"date":"2026-06-28","away":"KT","home":"삼성","stad":"대구 삼성라이온즈파크","time":"14:00"},{"date":"2026-06-28","away":"LG","home":"롯데","stad":"사직","time":"14:00"},{"date":"2026-06-28","away":"키움","home":"NC","stad":"창원 NC파크","time":"14:00"},{"date":"2026-06-30","away":"SSG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-06-30","away":"롯데","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-06-30","away":"LG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-06-30","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-06-30","away":"삼성","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-01","away":"SSG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-07-01","away":"롯데","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-07-01","away":"LG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-07-01","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-01","away":"삼성","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-02","away":"SSG","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-07-02","away":"롯데","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-07-02","away":"LG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-07-02","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-02","away":"삼성","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-07","away":"KIA","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-07-07","away":"SSG","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-07-07","away":"키움","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-07","away":"LG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-07","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-08","away":"KIA","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-07-08","away":"SSG","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-07-08","away":"키움","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-08","away":"LG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-08","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-09","away":"KIA","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-07-09","away":"SSG","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-07-09","away":"키움","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-09","away":"LG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-09","away":"KT","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-16","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-07-16","away":"KT","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-16","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-16","away":"롯데","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-16","away":"두산","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-17","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-07-17","away":"KT","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-17","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-17","away":"롯데","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-17","away":"두산","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-18","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:00"},{"date":"2026-07-18","away":"KT","home":"LG","stad":"잠실","time":"18:00"},{"date":"2026-07-18","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"18:00"},{"date":"2026-07-18","away":"롯데","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:00"},{"date":"2026-07-18","away":"두산","home":"NC","stad":"창원 NC파크","time":"18:00"},{"date":"2026-07-19","away":"KIA","home":"SSG","stad":"인천 SSG랜더스필드","time":"17:00"},{"date":"2026-07-19","away":"KT","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-07-19","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-07-19","away":"롯데","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-07-19","away":"두산","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-07-21","away":"한화","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-07-21","away":"NC","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-21","away":"삼성","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-07-21","away":"두산","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-07-21","away":"SSG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-07-22","away":"한화","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-07-22","away":"NC","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-22","away":"삼성","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-07-22","away":"두산","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-07-22","away":"SSG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-07-23","away":"한화","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-07-23","away":"NC","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-23","away":"삼성","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-07-23","away":"두산","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-07-23","away":"SSG","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-07-24","away":"키움","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-07-24","away":"삼성","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-07-24","away":"NC","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-07-24","away":"LG","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-24","away":"KT","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-07-25","away":"키움","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:00"},{"date":"2026-07-25","away":"삼성","home":"두산","stad":"잠실","time":"18:00"},{"date":"2026-07-25","away":"NC","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:00"},{"date":"2026-07-25","away":"LG","home":"한화","stad":"대전 한화생명이글스파크","time":"18:00"},{"date":"2026-07-25","away":"KT","home":"롯데","stad":"사직","time":"18:00"},{"date":"2026-07-26","away":"키움","home":"KIA","stad":"광주 기아챔피언스필드","time":"17:00"},{"date":"2026-07-26","away":"삼성","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-07-26","away":"NC","home":"SSG","stad":"인천 SSG랜더스필드","time":"17:00"},{"date":"2026-07-26","away":"LG","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-07-26","away":"KT","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-07-28","away":"KIA","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-28","away":"키움","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-28","away":"두산","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-07-28","away":"롯데","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-28","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-07-29","away":"KIA","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-29","away":"키움","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-29","away":"두산","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-07-29","away":"롯데","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-29","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-07-30","away":"KIA","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-07-30","away":"키움","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-07-30","away":"두산","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-07-30","away":"롯데","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-07-30","away":"NC","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-07-31","away":"KIA","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-07-31","away":"LG","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-07-31","away":"SSG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-07-31","away":"한화","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-07-31","away":"삼성","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-01","away":"KIA","home":"NC","stad":"창원 NC파크","time":"18:00"},{"date":"2026-08-01","away":"LG","home":"두산","stad":"잠실","time":"18:00"},{"date":"2026-08-01","away":"SSG","home":"키움","stad":"고척 스카이돔","time":"18:00"},{"date":"2026-08-01","away":"한화","home":"KT","stad":"수원 KT위즈파크","time":"18:00"},{"date":"2026-08-01","away":"삼성","home":"롯데","stad":"사직","time":"18:00"},{"date":"2026-08-02","away":"KIA","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-08-02","away":"LG","home":"두산","stad":"잠실","time":"17:00"},{"date":"2026-08-02","away":"SSG","home":"키움","stad":"고척 스카이돔","time":"17:00"},{"date":"2026-08-02","away":"한화","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-08-02","away":"삼성","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-08-04","away":"KT","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-08-04","away":"NC","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-08-04","away":"LG","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-08-04","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-04","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-05","away":"KT","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-08-05","away":"NC","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-08-05","away":"LG","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-08-05","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-05","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-06","away":"KT","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-08-06","away":"NC","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-08-06","away":"LG","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-08-06","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-06","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-07","away":"KIA","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-08-07","away":"롯데","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-08-07","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-08-07","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-07","away":"SSG","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-08-08","away":"KIA","home":"LG","stad":"잠실","time":"18:00"},{"date":"2026-08-08","away":"롯데","home":"KT","stad":"수원 KT위즈파크","time":"18:00"},{"date":"2026-08-08","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"18:00"},{"date":"2026-08-08","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:00"},{"date":"2026-08-08","away":"SSG","home":"NC","stad":"창원 NC파크","time":"18:00"},{"date":"2026-08-09","away":"KIA","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-08-09","away":"롯데","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-08-09","away":"키움","home":"한화","stad":"대전 한화생명이글스파크","time":"17:00"},{"date":"2026-08-09","away":"두산","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-08-09","away":"SSG","home":"NC","stad":"창원 NC파크","time":"17:00"},{"date":"2026-08-11","away":"삼성","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-08-11","away":"한화","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-08-11","away":"LG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-08-11","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-08-11","away":"KT","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-08-12","away":"삼성","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-08-12","away":"한화","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-08-12","away":"LG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-08-12","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-08-12","away":"KT","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-08-13","away":"삼성","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-08-13","away":"한화","home":"두산","stad":"잠실","time":"18:30"},{"date":"2026-08-13","away":"LG","home":"키움","stad":"고척 스카이돔","time":"18:30"},{"date":"2026-08-13","away":"롯데","home":"SSG","stad":"인천 SSG랜더스필드","time":"18:30"},{"date":"2026-08-13","away":"KT","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-08-14","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:30"},{"date":"2026-08-14","away":"SSG","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-08-14","away":"키움","home":"KT","stad":"수원 KT위즈파크","time":"18:30"},{"date":"2026-08-14","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-14","away":"NC","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-15","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"18:00"},{"date":"2026-08-15","away":"SSG","home":"LG","stad":"잠실","time":"18:00"},{"date":"2026-08-15","away":"키움","home":"KT","stad":"수원 KT위즈파크","time":"18:00"},{"date":"2026-08-15","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:00"},{"date":"2026-08-15","away":"NC","home":"롯데","stad":"사직","time":"18:00"},{"date":"2026-08-16","away":"두산","home":"KIA","stad":"광주 기아챔피언스필드","time":"17:00"},{"date":"2026-08-16","away":"SSG","home":"LG","stad":"잠실","time":"17:00"},{"date":"2026-08-16","away":"키움","home":"KT","stad":"수원 KT위즈파크","time":"17:00"},{"date":"2026-08-16","away":"한화","home":"삼성","stad":"대구 삼성라이온즈파크","time":"17:00"},{"date":"2026-08-16","away":"NC","home":"롯데","stad":"사직","time":"17:00"},{"date":"2026-08-18","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-08-18","away":"KT","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-08-18","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-18","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-18","away":"두산","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-08-19","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-08-19","away":"KT","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-08-19","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-19","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-19","away":"두산","home":"NC","stad":"창원 NC파크","time":"18:30"},{"date":"2026-08-20","away":"KIA","home":"한화","stad":"대전 한화생명이글스파크","time":"18:30"},{"date":"2026-08-20","away":"KT","home":"LG","stad":"잠실","time":"18:30"},{"date":"2026-08-20","away":"SSG","home":"삼성","stad":"대구 삼성라이온즈파크","time":"18:30"},{"date":"2026-08-20","away":"키움","home":"롯데","stad":"사직","time":"18:30"},{"date":"2026-08-20","away":"두산","home":"NC","stad":"창원 NC파크","time":"18:30"}];
+SCH.forEach(s => { s._origTime = s.time; });
+async function _loadSchedule() {
+  // SCH는 이미 인라인으로 초기화되어 있음 — 아무것도 할 필요 없음
+}
 
 const STAND=[
   {r:1,s:"LG",name:"LG 트윈스",note:"2025 우승"},
@@ -821,8 +248,6 @@ const STAND=[
 
 const _kst0=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
 const _today0=_kst0.getFullYear()+'-'+String(_kst0.getMonth()+1).padStart(2,'0')+'-'+String(_kst0.getDate()).padStart(2,'0');
-// SCH 원본 시간 저장 (API 시간 변경 감지용)
-SCH.forEach(s => { s._origTime = s.time; });
 let state = {
   tab:'cal', dark:false, yr:_kst0.getFullYear(), mo:_kst0.getMonth()+1, sel:_today0,
   lcat:'batting', modalGame:null, modalLt:'away', clock:new Date(),
@@ -893,9 +318,6 @@ function syncDel(key) {
   serverDel(key);
 }
 
-// 서버 동기화 시작 (render 전에 실행)
-const _initSync = initServerSync();
-
 let FAVS = JSON.parse(localStorage.getItem('kbo_favs')||'[]');
 function favKey(g) { return `${g.date}_${g.away}_${g.home}`; }
 function isFav(g) { return FAVS.includes(favKey(g)); }
@@ -953,37 +375,6 @@ function renderDiamond(players, color, dark) {
   </div>`;
 }
 
-
-// ── KIA 연승/연패 스트릭 계산 ──
-function calcKiaStreak() {
-  // FINAL 경기만, 날짜 오름차순
-  const finalGames = SCH.filter(g =>
-    g.status === 'FINAL' &&
-    (g.away === 'KIA' || g.home === 'KIA') &&
-    g.awayScore != null && g.homeScore != null
-  ).sort((a, b) => a.date.localeCompare(b.date));
-
-  if (!finalGames.length) return null;
-
-  let streak = 0;
-  let streakType = null; // 'W' | 'L' | 'D'
-  for (let i = finalGames.length - 1; i >= 0; i--) {
-    const g = finalGames[i];
-    const isHome = g.home === 'KIA';
-    const kS = isHome ? g.homeScore : g.awayScore;
-    const oS = isHome ? g.awayScore : g.homeScore;
-    const result = kS > oS ? 'W' : kS < oS ? 'L' : 'D';
-    if (streakType === null) {
-      streakType = result; streak = 1;
-    } else if (result === streakType) {
-      streak++;
-    } else {
-      break;
-    }
-  }
-  if (streakType === null) return null;
-  return { type: streakType, count: streak };
-}
 
 // ── 개막 D-day 자동 계산 ──
 function getDday() {
@@ -1078,10 +469,22 @@ const D = () => state.dark ? {
   bg:'rgba(0,0,0,0.03)',bgB:'rgba(0,0,0,0.08)',
 };
 
+// render 최적화: 탭/다크모드 변경 없으면 헤더·네비 스킵
+let _renderState = { tab: null, dark: null };
 function render() {
-  const d=D();
-  renderHeader(d);
-  renderNav();
+  const d = D();
+  const tabChanged  = state.tab  !== _renderState.tab;
+  const darkChanged = state.dark !== _renderState.dark;
+  if (tabChanged || darkChanged) {
+    renderHeader(d);
+    renderNav();
+    _renderState.tab  = state.tab;
+    _renderState.dark = state.dark;
+  } else {
+    // 시계만 빠르게 업데이트
+    const clockEl = document.querySelector('#header [data-clock]');
+    if (clockEl) clockEl.textContent = state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  }
   renderContent(d);
   document.dispatchEvent(new Event('renderDone'));
 }
@@ -1099,7 +502,7 @@ function renderHeader(d) {
             </div>
           </div>
           <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-            <div style="font-size:15px;font-weight:700;color:${d.text}">${state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+            <div data-clock style="font-size:15px;font-weight:700;color:${d.text}">${state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
             <div style="display:flex;align-items:center;gap:6px">
               <div style="font-size:10px;color:${d.sub}">${state.clock.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})}</div>
               <button onclick="toggleDark()" style="background:${state.dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.08)'};border-radius:20px;padding:3px 8px;font-size:13px">${state.dark?'☀️':'🌙'}</button>
@@ -1127,10 +530,26 @@ function renderNav() {
 
 function renderContent(d) {
   const el=document.getElementById('content');
+  // 포커스된 input이 콘텐츠 안에 있으면 커서 위치 보존
+  const focused = document.activeElement;
+  const focusedId = focused && (focused.tagName==='INPUT'||focused.tagName==='TEXTAREA') ? focused.id : null;
+  const focusedVal = focusedId ? focused.value : null;
+  const focusedSel = focusedId ? [focused.selectionStart, focused.selectionEnd] : null;
+
   if(state.tab==='cal') el.innerHTML=renderCal(d);
   else if(state.tab==='stand') el.innerHTML=renderBaseballRecord(d);
   else if(state.tab==='my') el.innerHTML=renderMyPage(d);
   else el.innerHTML=renderCal(d);
+
+  // 포커스 복원
+  if (focusedId) {
+    const restored = document.getElementById(focusedId);
+    if (restored) {
+      restored.focus();
+      if (focusedVal !== null) restored.value = focusedVal;
+      if (focusedSel) try { restored.setSelectionRange(focusedSel[0], focusedSel[1]); } catch(e) {}
+    }
+  }
 }
 
 function renderCalSplit(d) {
@@ -1309,7 +728,7 @@ function renderCalSplit(d) {
       rightContent = '';
     }
 
-    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="position:relative;background:linear-gradient(135deg,#E31837,#c0102a);border-radius:16px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(227,24,55,0.25)">
+    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837,#c0102a);border-radius:16px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(227,24,55,0.25)">
       ${logo('KIA',44)}
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;margin-bottom:3px">${subLabel}</div>
@@ -1347,9 +766,70 @@ function renderCalSplit(d) {
 
 
 
+
+// ── 시즌 성적 요약 + 연승/연패 스트릭 ──
+function getKiaSeasonStats() {
+  const kiaGames = SCH.filter(g =>
+    g.status === 'FINAL' && (g.away === 'KIA' || g.home === 'KIA')
+  ).sort((a, b) => a.date.localeCompare(b.date));
+
+  let wins = 0, losses = 0, draws = 0;
+  let streak = 0, streakType = null; // 'W' | 'L' | 'D'
+
+  kiaGames.forEach(g => {
+    const isHome = g.home === 'KIA';
+    const ks = isHome ? g.homeScore : g.awayScore;
+    const os = isHome ? g.awayScore : g.homeScore;
+    if (ks == null || os == null) return;
+    let res;
+    if (ks > os) { wins++; res = 'W'; }
+    else if (ks < os) { losses++; res = 'L'; }
+    else { draws++; res = 'D'; }
+    if (res === streakType) streak++;
+    else { streakType = res; streak = 1; }
+  });
+
+  const total = wins + losses + draws;
+  const pct = total > 0 ? (wins / (total - draws)).toFixed(3).replace(/^0/, '') : '—';
+  return { wins, losses, draws, total, pct, streak, streakType };
+}
+
+function renderSeasonCard(d) {
+  if (!SCH.length) return '';
+  const { wins, losses, draws, pct, streak, streakType } = getKiaSeasonStats();
+  if (wins + losses + draws === 0) return '';
+
+  const streakLabel = streakType === 'W' ? `${streak}연승 🔥`
+    : streakType === 'L' ? `${streak}연패 💧`
+    : streakType === 'D' ? `${streak}연속무` : '';
+  const streakColor = streakType === 'W' ? '#E31837' : streakType === 'L' ? '#3B9EF5' : '#FF9500';
+
+  return `<div style="background:linear-gradient(135deg,rgba(227,24,55,0.08),rgba(227,24,55,0.03));border:1px solid rgba(227,24,55,0.2);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:900;color:#E31837">${wins}</div>
+        <div style="font-size:9px;color:${d.sub};font-weight:700">승</div>
+      </div>
+      <div style="font-size:13px;color:${d.muted}">·</div>
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:900;color:${d.text}">${losses}</div>
+        <div style="font-size:9px;color:${d.sub};font-weight:700">패</div>
+      </div>
+      ${draws > 0 ? `<div style="font-size:13px;color:${d.muted}">·</div>
+      <div style="text-align:center">
+        <div style="font-size:20px;font-weight:900;color:#FF9500">${draws}</div>
+        <div style="font-size:9px;color:${d.sub};font-weight:700">무</div>
+      </div>` : ''}
+    </div>
+    <div style="text-align:right">
+      <div style="font-size:11px;color:${d.sub};margin-bottom:3px">승률 <span style="font-size:14px;font-weight:900;color:${d.text}">${pct}</span></div>
+      ${streakLabel ? `<div style="font-size:12px;font-weight:900;color:${streakColor}">${streakLabel}</div>` : ''}
+    </div>
+  </div>`;
+}
 function renderCal(d) {
   const {calHtml, listHtml} = renderCalSplit(d);
-  return `<div id="cal-section">${calHtml}</div>
+  return `${renderSeasonCard(d)}<div id="cal-section">${calHtml}</div>
     <hr id="cal-divider" style="display:none;border:none;border-top:1.5px solid rgba(127,127,127,0.2);margin:0 0 12px"/>
     <div id="list-section">${listHtml}</div>`;
 }
@@ -1536,8 +1016,69 @@ window._setRecordTab = function(t) {
   render();
 };
 
+// ── 기록 탭 검색/필터 상태 ──
+let _recordFilter = { q: '', result: 'all', watch: 'all' };
+
+function _applyRecordFilter(games) {
+  return games.filter(g => {
+    const isHome = g.home === 'KIA';
+    const opp = isHome ? g.away : g.home;
+    const ks = isHome ? g.homeScore : g.awayScore;
+    const os = isHome ? g.awayScore : g.homeScore;
+    const res = ks > os ? 'win' : ks < os ? 'lose' : 'draw';
+    // 결과 필터
+    if (_recordFilter.result !== 'all' && res !== _recordFilter.result) return false;
+    // 시청 필터
+    if (_recordFilter.watch !== 'all') {
+      const memoKey = 'm_'+g.date+'_'+g.away+'_'+g.home;
+      let md = {};
+      try { md = JSON.parse(localStorage.getItem(memoKey)||'{}'); } catch(e) {}
+      const w = md.watch || '';
+      if (_recordFilter.watch === 'jikgwan' && w !== '직관') return false;
+      if (_recordFilter.watch === 'jipgwan' && w !== '집관') return false;
+      if (_recordFilter.watch === 'memo' && !md.text) return false;
+    }
+    // 텍스트 검색
+    if (_recordFilter.q) {
+      const q = _recordFilter.q;
+      if (!opp.includes(q) && !g.date.includes(q) && !g.stad.includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function _renderRecordFilters(d, total, filtered) {
+  const btn = (label, key, val, cur) => {
+    const active = cur === val;
+    return `<button onclick="_recordFilter.${key}='${val}';render()" style="padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;background:${active?'#E31837':'transparent'};color:${active?'#fff':d.sub};border:1.5px solid ${active?'#E31837':d.bgB}">${label}</button>`;
+  };
+  return `<div style="margin-bottom:12px">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="rec-search" type="text" value="${_recordFilter.q.replace(/"/g,'&quot;')}" placeholder="상대팀·날짜·구장 검색..." maxlength="20"
+        oninput="_recordFilter.q=this.value;render()"
+        onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()"
+        style="flex:1;padding:8px 12px;border-radius:10px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;
+        background:${d.bg};border:1px solid ${d.bgB};color:${d.text};-webkit-user-select:text;user-select:text"/>
+      ${_recordFilter.q ? `<button onclick="_recordFilter.q='';render()" style="padding:8px 10px;border-radius:10px;background:${d.bg};border:1px solid ${d.bgB};font-size:13px;color:${d.sub}">✕</button>` : ''}
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+      ${btn('전체','result','all',_recordFilter.result)}
+      ${btn('승리','result','win',_recordFilter.result)}
+      ${btn('패배','result','lose',_recordFilter.result)}
+      ${btn('무승부','result','draw',_recordFilter.result)}
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      ${btn('전체','watch','all',_recordFilter.watch)}
+      ${btn('⚾ 직관','watch','jikgwan',_recordFilter.watch)}
+      ${btn('📺 집관','watch','jipgwan',_recordFilter.watch)}
+      ${btn('📝 메모 있음','watch','memo',_recordFilter.watch)}
+    </div>
+    ${filtered < total ? `<div style="font-size:11px;color:${d.sub};margin-top:8px">${filtered}경기 표시 중 (전체 ${total}경기)</div>` : ''}
+  </div>`;
+}
+
 function _renderGameRecord(d) {
-  const kiaGames = SCH.filter(g =>
+  let kiaGames = SCH.filter(g =>
     g.status === 'FINAL' && (g.away === 'KIA' || g.home === 'KIA')
   ).sort((a,b) => b.date.localeCompare(a.date));
 
@@ -1549,7 +1090,11 @@ function _renderGameRecord(d) {
       + '</div>';
   }
 
-  let html = '<div style="font-size:13px;font-weight:800;color:'+d.text+';margin-bottom:16px">경기 기록 <span style="font-size:11px;color:'+d.sub+';font-weight:400">'+kiaGames.length+'경기</span></div>';
+  const filteredGames = _applyRecordFilter(kiaGames);
+  let html = _renderRecordFilters(d, kiaGames.length, filteredGames.length);
+  html += '<div style="font-size:13px;font-weight:800;color:'+d.text+';margin-bottom:16px">경기 기록 <span style="font-size:11px;color:'+d.sub+';font-weight:400">'+filteredGames.length+'경기</span></div>';
+  // kiaGames를 필터 결과로 교체
+  kiaGames = filteredGames;
 
   kiaGames.forEach(function(g) {
     const isHome = g.home === 'KIA';
@@ -2581,6 +2126,55 @@ function saveWallpaper() {
 }
 
 
+
+// ── 알림 설정 섹션 ──
+function renderNotifySection(d) {
+  const supported = 'Notification' in window;
+  const perm = supported ? Notification.permission : 'unsupported';
+  const enabled = window._notifyEnabled && perm === 'granted';
+
+  if (!supported) {
+    return `<div style="text-align:center;padding:20px 0;color:${d.sub};font-size:13px">
+      이 브라우저는 알림을 지원하지 않아요 😢
+    </div>`;
+  }
+
+  let statusBadge = '';
+  if (perm === 'granted' && enabled) {
+    statusBadge = `<span style="font-size:10px;background:rgba(0,200,100,0.12);color:#00c864;border:1px solid rgba(0,200,100,0.3);border-radius:5px;padding:2px 8px;font-weight:700">ON</span>`;
+  } else if (perm === 'denied') {
+    statusBadge = `<span style="font-size:10px;background:rgba(227,24,55,0.1);color:#E31837;border:1px solid rgba(227,24,55,0.25);border-radius:5px;padding:2px 8px;font-weight:700">차단됨</span>`;
+  } else {
+    statusBadge = `<span style="font-size:10px;background:${d.bg};color:${d.sub};border:1px solid ${d.bgB};border-radius:5px;padding:2px 8px;font-weight:700">OFF</span>`;
+  }
+
+  let html = `<div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px">
+    <div>
+      <div style="font-size:13px;font-weight:800;color:${d.text};margin-bottom:4px">KIA 안타·홈런 알림 ${statusBadge}</div>
+      <div style="font-size:11px;color:${d.sub};line-height:1.6">LIVE 경기 중 KIA 선수가<br>안타나 홈런을 치면 알림을 보내드려요</div>
+    </div>`;
+
+  if (perm === 'denied') {
+    html += `<div style="font-size:11px;color:#E31837;text-align:right;line-height:1.6">브라우저 설정에서<br>알림 권한을 허용해주세요</div>`;
+  } else if (enabled) {
+    html += `<button onclick="disableNotify()" style="flex-shrink:0;padding:8px 14px;background:#E31837;color:#fff;border-radius:10px;font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap">끄기</button>`;
+  } else {
+    html += `<button onclick="toggleNotify()" style="flex-shrink:0;padding:8px 14px;background:#E31837;color:#fff;border-radius:10px;font-size:12px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;white-space:nowrap">켜기</button>`;
+  }
+
+  html += `</div>`;
+
+  html += `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:10px;padding:12px 14px">
+    <div style="font-size:11px;font-weight:700;color:${d.sub};margin-bottom:6px">알림 조건</div>
+    <div style="font-size:12px;color:${d.text};line-height:1.8">
+      ⚾ KIA 선수 <b>안타</b> (단타·2루타·3루타)<br>
+      💥 KIA 선수 <b>홈런</b><br>
+      <span style="font-size:11px;color:${d.sub}">※ LIVE 경기 중에만 동작해요 (30초 주기 감지)</span>
+    </div>
+  </div>`;
+
+  return html;
+}
 function renderMyPage(d) {
   const profile = getProfile();
   const nickname = profile.nickname || '타이거즈 팬';
@@ -2592,6 +2186,7 @@ function renderMyPage(d) {
     {id:'rank', label:'📊 순위',   fn: renderStand},
     {id:'fav',  label:'⭐ 즐겨찾기', fn: renderFavs},
     {id:'memo', label:'📝 메모',   fn: renderTodoMemo},
+    {id:'notify', label:'🔔 알림 설정', fn: renderNotifySection},
     {id:'wallpaper', label:'🖼️ 배경화면 만들기', fn: renderWallpaperSection},
   ];
 
@@ -2692,18 +2287,18 @@ async function fetchStanding() {
   }
 }
 
-// 2026 KBO 시즌 하드코딩 순위 (API 실패 시 폴백 / 2026-04-17 기준)
+// 2026 KBO 시즌 하드코딩 순위 (API 실패 시 폴백)
 const KBO_2026_FALLBACK = [
-  {rank:1, tkey:'LG',   win:14, lose:7,  draw:0, pct:'0.667', gb:'0'},
-  {rank:2, tkey:'한화', win:13, lose:7,  draw:1, pct:'0.650', gb:'0.5'},
-  {rank:3, tkey:'두산', win:11, lose:7,  draw:0, pct:'0.611', gb:'2'},
-  {rank:4, tkey:'KIA',  win:9,  lose:7,  draw:0, pct:'0.563', gb:'3.5'},
-  {rank:4, tkey:'SSG',  win:9,  lose:7,  draw:0, pct:'0.563', gb:'3.5'},
-  {rank:6, tkey:'NC',   win:8,  lose:9,  draw:0, pct:'0.471', gb:'5.5'},
-  {rank:7, tkey:'KT',   win:7,  lose:9,  draw:1, pct:'0.438', gb:'6'},
-  {rank:8, tkey:'롯데', win:7,  lose:10, draw:0, pct:'0.412', gb:'6.5'},
-  {rank:9, tkey:'삼성', win:6,  lose:11, draw:0, pct:'0.353', gb:'8'},
-  {rank:10,tkey:'키움', win:4,  lose:12, draw:1, pct:'0.250', gb:'9.5'},
+  {rank:1, tkey:'한화', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
+  {rank:1, tkey:'SSG', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
+  {rank:1, tkey:'KT', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
+  {rank:1, tkey:'롯데', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
+  {rank:5, tkey:'NC', win:1, lose:1, draw:0, pct:'0.500', gb:'1'},
+  {rank:5, tkey:'두산', win:1, lose:1, draw:0, pct:'0.500', gb:'1'},
+  {rank:7, tkey:'LG', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
+  {rank:7, tkey:'삼성', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
+  {rank:7, tkey:'KIA', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
+  {rank:7, tkey:'키움', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
 ];
 
 function renderStand(d) {
@@ -2723,10 +2318,21 @@ function renderStandRows(d, rows, footerLabel) {
       <button onclick="_standCache=null;fetchStanding().then(r=>{if(r){render();}});return false" style="font-size:10px;color:#E31837;border:1px solid rgba(227,24,55,0.3);border-radius:6px;padding:2px 8px;background:transparent;cursor:pointer">새로고침</button>
     </div>
     <div style="background:${d.bg};border:1px solid ${d.cardB};border-radius:14px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:28px 1fr 28px 28px 28px 44px;padding:8px 12px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
-        <span>순위</span><span>팀</span><span style="text-align:center">승</span><span style="text-align:center">패</span><span style="text-align:center">무</span><span style="text-align:right">승률</span>
+      <div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 42px;padding:8px 12px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
+        <span>#</span><span>팀</span><span style="text-align:center">승</span><span style="text-align:center">패</span><span style="text-align:center">무</span><span style="text-align:right">승률</span>
       </div>
-      ${rows.map((row,i)=>{const isKia=row.tkey==='KIA';return`<div style="display:grid;grid-template-columns:28px 1fr 28px 28px 28px 44px;padding:10px 12px;border-bottom:${i<rows.length-1?`1px solid ${d.cardB}`:'none'};background:${isKia?'rgba(227,24,55,0.07)':'transparent'};align-items:center"><span style="font-size:13px;font-weight:800;color:${row.rank===1?'#FFD700':row.rank===2?'#C0C0C0':row.rank===3?'#CD7F32':d.sub}">${row.rank}</span><div style="display:flex;align-items:center;gap:6px;overflow:hidden">${logo(row.tkey,20)}<span style="font-size:12px;font-weight:${isKia?800:500};color:${isKia?'#E31837':d.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${T[row.tkey]?.name||row.tkey}</span></div><span style="font-size:12px;text-align:center;color:${d.text}">${row.win}</span><span style="font-size:12px;text-align:center;color:${d.text}">${row.lose}</span><span style="font-size:12px;text-align:center;color:${d.sub}">${row.draw}</span><span style="font-size:11px;text-align:right;color:${d.sub}">${typeof row.pct==='number'?row.pct.toFixed(3):row.pct}</span></div>`;}).join('')}
+      ${rows.map((row,i)=>`
+        <div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 42px;padding:10px 12px;border-bottom:${i<rows.length-1?`1px solid ${d.cardB}`:'none'};background:${row.tkey==='KIA'?'rgba(227,24,55,0.07)':'transparent'};align-items:center">
+          <span style="font-size:13px;font-weight:800;color:${row.rank===1?'#FFD700':row.rank===2?'#C0C0C0':row.rank===3?'#CD7F32':d.sub}">${row.rank}</span>
+          <div style="display:flex;align-items:center;gap:6px">
+            ${logo(row.tkey,22)}
+            <span style="font-size:13px;font-weight:${row.tkey==='KIA'?800:500};color:${row.tkey==='KIA'?'#E31837':d.text}">${T[row.tkey]?.name||row.tkey}</span>
+          </div>
+          <span style="font-size:12px;text-align:center;color:${d.text}">${row.win}</span>
+          <span style="font-size:12px;text-align:center;color:${d.text}">${row.lose}</span>
+          <span style="font-size:12px;text-align:center;color:${d.sub}">${row.draw}</span>
+          <span style="font-size:11px;text-align:right;color:${d.sub}">${typeof row.pct==='number'?row.pct.toFixed(3):row.pct}</span>
+        </div>`).join('')}
     </div>
     <div style="font-size:10px;color:${d.muted};text-align:right;margin-top:6px">${footerLabel}</div>
   `;
@@ -3509,6 +3115,7 @@ function toggleDark(){
   state.dark=!state.dark;
   document.body.classList.toggle('dark',state.dark);
   document.getElementById('theme-meta').setAttribute('content',state.dark?'#0A0E1A':'#E8ECF1');
+  _renderState.dark = null; // 강제 헤더·네비 재렌더
   render(); if(state.modalGame) renderModal(D());
 }
 function prevMo(){if(state.mo===1){state.yr--;state.mo=12;}else state.mo--;render();}
@@ -3878,23 +3485,22 @@ setInterval(()=>{
 
 // ── 실시간 스코어 (MLB Stats API - KBO sportId=6) ──
 // ── 경기 결과 영구 캐시 (날짜 넘어가도 유지) ──
-(function initGameCache() {
+function initGameCache() {
   try {
     const cache = JSON.parse(localStorage.getItem('kbo_game_cache') || '{}');
     Object.entries(cache).forEach(([key, data]) => {
       const idx = SCH.findIndex(s => s.date+'_'+s.away+'_'+s.home === key);
       if (idx === -1) return;
-      // lineup이 있으면 starterPos 포함 여부 확인 (구버전 캐시는 lineup 제외)
       const dataToApply = {...data};
       if (dataToApply.lineup) {
         const checkBatters = (batters) => (batters||[]).some(b => b.starterPos);
         const hasStarterPos = checkBatters(dataToApply.lineup?.home?.batters) || checkBatters(dataToApply.lineup?.away?.batters);
-        if (!hasStarterPos) delete dataToApply.lineup; // 구버전 lineup은 신규 fetch로 덮어쓰기
+        if (!hasStarterPos) delete dataToApply.lineup;
       }
       Object.assign(SCH[idx], dataToApply);
     });
   } catch(e) {}
-})();
+}
 
 function saveGameCache(key, data) {
   try {
@@ -4239,8 +3845,7 @@ async function fetchTodayScores(targetDate='') {
   }
 }
 
-// 앱 시작 시 즉시 스코어 가져오기 (render 전 실행)
-const _initFetch = fetchTodayScores();
+// 실시간 스코어 폴링 (앱 init에서 시작)
 // 30초마다 갱신
 setInterval(fetchTodayScores, 30000);
 
@@ -4453,6 +4058,10 @@ function renderRelayText(relays, away, home) {
 }
 
 function updateRelayUI() {
+  // 안타/홈런 알림 감지 (중계창 열려있을 때)
+  if (typeof _checkKiaHitNotify === 'function' && _relayData) {
+    _checkKiaHitNotify(_relayData, _relayAway, _relayHome);
+  }
   const dark = state.dark;
   const game = _relayData || {};
   // currentGameState: 직접 필드 → textRelays 첫 항목(역순이므로 최신) 순으로 탐색
@@ -5292,14 +4901,16 @@ function _compressAll(files, cb) {
 
 
 
-// 서버 동기화 완료 후 render
-_initSync.then(() => {
-  render();
-  _initFetch.then(() => render()).catch(() => {});
-}).catch(() => {
-  render();
-  _initFetch.then(() => render()).catch(() => {});
-});
+// ── 앱 초기화 순서 ──
+// 1) schedule.json 로드 → 2) 게임 캐시 적용 → 3) 서버 동기화 → 4) 첫 render → 5) 오늘 스코어 fetch
+async function _initApp() {
+  await _loadSchedule();     // SCH 채우기
+  initGameCache();           // localStorage 캐시 SCH에 반영
+  try { await initServerSync(); } catch(e) {}  // 서버 sync (실패해도 진행)
+  render();                  // 첫 화면
+  fetchTodayScores().then(() => render()).catch(() => {}); // 스코어 갱신 후 재렌더
+}
+_initApp();
 </script>
 
 <!-- 배경화면 메이커 패널 -->
@@ -5382,10 +4993,121 @@ _initSync.then(() => {
 </div>
 
 <script>
+// ── Service Worker 등록 ──
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
+}
+
+// ── 알림 권한 요청 (최초 1회) ──
+async function requestNotificationPermission() {
+  if (!('Notification' in window)) return false;
+  if (Notification.permission === 'granted') return true;
+  if (Notification.permission === 'denied') return false;
+  const result = await Notification.requestPermission();
+  return result === 'granted';
+}
+
+// ── SW에 로컬 알림 전송 ──
+async function sendLocalNotify(title, body, tag) {
+  // SW 경유 알림 (백그라운드에서도 동작)
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({ type: 'LOCAL_NOTIFY', title, body, tag });
+    return;
+  }
+  // 폴백: Notification API 직접
+  if (Notification.permission === 'granted') {
+    new Notification(title, { body, icon: '/icon-192.png', tag });
+  }
+}
+
+// ── KIA 안타/홈런 감지 ──
+// 이미 알림 보낸 relay 항목 추적 (중복 방지)
+const _notifiedRelayKeys = new Set();
+
+function _checkKiaHitNotify(relayData, away, home) {
+  if (!relayData || Notification.permission !== 'granted') return;
+  const isKiaGame = away === 'KIA' || home === 'KIA';
+  if (!isKiaGame) return;
+
+  const relays = relayData.textRelays || [];
+  relays.forEach(item => {
+    const allItems = [item, ...(item.textOptions || [])];
+    allItems.forEach(it => {
+      const title = it.title || it.text || '';
+      if (!title) return;
+
+      // KIA 공격 여부 판별 (이닝 초·말 + home/away)
+      const gs = it.currentGameState || item.currentGameState || {};
+      const inningInfo = gs._inningInfo || gs.inningInfo || relayData.inningInfo || '';
+      const isBottom = inningInfo.includes('말');
+      // 이닝 초(top) = away 공격, 말(bottom) = home 공격
+      const attackTeam = isBottom ? home : away;
+      const isKiaAttack = attackTeam === 'KIA';
+      if (!isKiaAttack) return;
+
+      // 안타/홈런 키워드 체크
+      const isHR  = /홈런/.test(title);
+      const isHit = !isHR && /(1루타|안타|2루타|3루타)/.test(title);
+      if (!isHR && !isHit) return;
+
+      // 중복 방지 키
+      const key = title.trim().slice(0, 40);
+      if (_notifiedRelayKeys.has(key)) return;
+      _notifiedRelayKeys.add(key);
+
+      // 알림 발송
+      const emoji = isHR ? '💥🏠' : '⚾';
+      const notifyTitle = isHR ? `${emoji} 홈런!` : `${emoji} 안타!`;
+      sendLocalNotify(notifyTitle, title, 'kia-hit-' + Date.now());
+    });
+  });
+}
+
+// fetchTodayScores 패치: LIVE 경기 릴레이 polling 중 안타/홈런 알림
+// 30초 폴링마다 relay 데이터 확인
+let _hitCheckInterval = null;
+function _startHitCheck() {
+  clearInterval(_hitCheckInterval);
+  _hitCheckInterval = setInterval(async () => {
+    if (Notification.permission !== 'granted') return;
+    // 오늘 LIVE KIA 경기 찾기
+    const now = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+    const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
+    const liveGame = SCH.find(g => g.date === today && g.status === 'LIVE' && (g.away === 'KIA' || g.home === 'KIA'));
+    if (!liveGame || !liveGame.gameId) return;
+
+    // 최신 이닝 relay fetch
+    const inningNum = liveGame.inning || 1;
+    const relay = await fetchRelayData(liveGame.gameId, inningNum).catch(() => null);
+    if (relay) _checkKiaHitNotify(relay, liveGame.away, liveGame.home);
+  }, 30000);
+}
+
+// ── 알림 설정 UI ──
+window._notifyEnabled = false;
+window.toggleNotify = async function() {
+  const granted = await requestNotificationPermission();
+  if (granted) {
+    window._notifyEnabled = true;
+    _startHitCheck();
+    alert('🐯 알림이 켜졌어요!\nKIA 선수가 안타나 홈런을 치면 알림을 보내드려요.');
+  } else {
+    alert('알림 권한이 거부되었어요.\n브라우저 설정에서 이 사이트의 알림 권한을 허용해주세요.');
+  }
+  render();
+};
+window.disableNotify = function() {
+  window._notifyEnabled = false;
+  clearInterval(_hitCheckInterval);
+  render();
+};
+
+// 페이지 로드 시 이미 권한 있으면 자동 시작
+if (Notification.permission === 'granted') {
+  window._notifyEnabled = true;
+  _startHitCheck();
 }
 </script>
 </body>
