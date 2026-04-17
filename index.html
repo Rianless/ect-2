@@ -5248,6 +5248,7 @@ function _checkKiaHitNotify(relayData, away, home) {
   const isKiaGame = away === 'KIA' || home === 'KIA';
   if (!isKiaGame) return;
   const kiaIsHome = home === 'KIA';
+  console.log('[알림체크] KIA홈?', kiaIsHome, '전체이닝정보:', relayData.inningInfo);
 
   const relays = relayData.textRelays || [];
   relays.forEach(item => {
@@ -5295,6 +5296,7 @@ function _checkKiaHitNotify(relayData, away, home) {
       // 알림 발송
       const emoji = isHR ? '💥🏠' : isBB ? '🎯' : '⚾';
       const notifyTitle = isHR ? `${emoji} 홈런!` : isBB ? `${emoji} 볼넷!` : `${emoji} 안타!`;
+      console.log('[알림 발송]', notifyTitle, title);
       sendLocalNotify(notifyTitle, title, 'kia-hit-' + Date.now());
     });
   });
@@ -5307,17 +5309,37 @@ function _startHitCheck() {
   clearInterval(_hitCheckInterval);
   _hitCheckInterval = setInterval(async () => {
     if (Notification.permission !== 'granted') return;
-    // 오늘 LIVE KIA 경기 찾기
+    // 오늘 LIVE KIA 경기 찾기 (LIVE 아니어도 오늘 경기면 체크)
     const now = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
     const today = now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0')+'-'+String(now.getDate()).padStart(2,'0');
     const liveGame = SCH.find(g => g.date === today && g.status === 'LIVE' && (g.away === 'KIA' || g.home === 'KIA'));
-    if (!liveGame || !liveGame.gameId) return;
+    if (!liveGame) {
+      console.log('[알림] 오늘 LIVE KIA 경기 없음');
+      return;
+    }
+    if (!liveGame.gameId) {
+      console.log('[알림] gameId 없음, SCH에서 아직 못 받아온 상태');
+      return;
+    }
 
-    // 최신 이닝 relay fetch
+    console.log('[알림] LIVE 경기 감지:', liveGame.away, 'vs', liveGame.home, '이닝:', liveGame.inning);
+
+    // 현재 이닝 relay fetch
     const inningNum = liveGame.inning || 1;
-    const relay = await fetchRelayData(liveGame.gameId, inningNum).catch(() => null);
-    if (relay) _checkKiaHitNotify(relay, liveGame.away, liveGame.home);
-  }, 30000);
+    const relay = await fetchRelayData(liveGame.gameId, inningNum).catch(e => {
+      console.log('[알림] relay fetch 실패:', e);
+      return null;
+    });
+
+    if (!relay) {
+      console.log('[알림] relay 데이터 없음');
+      return;
+    }
+
+    const relayCount = relay.textRelays?.length || 0;
+    console.log('[알림] relay 텍스트 수:', relayCount);
+    _checkKiaHitNotify(relay, liveGame.away, liveGame.home);
+  }, 30000); // 30초마다
 }
 
 // ── 알림 설정 UI ──
