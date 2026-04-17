@@ -827,7 +827,7 @@ function renderCalSplit(d) {
       rightContent = '';
     }
 
-    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837 0%,#c0102a 60%,#8b0018 100%);border-radius:22px;padding:14px 12px;margin-bottom:0;cursor:pointer;box-shadow:0 8px 28px rgba(227,24,55,0.45),inset 0 1px 0 rgba(255,255,255,0.15);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between">
+    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837 0%,#c0102a 60%,#8b0018 100%);border-radius:22px;padding:14px 12px;margin-bottom:0;cursor:pointer;box-shadow:0 8px 28px rgba(227,24,55,0.45),inset 0 1px 0 rgba(255,255,255,0.15);overflow:hidden;display:flex;flex-direction:column;justify-content:space-between;flex:1">
       <div style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${subLabel}</div>
       <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0">
         ${logo('KIA',36)}
@@ -852,7 +852,7 @@ function renderCalSplit(d) {
   const streakColor = streakType === 'W' ? '#E31837' : streakType === 'L' ? '#3B9EF5' : '#FF9500';
 
   const seasonCardHtml = hasRecord ? `<div style="
-      flex:1;
+      flex:1;display:flex;flex-direction:column;justify-content:space-between;
       background:${state.dark
         ? 'linear-gradient(135deg,rgba(22,27,39,0.85),rgba(16,21,34,0.9))'
         : 'linear-gradient(135deg,rgba(237,240,247,1),rgba(225,230,242,1))'};
