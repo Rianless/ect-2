@@ -1524,7 +1524,9 @@ function _renderRecordFilters(d, total, filtered) {
   return `<div style="margin-bottom:12px">
     <div style="display:flex;gap:6px;margin-bottom:8px">
       <input id="rec-search" type="text" value="${_recordFilter.q.replace(/"/g,'&quot;')}" placeholder="상대팀·날짜·구장 검색..." maxlength="20"
-        oninput="_recordFilter.q=this.value;render()"
+        oninput="if(!this._composing){_recordFilter.q=this.value;render()}"
+        oncompositionstart="this._composing=true"
+        oncompositionend="this._composing=false;_recordFilter.q=this.value;render()"
         onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()"
         style="flex:1;padding:8px 12px;border-radius:10px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;
         background:${d.bg};border:1px solid ${d.bgB};color:${d.text};-webkit-user-select:text;user-select:text"/>
