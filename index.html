@@ -4995,7 +4995,13 @@ _initApp();
 <script>
 // ── Service Worker 등록 ──
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
+  window.addEventListener('load', async () => {
+    // 기존 SW 전부 해제 + 캐시 전부 삭제 후 재등록 (구버전 캐시 강제 제거)
+    const regs = await navigator.serviceWorker.getRegistrations();
+    for (const reg of regs) await reg.unregister();
+    const keys = await caches.keys();
+    for (const key of keys) await caches.delete(key);
+    // 재등록
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
