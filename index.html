@@ -2822,9 +2822,21 @@ function renderModal(d) {
                 if (bP?.name) batterNameCgs = bP.name;
               }
             }
-            const base1Runner = cgs?.base1Name || cgs?.base1Runner?.name || (base1?'주자':'');
-            const base2Runner = cgs?.base2Name || cgs?.base2Runner?.name || (base2?'주자':'');
-            const base3Runner = cgs?.base3Name || cgs?.base3Runner?.name || (base3?'주자':'');
+            // pcodeMap으로 주자 pcode → 이름 변환 시도
+            const _pcodeMap = g.lineup?.pcodeMap || {};
+            // 타자 라인업 전체에서 pcode → name 맵 추가 구성
+            const _allBatters = [...(g.lineup?.home?.batters||[]), ...(g.lineup?.away?.batters||[])];
+            const _extraPcodeMap = {};
+            _allBatters.forEach(p => { if(p.pcode) _extraPcodeMap[String(p.pcode)] = p.name || p.starterName || ''; });
+            const _resolveName = (pcode) => {
+              if (!pcode) return '';
+              const key = String(pcode);
+              if (/[가-힣]/.test(key)) return key; // 이미 한글 이름
+              return _pcodeMap[key] || _extraPcodeMap[key] || '';
+            };
+            const base1Runner = cgs?.base1Name || _resolveName(cgs?.base1) || (base1?'':'');
+            const base2Runner = cgs?.base2Name || _resolveName(cgs?.base2) || (base2?'':'');
+            const base3Runner = cgs?.base3Name || _resolveName(cgs?.base3) || (base3?'':'');
 
             // 포지션 코드 맵
             const posMap = {
@@ -2895,26 +2907,26 @@ function renderModal(d) {
               </div>`);
             }
             // 주자 핀 (1루)
-            if(base1Runner && base1) {
+            if(base1) {
               situationPins.push(`<div style="position:absolute;left:75%;top:52%;transform:translate(-50%,-50%);z-index:5">
                 <div style="background:#FFB300;border-radius:6px;padding:2px 6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.35)">
-                  <span style="font-size:10px;font-weight:700;color:#000">${base1Runner}</span>
+                  <span style="font-size:10px;font-weight:700;color:#000">${base1Runner||'주자'}</span>
                 </div>
               </div>`);
             }
             // 주자 핀 (2루)
-            if(base2Runner && base2) {
+            if(base2) {
               situationPins.push(`<div style="position:absolute;left:50%;top:20%;transform:translate(-50%,-50%);z-index:5">
                 <div style="background:#FFB300;border-radius:6px;padding:2px 6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.35)">
-                  <span style="font-size:10px;font-weight:700;color:#000">${base2Runner}</span>
+                  <span style="font-size:10px;font-weight:700;color:#000">${base2Runner||'주자'}</span>
                 </div>
               </div>`);
             }
             // 주자 핀 (3루)
-            if(base3Runner && base3) {
+            if(base3) {
               situationPins.push(`<div style="position:absolute;left:25%;top:52%;transform:translate(-50%,-50%);z-index:5">
                 <div style="background:#FFB300;border-radius:6px;padding:2px 6px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.35)">
-                  <span style="font-size:10px;font-weight:700;color:#000">${base3Runner}</span>
+                  <span style="font-size:10px;font-weight:700;color:#000">${base3Runner||'주자'}</span>
                 </div>
               </div>`);
             }
