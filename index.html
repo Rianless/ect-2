@@ -827,12 +827,12 @@ function renderCalSplit(d) {
       rightContent = '';
     }
 
-    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837 0%,#c0102a 60%,#8b0018 100%);border-radius:22px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 8px 28px rgba(227,24,55,0.45),0 2px 8px rgba(227,24,55,0.3),inset 0 1px 0 rgba(255,255,255,0.15)">
+    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837 0%,#c0102a 60%,#8b0018 100%);border-radius:22px;padding:14px 16px;margin-bottom:0;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 8px 28px rgba(227,24,55,0.45),0 2px 8px rgba(227,24,55,0.3),inset 0 1px 0 rgba(255,255,255,0.15);overflow:hidden">
       ${logo('KIA',44)}
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;margin-bottom:3px">${subLabel}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${subLabel}</div>
         ${mainContent}
-        <div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:3px">${stadDisp ? stadDisp.slice(3) : ''} · ${isHome2?'홈':'원정'}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:3px;white-space:nowrap">${stadDisp ? stadDisp.slice(3) : ''} · ${isHome2?'홈':'원정'}</div>
       </div>
       ${rightContent ? `<div>${rightContent}</div>` : ''}
       ${logo(opp2,44)}
@@ -848,7 +848,6 @@ function renderCalSplit(d) {
   const streakColor = streakType === 'W' ? '#E31837' : streakType === 'L' ? '#3B9EF5' : '#FF9500';
 
   const seasonCardHtml = hasRecord ? `<div style="
-      flex:1;min-width:0;
       background:${state.dark
         ? 'linear-gradient(135deg,rgba(22,27,39,0.85),rgba(16,21,34,0.9))'
         : 'linear-gradient(135deg,rgba(237,240,247,1),rgba(225,230,242,1))'};
@@ -882,11 +881,8 @@ function renderCalSplit(d) {
       </div>
     </div>` : '';
 
-  // 배너와 시즌 카드를 가로로 나란히
-  const topRowHtml = nextBannerHtml ? `<div style="display:flex;gap:8px;margin-bottom:14px;align-items:stretch">
-    <div style="flex:1.4;min-width:0">${nextBannerHtml.replace('margin-bottom:14px;','')}</div>
-    ${seasonCardHtml}
-  </div>` : (seasonCardHtml ? `<div style="margin-bottom:14px">${seasonCardHtml}</div>` : '');
+  // 배너 위, 시즌 카드 아래 세로 배치
+  const topRowHtml = `${nextBannerHtml ? nextBannerHtml + '<div style="height:10px"></div>' : ''}${seasonCardHtml ? seasonCardHtml + '<div style="height:14px"></div>' : ''}`;
 
   const calHtml = `
     ${topRowHtml}
