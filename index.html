@@ -5246,6 +5246,7 @@ function _checkKiaHitNotify(relayData, away, home) {
   if (!relayData || Notification.permission !== 'granted') return;
   const isKiaGame = away === 'KIA' || home === 'KIA';
   if (!isKiaGame) return;
+  const kiaIsHome = home === 'KIA';
 
   const relays = relayData.textRelays || [];
   relays.forEach(item => {
@@ -5254,19 +5255,35 @@ function _checkKiaHitNotify(relayData, away, home) {
       const title = it.title || it.text || '';
       if (!title) return;
 
-      // KIA 공격 여부 판별 (이닝 초·말 + home/away)
-      const gs = it.currentGameState || item.currentGameState || {};
-      const inningInfo = gs._inningInfo || gs.inningInfo || relayData.inningInfo || '';
-      const isBottom = inningInfo.includes('말');
-      // 이닝 초(top) = away 공격, 말(bottom) = home 공격
-      const attackTeam = isBottom ? home : away;
-      const isKiaAttack = attackTeam === 'KIA';
-      if (!isKiaAttack) return;
-
-      // 안타/홈런 키워드 체크
+      // 안타/홈런 키워드 먼저 체크 (불필요한 연산 방지)
       const isHR  = /홈런/.test(title);
       const isHit = !isHR && /(1루타|안타|2루타|3루타)/.test(title);
       if (!isHR && !isHit) return;
+
+      // KIA 공격 여부 판별
+      // 우선순위: 1) gs._inningInfo 2) relayData.inningInfo 3) 타이틀에서 직접 추출
+      const gs = it.currentGameState || item.currentGameState || {};
+      const inningInfo = gs._inningInfo || gs.inningInfo
+        || relayData.inningInfo || relayData.currentGameState?.inningInfo || '';
+      
+      let isKiaAttack = false;
+      if (inningInfo.includes('말')) {
+        // 말 = home 공격
+        isKiaAttack = kiaIsHome;
+      } else if (inningInfo.includes('초')) {
+        // 초 = away 공격
+        isKiaAttack = !kiaIsHome;
+      } else {
+        // inningInfo 없을 때: 타이틀에서 KIA 선수 이름 직접 확인은 불가능하므로
+        // KIA 타자가 친 것인지 lineup 기반으로 추론
+        const kiaGame = SCH.find(s => String(s.gameId) === String(_relayGameId));
+        const kiaInfo = kiaGame?.inningInfo || '';
+        if (kiaInfo.includes('말')) isKiaAttack = kiaIsHome;
+        else if (kiaInfo.includes('초')) isKiaAttack = !kiaIsHome;
+        else isKiaAttack = true; // 불확실하면 알림 (오탐 허용)
+      }
+
+      if (!isKiaAttack) return;
 
       // 중복 방지 키
       const key = title.trim().slice(0, 40);
