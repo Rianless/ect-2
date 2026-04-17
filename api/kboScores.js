@@ -372,7 +372,7 @@ export default async function handler(req, res) {
       function parseBatters(arr) {
         if (!arr?.length) return [];
         return arr.map(p => ({
-          batOrder: (() => { const v = p.batOrder ?? p.orderNum ?? p.order ?? 0; return v === 0 ? 1 : v; })(),
+          batOrder: p.batOrder || p.orderNum || p.order || 0,
           name: p.name || p.playerName || '',
           posName: p.posName || p.position || p.pos || '',
           cin: p.cin,
