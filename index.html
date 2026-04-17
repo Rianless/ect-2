@@ -2359,6 +2359,7 @@ function renderNotifySection(d) {
     <div style="font-size:12px;color:${d.text};line-height:1.8">
       ⚾ KIA 선수 <b>안타</b> (단타·2루타·3루타)<br>
       💥 KIA 선수 <b>홈런</b><br>
+      🎯 KIA 선수 <b>볼넷</b> (사구·고의사구 포함)<br>
       <span style="font-size:11px;color:${d.sub}">※ LIVE 경기 중에만 동작해요 (30초 주기 감지)</span>
     </div>
   </div>`;
@@ -5256,9 +5257,10 @@ function _checkKiaHitNotify(relayData, away, home) {
       if (!title) return;
 
       // 안타/홈런 키워드 먼저 체크 (불필요한 연산 방지)
-      const isHR  = /홈런/.test(title);
-      const isHit = !isHR && /(1루타|안타|2루타|3루타)/.test(title);
-      if (!isHR && !isHit) return;
+      const isHR   = /홈런/.test(title);
+      const isHit  = !isHR && /(1루타|안타|2루타|3루타)/.test(title);
+      const isBB   = !isHR && !isHit && /(볼넷|사구|고의사구)/.test(title);
+      if (!isHR && !isHit && !isBB) return;
 
       // KIA 공격 여부 판별
       // 우선순위: 1) gs._inningInfo 2) relayData.inningInfo 3) 타이틀에서 직접 추출
@@ -5291,8 +5293,8 @@ function _checkKiaHitNotify(relayData, away, home) {
       _notifiedRelayKeys.add(key);
 
       // 알림 발송
-      const emoji = isHR ? '💥🏠' : '⚾';
-      const notifyTitle = isHR ? `${emoji} 홈런!` : `${emoji} 안타!`;
+      const emoji = isHR ? '💥🏠' : isBB ? '🎯' : '⚾';
+      const notifyTitle = isHR ? `${emoji} 홈런!` : isBB ? `${emoji} 볼넷!` : `${emoji} 안타!`;
       sendLocalNotify(notifyTitle, title, 'kia-hit-' + Date.now());
     });
   });
