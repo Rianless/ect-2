@@ -21,41 +21,128 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;800;900&display=swap" rel="stylesheet"/>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
+
+    /* ── 라이트 테마 (뉴모피즘) ── */
     :root{
-      --c-text:#0A0E1A;--c-sub:rgba(0,0,0,0.5);--c-muted:rgba(0,0,0,0.2);
-      --c-card:#fff;--c-card-b:rgba(0,0,0,0.1);
-      --c-bg:rgba(0,0,0,0.03);--c-bg-b:rgba(0,0,0,0.08);
-      --c-surface:#E8ECF1;
+      --c-text:#1a1f2e;
+      --c-sub:rgba(26,31,46,0.5);
+      --c-muted:rgba(26,31,46,0.25);
+      --c-surface:#e8edf5;
+      --c-card:#edf0f7;
+      --c-card-b:rgba(255,255,255,0.85);
+      --c-bg:rgba(255,255,255,0.45);
+      --c-bg-b:rgba(200,210,230,0.6);
+      --nm-shadow:6px 6px 14px rgba(166,180,200,0.7),-6px -6px 14px rgba(255,255,255,0.85);
+      --nm-shadow-sm:3px 3px 8px rgba(166,180,200,0.6),-3px -3px 8px rgba(255,255,255,0.8);
+      --nm-inset:inset 3px 3px 7px rgba(166,180,200,0.6),inset -3px -3px 7px rgba(255,255,255,0.8);
+      --glass-bg:rgba(255,255,255,0.55);
+      --glass-border:rgba(255,255,255,0.8);
+      --accent:#E31837;
+      --accent-soft:rgba(227,24,55,0.1);
     }
+
+    /* ── 다크 테마 (글라스모피즘) ── */
     body.dark{
-      --c-text:#fff;--c-sub:rgba(255,255,255,0.4);--c-muted:rgba(255,255,255,0.15);
-      --c-card:rgba(255,255,255,0.04);--c-card-b:rgba(255,255,255,0.07);
-      --c-bg:rgba(255,255,255,0.03);--c-bg-b:rgba(255,255,255,0.08);
-      --c-surface:#0A0E1A;
+      --c-text:#e8edf8;
+      --c-sub:rgba(232,237,248,0.45);
+      --c-muted:rgba(232,237,248,0.2);
+      --c-surface:#0d1117;
+      --c-card:#161b27;
+      --c-card-b:rgba(255,255,255,0.06);
+      --c-bg:rgba(255,255,255,0.04);
+      --c-bg-b:rgba(255,255,255,0.08);
+      --nm-shadow:0 8px 32px rgba(0,0,0,0.45),0 2px 8px rgba(0,0,0,0.3);
+      --nm-shadow-sm:0 4px 16px rgba(0,0,0,0.35),0 1px 4px rgba(0,0,0,0.25);
+      --nm-inset:inset 0 2px 8px rgba(0,0,0,0.4),inset 0 -1px 3px rgba(255,255,255,0.05);
+      --glass-bg:rgba(22,27,39,0.7);
+      --glass-border:rgba(255,255,255,0.08);
+      --accent:#ff3355;
+      --accent-soft:rgba(255,51,85,0.12);
     }
-    body{background:var(--c-surface);color:var(--c-text);font-family:'Noto Sans KR',sans-serif;-webkit-tap-highlight-color:transparent;overscroll-behavior:none}
-    body.dark{background:#0A0E1A;color:#fff}
+
+    body{
+      background:var(--c-surface);
+      color:var(--c-text);
+      font-family:'Noto Sans KR',sans-serif;
+      -webkit-tap-highlight-color:transparent;
+      overscroll-behavior:none;
+      transition:background 0.3s,color 0.3s;
+    }
+    /* 라이트: 뉴모피즘 배경 패턴 */
+    body:not(.dark){
+      background:linear-gradient(145deg,#dce4f0 0%,#e8edf5 40%,#dce4f0 100%);
+      min-height:100vh;
+    }
+    /* 다크: 딥 그라디언트 */
+    body.dark{
+      background:linear-gradient(145deg,#090d14 0%,#0d1117 50%,#111825 100%);
+      min-height:100vh;
+    }
+
     button{cursor:pointer;border:none;outline:none;background:none;-webkit-appearance:none}
     textarea{outline:none;font-family:'Noto Sans KR',sans-serif}
     ::-webkit-scrollbar{display:none}
     .fade{animation:fadeIn 0.3s}
-    @keyframes fadeIn{from{opacity:0}to{opacity:1}}
+    @keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
     @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
     @keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
     @keyframes slideDown{from{transform:translateY(0)}to{transform:translateY(100%)}}
-    #modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.5);backdrop-filter:blur(6px);display:none;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s}
+    @keyframes pulseRed{0%,100%{box-shadow:0 0 0 0 rgba(227,24,55,0.4)}50%{box-shadow:0 0 0 8px rgba(227,24,55,0)}}
+
+    /* ── 모달 ── */
+    #modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,0.45);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);display:none;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s}
     #modal-overlay.open{display:flex}
-    #modal-box{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;height:92vh;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;animation:slideUp 0.3s ease}
+    #modal-box{
+      width:100%;max-width:520px;height:92vh;
+      background:var(--glass-bg);
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border:1px solid var(--glass-border);
+      border-radius:26px 26px 0 0;
+      overflow-y:auto;-webkit-overflow-scrolling:touch;
+      padding-bottom:28px;
+      animation:slideUp 0.32s cubic-bezier(0.34,1.2,0.64,1);
+      box-shadow:0 -8px 40px rgba(0,0,0,0.25);
+    }
     #modal-box.closing{animation:slideDown 0.28s ease forwards}
-    body.dark #modal-box{background:#0F1525}
-    .nav{position:fixed;bottom:0;left:0;right:0;background:var(--c-card);border-top:1px solid var(--c-card-b);display:flex;padding-bottom:6px;z-index:50}
-    .nav button{flex:1;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--c-sub);font-size:9px;font-family:'Noto Sans KR',sans-serif}
-    .nav button.active{color:#E31837}
-    .nav button span.icon{font-size:18px}
-     .tab{display:none;animation:fadeIn 0.3s}
+
+    /* ── 네비바 (글라스) ── */
+    .nav{
+      position:fixed;bottom:0;left:0;right:0;
+      background:var(--glass-bg);
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border-top:1px solid var(--glass-border);
+      display:flex;padding:6px 0 calc(6px + env(safe-area-inset-bottom));
+      z-index:50;
+      box-shadow:0 -4px 24px rgba(0,0,0,0.12);
+    }
+    .nav button{
+      flex:1;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:3px;
+      color:var(--c-sub);font-size:9px;font-family:'Noto Sans KR',sans-serif;
+      transition:color 0.2s,transform 0.15s;
+    }
+    .nav button.active{color:var(--accent)}
+    .nav button.active span.icon{transform:scale(1.15)}
+    .nav button span.icon{font-size:20px;transition:transform 0.2s}
+
+    .tab{display:none;animation:fadeIn 0.25s}
     .tab.active{display:block}
-    .card{background:var(--c-card);border:1px solid var(--c-card-b);border-radius:14px;padding:12px 14px;cursor:pointer;margin-bottom:8px}
-    .card.kia{background:rgba(227,24,55,0.08);border-color:rgba(227,24,55,0.25)}
+
+    /* ── 카드 (뉴모피즘 라이트 / 글라스 다크) ── */
+    .card{
+      background:var(--c-card);
+      border:1px solid var(--glass-border);
+      border-radius:18px;
+      padding:14px 16px;
+      cursor:pointer;
+      margin-bottom:10px;
+      box-shadow:var(--nm-shadow-sm);
+      transition:transform 0.15s,box-shadow 0.15s;
+    }
+    .card:active{transform:scale(0.985);box-shadow:var(--nm-inset)}
+    .card.kia{
+      background:linear-gradient(135deg,rgba(227,24,55,0.09),rgba(227,24,55,0.04));
+      border-color:rgba(227,24,55,0.22);
+    }
     /* 영수증 열전사 프린터 스타일 */
     @font-face{font-family:'Receipt';src:local('Courier New'),local('Courier'),local('monospace')}
     .rec-print-wrap{position:relative;margin-bottom:10px}
@@ -89,21 +176,21 @@
     .rec-print-wrap.editing .rec-print-display{opacity:0;pointer-events:none}
     .rec-print-wrap.editing .rec-print-textarea{opacity:1}
     .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
-    .cal-sticky{position:sticky;top:0;z-index:10;background:inherit;}
+    .cal-sticky{position:sticky;top:0;z-index:10;background:inherit;backdrop-filter:blur(8px);}
     .cal-week-only .cal-grid#cal-grid-body .cal-cell:not(.current-week){display:none}
     .cal-cell{min-height:68px;padding:3px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:opacity 0.25s ease,max-height 0.3s ease,padding 0.3s ease,min-height 0.3s ease}
-    .cal-cell.sel{background:rgba(227,24,55,0.15)}
+    .cal-cell.sel{background:rgba(227,24,55,0.12);border-radius:10px}
     .cal-cell.past{opacity:0.4}
     .cal-day{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:500;margin-top:2px;border:2px solid transparent}
     .cal-day.sel{color:#E31837;border-color:#E31837}
-    .cal-day.today{background:rgba(0,0,0,0.12)}
+    .cal-day.today{background:rgba(0,0,0,0.1);box-shadow:inset 2px 2px 4px rgba(0,0,0,0.1)}
     body.dark .cal-day.today{background:rgba(255,255,255,0.18)}
     .cal-day.sat{color:#4FC3F7}
     .cal-day.sun{color:#EF5350}
     .inn-table{width:100%;border-collapse:collapse;font-size:12px;min-width:300px}
     .inn-table td{text-align:center;padding:6px 3px}
     .inn-table .team-cell{text-align:left;padding:8px 6px;font-size:11px;font-weight:700}
-    .tag-kia{font-size:9px;background:#E31837;color:#fff;border-radius:4px;padding:1px 5px;font-weight:700}
+    .tag-kia{font-size:9px;background:linear-gradient(135deg,#E31837,#c0102a);color:#fff;border-radius:6px;padding:2px 6px;font-weight:700;box-shadow:0 2px 6px rgba(227,24,55,0.3)}
     .tag-lu{font-size:9px;background:rgba(0,230,118,0.15);color:#00E676;border-radius:4px;padding:1px 5px;font-weight:700;border:1px solid rgba(0,230,118,0.3)}
     /* 사진 전체화면 뷰어 */
     #photo-viewer{position:fixed;inset:0;z-index:999;background:rgba(0,0,0,0.95);display:none;align-items:center;justify-content:center;flex-direction:column;animation:fadeIn 0.2s}
@@ -118,18 +205,18 @@
     /* 중계 전체화면 패널 */
     #relay-panel{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s}
     #relay-panel.open{display:flex}
-    #relay-box{width:100%;max-width:520px;height:95vh;background:#fff;border-radius:22px 22px 0 0;display:flex;flex-direction:column;animation:slideUp 0.3s ease;box-shadow:0 -4px 16px rgba(0,0,0,0.15);touch-action:pan-y}
+    #relay-box{width:100%;max-width:520px;height:95vh;background:rgba(240,244,252,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.85);border-radius:26px 26px 0 0;display:flex;flex-direction:column;animation:slideUp 0.32s cubic-bezier(0.34,1.2,0.64,1);box-shadow:0 -8px 40px rgba(0,0,0,0.18);touch-action:pan-y}
     #relay-box.closing{animation:slideDown 0.28s ease forwards}
     #wallpaper-box.closing{animation:slideDown 0.28s ease forwards}
-    body.dark #relay-box{background:#0F1525;color:#fff}
+    body.dark #relay-box{background:rgba(14,19,30,0.92);backdrop-filter:blur(20px);color:#fff}
     #relay-header{padding:14px 18px 10px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0}
     body.dark #relay-header{border-color:rgba(255,255,255,0.08)}
     #relay-title{font-size:15px;font-weight:900;color:#0A0E1A}
     body.dark #relay-title{color:#fff}
     #relay-sub{font-size:11px;color:rgba(0,0,0,0.45);margin-top:2px}
     body.dark #relay-sub{color:rgba(255,255,255,0.5)}
-    #relay-diamond{flex-shrink:0;padding:0;background:#f8f8f8;border-bottom:1px solid rgba(0,0,0,0.08)}
-    body.dark #relay-diamond{background:#111827;border-color:rgba(255,255,255,0.08)}
+    #relay-diamond{flex-shrink:0;padding:0;background:rgba(230,236,248,0.7);border-bottom:1px solid rgba(200,215,235,0.5)}
+    body.dark #relay-diamond{background:rgba(15,22,38,0.6);border-color:rgba(255,255,255,0.06)}
     #relay-inn-tabs{display:flex;overflow-x:auto;padding:8px 14px 0;gap:6px;flex-shrink:0;border-bottom:1px solid rgba(0,0,0,0.07)}
     body.dark #relay-inn-tabs{border-color:rgba(255,255,255,0.08)}
     #relay-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 20px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
@@ -138,18 +225,18 @@
     /* 티켓팅 바텀시트 */
     #ticket-panel{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s}
     #ticket-panel.open{display:flex}
-    #ticket-box{width:100%;max-width:520px;background:#fff;border-radius:22px 22px 0 0;padding:0 0 32px;animation:slideUp 0.3s ease;box-shadow:0 -4px 20px rgba(0,0,0,0.15)}
+    #ticket-box{width:100%;max-width:520px;background:rgba(240,244,252,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.85);border-radius:26px 26px 0 0;padding:0 0 32px;animation:slideUp 0.32s cubic-bezier(0.34,1.2,0.64,1);box-shadow:0 -8px 40px rgba(0,0,0,0.18)}
     #ticket-box.closing{animation:slideDown 0.28s ease forwards}
-    body.dark #ticket-box{background:#0F1525}
-    .ticket-link-btn{display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border-radius:12px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;text-decoration:none;border:1.5px solid transparent;transition:opacity 0.15s}
+    body.dark #ticket-box{background:rgba(14,19,30,0.92);border-color:rgba(255,255,255,0.07)}
+    .ticket-link-btn{display:flex;align-items:center;gap:10px;width:100%;padding:13px 18px;border-radius:14px;font-size:14px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer;text-decoration:none;border:1.5px solid transparent;transition:all 0.15s;box-shadow:2px 2px 8px rgba(166,180,200,0.4),-2px -2px 8px rgba(255,255,255,0.7)}
     .ticket-link-btn:active{opacity:0.7}
   </style>
 
 </head>
 <body>
+<div id="header" style="position:fixed;top:0;left:0;right:0;z-index:40;pointer-events:none"></div>
 <div id="app">
-  <div id="header"></div>
-  <div id="content" style="max-width:600px;margin:0 auto;padding:14px 16px 70px"></div>
+  <div id="content" style="max-width:600px;margin:0 auto;padding:74px 16px 80px"></div>
   <nav class="nav" id="nav"></nav>
 </div>
 <div id="modal-overlay">
@@ -460,13 +547,27 @@ const splitTeamName = team => {
   return { top: parts[0] || full, bottom: parts.slice(1).join(' ') || '' };
 };
 const D = () => state.dark ? {
-  text:'#fff',sub:'rgba(255,255,255,0.4)',muted:'rgba(255,255,255,0.15)',
-  card:'rgba(255,255,255,0.04)',cardB:'rgba(255,255,255,0.07)',
-  bg:'rgba(255,255,255,0.03)',bgB:'rgba(255,255,255,0.08)',
+  text:'#e8edf8',
+  sub:'rgba(232,237,248,0.45)',
+  muted:'rgba(232,237,248,0.2)',
+  card:'rgba(22,27,39,0.75)',
+  cardB:'rgba(255,255,255,0.07)',
+  bg:'rgba(255,255,255,0.04)',
+  bgB:'rgba(255,255,255,0.08)',
+  shadow:'0 4px 20px rgba(0,0,0,0.35)',
+  shadowSm:'0 2px 10px rgba(0,0,0,0.25)',
+  inset:'inset 0 2px 8px rgba(0,0,0,0.35)',
 } : {
-  text:'#0A0E1A',sub:'rgba(0,0,0,0.5)',muted:'rgba(0,0,0,0.2)',
-  card:'#fff',cardB:'rgba(0,0,0,0.1)',
-  bg:'rgba(0,0,0,0.03)',bgB:'rgba(0,0,0,0.08)',
+  text:'#1a1f2e',
+  sub:'rgba(26,31,46,0.5)',
+  muted:'rgba(26,31,46,0.25)',
+  card:'#edf0f7',
+  cardB:'rgba(255,255,255,0.85)',
+  bg:'rgba(255,255,255,0.5)',
+  bgB:'rgba(200,210,230,0.55)',
+  shadow:'5px 5px 12px rgba(166,180,200,0.65),-5px -5px 12px rgba(255,255,255,0.9)',
+  shadowSm:'3px 3px 8px rgba(166,180,200,0.55),-3px -3px 8px rgba(255,255,255,0.85)',
+  inset:'inset 3px 3px 7px rgba(166,180,200,0.55),inset -3px -3px 7px rgba(255,255,255,0.8)',
 };
 
 // render 최적화: 탭/다크모드 변경 없으면 헤더·네비 스킵
@@ -490,42 +591,84 @@ function render() {
 }
 
 function renderHeader(d) {
+  const dark = state.dark;
   document.getElementById('header').innerHTML = `
-    <div style="background:${state.dark?'linear-gradient(180deg,#111827 0%,transparent 100%)':'linear-gradient(180deg,#fff 0%,transparent 100%)'};padding:18px 16px 14px">
-      <div style="max-width:600px;margin:0 auto">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:0">
-          <div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:24px">🐯</span>
+    <div style="padding:12px 16px;">
+      <div style="max-width:600px;margin:0 auto;pointer-events:auto">
+        <div style="
+          display:flex;justify-content:space-between;align-items:center;
+          padding:10px 14px;
+          background:${dark ? 'rgba(22,27,39,0.85)' : 'rgba(255,255,255,0.75)'};
+          backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+          border:1px solid ${dark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.95)'};
+          border-radius:20px;
+          box-shadow:${dark
+            ? '0 4px 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)'
+            : '4px 4px 12px rgba(166,180,200,0.5),-4px -4px 12px rgba(255,255,255,0.95),inset 0 1px 0 rgba(255,255,255,1)'};
+        ">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div style="
+              width:38px;height:38px;border-radius:12px;
+              background:linear-gradient(135deg,#E31837,#a01025);
+              display:flex;align-items:center;justify-content:center;
+              box-shadow:0 4px 12px rgba(227,24,55,0.4),inset 0 1px 0 rgba(255,255,255,0.2);
+              font-size:20px;flex-shrink:0;
+            ">🐯</div>
             <div>
-              <div style="font-size:19px;font-weight:900;color:${d.text}">KBO 대시보드</div>
-              <div style="font-size:10px;font-weight:700"><span style="color:#E31837">KIA 타이거즈</span><span style="color:${d.sub}"> · 2026 개막 ⚾ ${getDday()}</span></div>
+              <div style="font-size:16px;font-weight:900;color:${d.text};letter-spacing:-0.3px;line-height:1.1">KBO 대시보드</div>
+              <div style="font-size:10px;font-weight:600;margin-top:1px">
+                <span style="color:var(--accent)">KIA</span>
+                <span style="color:${d.sub}"> · ${getDday()}</span>
+              </div>
             </div>
           </div>
-          <div style="text-align:right;display:flex;flex-direction:column;align-items:flex-end;gap:6px">
-            <div data-clock style="font-size:15px;font-weight:700;color:${d.text}">${state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+            <div data-clock style="font-size:14px;font-weight:800;color:${d.text};letter-spacing:0.5px;font-variant-numeric:tabular-nums">${state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
             <div style="display:flex;align-items:center;gap:6px">
-              <div style="font-size:10px;color:${d.sub}">${state.clock.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})}</div>
-              <button onclick="toggleDark()" style="background:${state.dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.08)'};border-radius:20px;padding:3px 8px;font-size:13px">${state.dark?'☀️':'🌙'}</button>
+              <span style="font-size:9px;color:${d.sub};font-weight:600">${state.clock.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})}</span>
+              <button onclick="toggleDark()" style="
+                width:28px;height:28px;border-radius:8px;
+                background:${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+                border:1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'};
+                font-size:13px;display:flex;align-items:center;justify-content:center;
+                box-shadow:${dark ? 'none' : '2px 2px 5px rgba(166,180,200,0.5),-2px -2px 5px rgba(255,255,255,0.8)'};
+              ">${dark ? '☀️' : '🌙'}</button>
             </div>
           </div>
         </div>
-
       </div>
     </div>`;
 }
 
 function renderNav() {
+  const dark = state.dark;
   const tabDefs=[
-    {id:'cal', icon:'📅', label:'일정'},
+    {id:'cal',   icon:'⚾', label:'일정'},
     {id:'stand', icon:'📊', label:'기록'},
-    {id:'my', icon:'👤', label:'마이페이지'},
+    {id:'my',    icon:'🐯', label:'마이페이지'},
   ];
-  document.getElementById('nav').innerHTML = tabDefs.map(t =>
-    `<button class="${state.tab===t.id?'active':''}" onclick="setTab('${t.id}')" style="flex:1;padding:4px 0;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:9px;color:${state.tab===t.id?'#E31837':'rgba(0,0,0,0.4)'}">
-      <span class="icon" style="font-size:18px;opacity:${state.tab===t.id?'1':'0.5'}">${t.icon}</span>
-      <span>${t.label}</span>
-    </button>`
-  ).join('');
+  document.getElementById('nav').innerHTML = tabDefs.map(t => {
+    const active = state.tab === t.id;
+    return `<button class="${active?'active':''}" onclick="setTab('${t.id}')" style="flex:1;padding:6px 0 4px;display:flex;flex-direction:column;align-items:center;gap:3px;border:none;background:none;cursor:pointer;font-family:'Noto Sans KR',sans-serif;font-size:9px;color:${active?'var(--accent)':dark?'rgba(232,237,248,0.35)':'rgba(26,31,46,0.35)'}">
+      <div style="
+        width:36px;height:36px;border-radius:12px;
+        display:flex;align-items:center;justify-content:center;
+        font-size:18px;
+        transition:all 0.2s;
+        background:${active
+          ? (dark
+              ? 'linear-gradient(135deg,rgba(255,51,85,0.25),rgba(255,51,85,0.12))'
+              : 'linear-gradient(135deg,rgba(227,24,55,0.15),rgba(227,24,55,0.07))')
+          : 'transparent'};
+        box-shadow:${active
+          ? (dark
+              ? '0 2px 10px rgba(255,51,85,0.2),inset 0 1px 0 rgba(255,255,255,0.05)'
+              : '3px 3px 8px rgba(166,180,200,0.55),-3px -3px 8px rgba(255,255,255,0.85)')
+          : 'none'};
+      ">${t.icon}</div>
+      <span style="font-weight:${active?700:500}">${t.label}</span>
+    </button>`;
+  }).join('');
 }
 
 function renderContent(d) {
@@ -728,7 +871,7 @@ function renderCalSplit(d) {
       rightContent = '';
     }
 
-    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837,#c0102a);border-radius:16px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(227,24,55,0.25)">
+    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837 0%,#c0102a 60%,#8b0018 100%);border-radius:22px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 8px 28px rgba(227,24,55,0.45),0 2px 8px rgba(227,24,55,0.3),inset 0 1px 0 rgba(255,255,255,0.15)">
       ${logo('KIA',44)}
       <div style="flex:1;min-width:0">
         <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;margin-bottom:3px">${subLabel}</div>
@@ -740,8 +883,57 @@ function renderCalSplit(d) {
     </div>`;
   }
 
+  // 시즌 카드 - 배너와 같은 패딩/라운드/높이로 맞춤
+  const { wins, losses, draws, pct, streak, streakType } = getKiaSeasonStats();
+  const hasRecord = wins + losses + draws > 0;
+  const streakLabel = streakType === 'W' ? `${streak}연승 🔥`
+    : streakType === 'L' ? `${streak}연패 💧`
+    : streakType === 'D' ? `${streak}연속무` : '';
+  const streakColor = streakType === 'W' ? '#E31837' : streakType === 'L' ? '#3B9EF5' : '#FF9500';
+
+  const seasonCardHtml = hasRecord ? `<div style="
+      flex:1;min-width:0;
+      background:${state.dark
+        ? 'linear-gradient(135deg,rgba(22,27,39,0.85),rgba(16,21,34,0.9))'
+        : 'linear-gradient(135deg,rgba(237,240,247,1),rgba(225,230,242,1))'};
+      border:1px solid ${state.dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.92)'};
+      border-radius:22px;
+      padding:14px 16px;
+      display:flex;flex-direction:column;justify-content:center;gap:6px;
+      box-shadow:${state.dark
+        ? '0 4px 20px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.04)'
+        : '5px 5px 14px rgba(166,180,200,0.6),-5px -5px 14px rgba(255,255,255,0.95)'};
+    ">
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <div style="text-align:center">
+          <span style="font-size:22px;font-weight:900;color:#E31837">${wins}</span>
+          <span style="font-size:9px;color:${d.sub};font-weight:700;margin-left:2px">승</span>
+        </div>
+        <span style="font-size:11px;color:${d.muted}">·</span>
+        <div style="text-align:center">
+          <span style="font-size:22px;font-weight:900;color:${d.text}">${losses}</span>
+          <span style="font-size:9px;color:${d.sub};font-weight:700;margin-left:2px">패</span>
+        </div>
+        ${draws > 0 ? `<span style="font-size:11px;color:${d.muted}">·</span>
+        <div>
+          <span style="font-size:22px;font-weight:900;color:#FF9500">${draws}</span>
+          <span style="font-size:9px;color:${d.sub};font-weight:700;margin-left:2px">무</span>
+        </div>` : ''}
+      </div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="font-size:11px;color:${d.sub}">승률 <span style="font-size:13px;font-weight:900;color:${d.text}">${pct}</span></div>
+        ${streakLabel ? `<div style="font-size:11px;font-weight:900;color:${streakColor}">${streakLabel}</div>` : ''}
+      </div>
+    </div>` : '';
+
+  // 배너와 시즌 카드를 가로로 나란히
+  const topRowHtml = nextBannerHtml ? `<div style="display:flex;gap:8px;margin-bottom:14px;align-items:stretch">
+    <div style="flex:1.4;min-width:0">${nextBannerHtml.replace('margin-bottom:14px;','')}</div>
+    ${seasonCardHtml}
+  </div>` : (seasonCardHtml ? `<div style="margin-bottom:14px">${seasonCardHtml}</div>` : '');
+
   const calHtml = `
-    ${nextBannerHtml}
+    ${topRowHtml}
     <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:12px;height:36px">
       <div style="position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:4px;pointer-events:none">
         <button onclick="prevMo()" style="color:#E31837;font-size:22px;padding:4px 8px;line-height:1;pointer-events:auto">‹</button>
@@ -750,7 +942,7 @@ function renderCalSplit(d) {
       </div>
       <button onclick="goToday()" style="position:absolute;right:0;font-size:11px;font-weight:700;color:#E31837;border:1.5px solid #E31837;border-radius:8px;padding:4px 10px;white-space:nowrap">오늘</button>
     </div>
-    <div id="cal-wrap" style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;overflow:hidden;margin-bottom:16px">
+    <div id="cal-wrap" style="background:${d.dark?'rgba(22,27,39,0.6)':d.bg};border:1px solid ${d.cardB};border-radius:20px;overflow:hidden;margin-bottom:16px;box-shadow:${d.shadowSm}">
       <div class="cal-grid" style="border-bottom:1px solid ${d.bgB};background:${d.bg}">
         ${WDAYS.map((w,i)=>`<div style="text-align:center;padding:8px 0;font-size:11px;font-weight:700;color:${i===0?'#EF5350':i===6?'#4FC3F7':d.sub}">${w}</div>`).join('')}
       </div>
@@ -804,7 +996,7 @@ function renderSeasonCard(d) {
     : streakType === 'D' ? `${streak}연속무` : '';
   const streakColor = streakType === 'W' ? '#E31837' : streakType === 'L' ? '#3B9EF5' : '#FF9500';
 
-  return `<div style="background:linear-gradient(135deg,rgba(227,24,55,0.08),rgba(227,24,55,0.03));border:1px solid rgba(227,24,55,0.2);border-radius:14px;padding:12px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between">
+  return `<div style="background:${state.dark?'linear-gradient(135deg,rgba(255,51,85,0.12),rgba(255,51,85,0.06))':'linear-gradient(135deg,rgba(237,240,247,1),rgba(227,232,244,1))'};border:1px solid ${state.dark?'rgba(255,51,85,0.2)':'rgba(255,255,255,0.9)'};border-radius:20px;padding:14px 18px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;box-shadow:${state.dark?'0 4px 20px rgba(0,0,0,0.3),inset 0 1px 0 rgba(255,255,255,0.04)':'5px 5px 14px rgba(166,180,200,0.6),-5px -5px 14px rgba(255,255,255,0.95),inset 0 1px 0 rgba(255,255,255,0.8)'}">
     <div style="display:flex;align-items:center;gap:10px">
       <div style="text-align:center">
         <div style="font-size:20px;font-weight:900;color:#E31837">${wins}</div>
@@ -829,7 +1021,8 @@ function renderSeasonCard(d) {
 }
 function renderCal(d) {
   const {calHtml, listHtml} = renderCalSplit(d);
-  return `${renderSeasonCard(d)}<div id="cal-section">${calHtml}</div>
+  // 시즌 카드는 calHtml 안의 배너 옆에 같이 렌더됨 (renderCalSplit에서 처리)
+  return `<div id="cal-section">${calHtml}</div>
     <hr id="cal-divider" style="display:none;border:none;border-top:1.5px solid rgba(127,127,127,0.2);margin:0 0 12px"/>
     <div id="list-section">${listHtml}</div>`;
 }
@@ -2190,7 +2383,7 @@ function renderMyPage(d) {
     {id:'wallpaper', label:'🖼️ 배경화면 만들기', fn: renderWallpaperSection},
   ];
 
-  const cardStyle = `background:${d.card};border:1.5px solid ${d.cardB};border-radius:16px`;
+  const cardStyle = `background:${d.card};border:1px solid ${d.cardB};border-radius:20px;box-shadow:${d.shadowSm}`;
 
   // 프로필 카드
   let html = `<div style="${cardStyle};padding:16px;margin-bottom:10px;display:flex;align-items:center;gap:14px">
@@ -2317,7 +2510,7 @@ function renderStandRows(d, rows, footerLabel) {
       <div style="font-size:12px;font-weight:700;color:${d.sub}">2026 KBO 실시간 순위</div>
       <button onclick="_standCache=null;fetchStanding().then(r=>{if(r){render();}});return false" style="font-size:10px;color:#E31837;border:1px solid rgba(227,24,55,0.3);border-radius:6px;padding:2px 8px;background:transparent;cursor:pointer">새로고침</button>
     </div>
-    <div style="background:${d.bg};border:1px solid ${d.cardB};border-radius:14px;overflow:hidden">
+    <div style="background:${d.card};border:1px solid ${d.cardB};border-radius:18px;overflow:hidden;box-shadow:${d.shadowSm}">
       <div style="display:grid;grid-template-columns:36px 1fr 36px 36px 36px 48px;padding:8px 12px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
         <span>순위</span><span>팀</span><span style="text-align:center">승</span><span style="text-align:center">패</span><span style="text-align:center">무</span><span style="text-align:center">승률</span>
       </div>
