@@ -821,21 +821,31 @@ function renderCalSplit(d) {
       rightContent = `<div style="font-size:22px;font-weight:900;color:#fff;text-align:right">${kScore2}<span style="font-size:14px;opacity:0.7;margin:0 4px">:</span>${oScore2}</div>`;
     } else {
       // 예정 경기
-      subLabel = isToday2 ? `${dateDisp} ${bannerGame.time} 오늘 경기 예정` : `${dateDisp} ${bannerGame.time} 다음 경기 예정`;
+      subLabel = isToday2 ? `${dateDisp} ${bannerGame.time} 오늘` : `${dateDisp} ${bannerGame.time} 예정`;
       const diffTxt = !isToday2 && diffDays>0 ? `<span style="font-size:15px;font-weight:900;color:rgba(255,255,255,0.85);margin-left:6px">${diffDays}일 후</span>` : '';
       mainContent = `<div style="font-size:17px;font-weight:900;color:#fff">vs ${T[opp2]?.name||opp2}${diffTxt}</div>`;
       rightContent = '';
     }
 
-    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837 0%,#c0102a 60%,#8b0018 100%);border-radius:22px;padding:14px 16px;margin-bottom:0;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 8px 28px rgba(227,24,55,0.45),0 2px 8px rgba(227,24,55,0.3),inset 0 1px 0 rgba(255,255,255,0.15);overflow:hidden">
-      ${logo('KIA',44)}
-      <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;margin-bottom:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${subLabel}</div>
-        ${mainContent}
-        <div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:3px;white-space:nowrap">${stadDisp ? stadDisp.slice(3) : ''} · ${isHome2?'홈':'원정'}</div>
+    nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837 0%,#c0102a 60%,#8b0018 100%);border-radius:22px;padding:14px 12px;margin-bottom:0;cursor:pointer;box-shadow:0 8px 28px rgba(227,24,55,0.45),inset 0 1px 0 rgba(255,255,255,0.15);overflow:hidden;display:flex;flex-direction:column;gap:8px">
+      <div style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${subLabel}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          ${logo('KIA',28)}
+          <span style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.85);white-space:nowrap">KIA</span>
+        </div>
+        <div style="flex-shrink:0;text-align:center;padding:0 4px">
+          ${rightContent
+            ? `<div style="font-size:19px;font-weight:900;color:#fff;white-space:nowrap;line-height:1">${kScore2}<span style="font-size:11px;opacity:0.65;margin:0 3px">:</span>${oScore2}</div>`
+            : `<div style="font-size:12px;font-weight:900;color:rgba(255,255,255,0.85);white-space:nowrap">VS</div>`
+          }
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1">
+          ${logo(opp2,28)}
+          <span style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.85);white-space:nowrap">${opp2}</span>
+        </div>
       </div>
-      ${rightContent ? `<div>${rightContent}</div>` : ''}
-      ${logo(opp2,44)}
+      <div style="font-size:9px;color:rgba(255,255,255,0.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${stadDisp?stadDisp.slice(3):''} · ${isHome2?'홈':'원정'}</div>
     </div>`;
   }
 
@@ -848,41 +858,47 @@ function renderCalSplit(d) {
   const streakColor = streakType === 'W' ? '#E31837' : streakType === 'L' ? '#3B9EF5' : '#FF9500';
 
   const seasonCardHtml = hasRecord ? `<div style="
+      height:100%;min-height:130px;
       background:${state.dark
         ? 'linear-gradient(135deg,rgba(22,27,39,0.85),rgba(16,21,34,0.9))'
         : 'linear-gradient(135deg,rgba(237,240,247,1),rgba(225,230,242,1))'};
       border:1px solid ${state.dark ? 'rgba(255,255,255,0.07)' : 'rgba(255,255,255,0.92)'};
       border-radius:22px;
-      padding:14px 16px;
-      display:flex;flex-direction:column;justify-content:center;gap:6px;
+      padding:12px 14px;
+      display:flex;flex-direction:column;justify-content:space-between;
       box-shadow:${state.dark
         ? '0 4px 20px rgba(0,0,0,0.35),inset 0 1px 0 rgba(255,255,255,0.04)'
         : '5px 5px 14px rgba(166,180,200,0.6),-5px -5px 14px rgba(255,255,255,0.95)'};
     ">
-      <div style="display:flex;align-items:baseline;gap:8px">
+      <!-- 승/패/무 -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px">
         <div style="text-align:center">
-          <span style="font-size:22px;font-weight:900;color:#E31837">${wins}</span>
-          <span style="font-size:9px;color:${d.sub};font-weight:700;margin-left:2px">승</span>
+          <div style="font-size:22px;font-weight:900;color:#E31837;line-height:1">${wins}</div>
+          <div style="font-size:9px;color:${d.sub};font-weight:700;margin-top:1px">승</div>
         </div>
-        <span style="font-size:11px;color:${d.muted}">·</span>
+        <div style="font-size:10px;color:${d.muted}">·</div>
         <div style="text-align:center">
-          <span style="font-size:22px;font-weight:900;color:${d.text}">${losses}</span>
-          <span style="font-size:9px;color:${d.sub};font-weight:700;margin-left:2px">패</span>
+          <div style="font-size:22px;font-weight:900;color:${d.text};line-height:1">${losses}</div>
+          <div style="font-size:9px;color:${d.sub};font-weight:700;margin-top:1px">패</div>
         </div>
-        ${draws > 0 ? `<span style="font-size:11px;color:${d.muted}">·</span>
-        <div>
-          <span style="font-size:22px;font-weight:900;color:#FF9500">${draws}</span>
-          <span style="font-size:9px;color:${d.sub};font-weight:700;margin-left:2px">무</span>
+        ${draws > 0 ? `<div style="font-size:10px;color:${d.muted}">·</div>
+        <div style="text-align:center">
+          <div style="font-size:22px;font-weight:900;color:#FF9500;line-height:1">${draws}</div>
+          <div style="font-size:9px;color:${d.sub};font-weight:700;margin-top:1px">무</div>
         </div>` : ''}
       </div>
-      <div style="display:flex;align-items:center;justify-content:space-between">
-        <div style="font-size:11px;color:${d.sub}">승률 <span style="font-size:13px;font-weight:900;color:${d.text}">${pct}</span></div>
-        ${streakLabel ? `<div style="font-size:11px;font-weight:900;color:${streakColor}">${streakLabel}</div>` : ''}
+      <!-- 승률 + 스트릭 -->
+      <div style="border-top:1px solid ${state.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)'};padding-top:8px">
+        <div style="font-size:10px;color:${d.sub};text-align:center">승률 <span style="font-size:13px;font-weight:900;color:${d.text}">${pct}</span></div>
+        ${streakLabel ? `<div style="font-size:11px;font-weight:900;color:${streakColor};text-align:center;margin-top:4px">${streakLabel}</div>` : ''}
       </div>
     </div>` : '';
 
-  // 배너 위, 시즌 카드 아래 세로 배치
-  const topRowHtml = `${nextBannerHtml ? nextBannerHtml + '<div style="height:10px"></div>' : ''}${seasonCardHtml ? seasonCardHtml + '<div style="height:14px"></div>' : ''}`;
+  // 배너(좌) + 시즌카드(우) 가로 배치
+  const topRowHtml = `<div style="display:flex;gap:10px;margin-bottom:14px;align-items:stretch">
+    ${nextBannerHtml ? `<div style="flex:1.2;min-width:0">${nextBannerHtml}</div>` : ''}
+    ${seasonCardHtml ? `<div style="flex:1;min-width:0">${seasonCardHtml}</div>` : ''}
+  </div>`;
 
   const calHtml = `
     ${topRowHtml}
