@@ -2318,11 +2318,11 @@ function renderStandRows(d, rows, footerLabel) {
       <button onclick="_standCache=null;fetchStanding().then(r=>{if(r){render();}});return false" style="font-size:10px;color:#E31837;border:1px solid rgba(227,24,55,0.3);border-radius:6px;padding:2px 8px;background:transparent;cursor:pointer">새로고침</button>
     </div>
     <div style="background:${d.bg};border:1px solid ${d.cardB};border-radius:14px;overflow:hidden">
-      <div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 42px;padding:8px 12px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
-        <span>#</span><span>팀</span><span style="text-align:center">승</span><span style="text-align:center">패</span><span style="text-align:center">무</span><span style="text-align:right">승률</span>
+      <div style="display:grid;grid-template-columns:36px 1fr 36px 36px 36px 48px;padding:8px 12px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
+        <span>순위</span><span>팀</span><span style="text-align:center">승</span><span style="text-align:center">패</span><span style="text-align:center">무</span><span style="text-align:center">승률</span>
       </div>
       ${rows.map((row,i)=>`
-        <div style="display:grid;grid-template-columns:24px 1fr 28px 28px 28px 42px;padding:10px 12px;border-bottom:${i<rows.length-1?`1px solid ${d.cardB}`:'none'};background:${row.tkey==='KIA'?'rgba(227,24,55,0.07)':'transparent'};align-items:center">
+        <div style="display:grid;grid-template-columns:36px 1fr 36px 36px 36px 48px;padding:10px 12px;border-bottom:${i<rows.length-1?`1px solid ${d.cardB}`:'none'};background:${row.tkey==='KIA'?'rgba(227,24,55,0.07)':'transparent'};align-items:center">
           <span style="font-size:13px;font-weight:800;color:${row.rank===1?'#FFD700':row.rank===2?'#C0C0C0':row.rank===3?'#CD7F32':d.sub}">${row.rank}</span>
           <div style="display:flex;align-items:center;gap:6px">
             ${logo(row.tkey,22)}
@@ -2331,7 +2331,7 @@ function renderStandRows(d, rows, footerLabel) {
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.win}</span>
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.lose}</span>
           <span style="font-size:12px;text-align:center;color:${d.sub}">${row.draw}</span>
-          <span style="font-size:11px;text-align:right;color:${d.sub}">${typeof row.pct==='number'?row.pct.toFixed(3):row.pct}</span>
+          <span style="font-size:11px;text-align:center;color:${d.sub}">${typeof row.pct==='number'?row.pct.toFixed(3):row.pct}</span>
         </div>`).join('')}
     </div>
     <div style="font-size:10px;color:${d.muted};text-align:right;margin-top:6px">${footerLabel}</div>
