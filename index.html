@@ -236,7 +236,7 @@
 <body>
 <div id="header" style="position:fixed;top:0;left:0;right:0;z-index:40;pointer-events:none"></div>
 <div id="app">
-  <div id="content" style="max-width:600px;margin:0 auto;padding:74px 16px 80px"></div>
+  <div id="content" style="max-width:600px;margin:0 auto;padding:82px 16px 80px"></div>
   <nav class="nav" id="nav"></nav>
 </div>
 <div id="modal-overlay">
@@ -593,7 +593,7 @@ function render() {
 function renderHeader(d) {
   const dark = state.dark;
   document.getElementById('header').innerHTML = `
-    <div style="padding:12px 16px;">
+    <div style="padding:10px 16px 0;">
       <div style="max-width:600px;margin:0 auto;pointer-events:auto">
         <div style="
           display:flex;justify-content:space-between;align-items:center;
@@ -638,6 +638,12 @@ function renderHeader(d) {
         </div>
       </div>
     </div>`;
+  // 헤더 실제 높이만큼 content에 여백 적용
+  requestAnimationFrame(() => {
+    const h = document.getElementById('header');
+    const c = document.getElementById('content');
+    if (h && c) c.style.paddingTop = (h.offsetHeight + 8) + 'px';
+  });
 }
 
 function renderNav() {
