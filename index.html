@@ -234,9 +234,9 @@
 
 </head>
 <body>
-<div id="header" style="position:fixed;top:0;left:0;right:0;z-index:40;pointer-events:none"></div>
+
 <div id="app">
-  <div id="content" style="max-width:600px;margin:0 auto;padding:82px 16px 80px"></div>
+  <div id="content" style="max-width:600px;margin:0 auto;padding:14px 16px 80px"></div>
   <nav class="nav" id="nav"></nav>
 </div>
 <div id="modal-overlay">
@@ -582,70 +582,20 @@ function render() {
     _renderState.tab  = state.tab;
     _renderState.dark = state.dark;
   } else {
-    // 시계만 빠르게 업데이트
-    const clockEl = document.querySelector('#header [data-clock]');
-    if (clockEl) clockEl.textContent = state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    // 일정 탭이면 콘텐츠 내 시계 업데이트 (전체 재렌더 대신)
+    if (state.tab === 'cal') {
+      const clockEl = document.querySelector('#content [data-clock]');
+      if (clockEl) {
+        clockEl.textContent = state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+        return; // 시계만 업데이트하고 나머지 스킵
+      }
+    }
   }
   renderContent(d);
   document.dispatchEvent(new Event('renderDone'));
 }
 
-function renderHeader(d) {
-  const dark = state.dark;
-  document.getElementById('header').innerHTML = `
-    <div style="padding:10px 16px 0;">
-      <div style="max-width:600px;margin:0 auto;pointer-events:auto">
-        <div style="
-          display:flex;justify-content:space-between;align-items:center;
-          padding:10px 14px;
-          background:${dark ? 'rgba(22,27,39,0.85)' : 'rgba(255,255,255,0.75)'};
-          backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
-          border:1px solid ${dark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.95)'};
-          border-radius:20px;
-          box-shadow:${dark
-            ? '0 4px 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)'
-            : '4px 4px 12px rgba(166,180,200,0.5),-4px -4px 12px rgba(255,255,255,0.95),inset 0 1px 0 rgba(255,255,255,1)'};
-        ">
-          <div style="display:flex;align-items:center;gap:10px">
-            <div style="
-              width:38px;height:38px;border-radius:12px;
-              background:linear-gradient(135deg,#E31837,#a01025);
-              display:flex;align-items:center;justify-content:center;
-              box-shadow:0 4px 12px rgba(227,24,55,0.4),inset 0 1px 0 rgba(255,255,255,0.2);
-              font-size:20px;flex-shrink:0;
-            ">🐯</div>
-            <div>
-              <div style="font-size:16px;font-weight:900;color:${d.text};letter-spacing:-0.3px;line-height:1.1">KBO 대시보드</div>
-              <div style="font-size:10px;font-weight:600;margin-top:1px">
-                <span style="color:var(--accent)">KIA</span>
-                <span style="color:${d.sub}"> · ${getDday()}</span>
-              </div>
-            </div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
-            <div data-clock style="font-size:14px;font-weight:800;color:${d.text};letter-spacing:0.5px;font-variant-numeric:tabular-nums">${state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
-            <div style="display:flex;align-items:center;gap:6px">
-              <span style="font-size:9px;color:${d.sub};font-weight:600">${state.clock.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})}</span>
-              <button onclick="toggleDark()" style="
-                width:28px;height:28px;border-radius:8px;
-                background:${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
-                border:1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'};
-                font-size:13px;display:flex;align-items:center;justify-content:center;
-                box-shadow:${dark ? 'none' : '2px 2px 5px rgba(166,180,200,0.5),-2px -2px 5px rgba(255,255,255,0.8)'};
-              ">${dark ? '☀️' : '🌙'}</button>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>`;
-  // 헤더 실제 높이만큼 content에 여백 적용
-  requestAnimationFrame(() => {
-    const h = document.getElementById('header');
-    const c = document.getElementById('content');
-    if (h && c) c.style.paddingTop = (h.offsetHeight + 8) + 'px';
-  });
-}
-
+function renderHeader(d) { /* 고정 헤더 없음 - 일정탭 내부에서 렌더 */ }
 function renderNav() {
   const dark = state.dark;
   const tabDefs=[
@@ -1026,9 +976,50 @@ function renderSeasonCard(d) {
   </div>`;
 }
 function renderCal(d) {
+  const dark = state.dark;
   const {calHtml, listHtml} = renderCalSplit(d);
-  // 시즌 카드는 calHtml 안의 배너 옆에 같이 렌더됨 (renderCalSplit에서 처리)
-  return `<div id="cal-section">${calHtml}</div>
+  const headerHtml = `<div style="
+      display:flex;justify-content:space-between;align-items:center;
+      padding:10px 14px;margin-bottom:14px;
+      background:${dark ? 'rgba(22,27,39,0.85)' : 'rgba(255,255,255,0.75)'};
+      backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);
+      border:1px solid ${dark ? 'rgba(255,255,255,0.09)' : 'rgba(255,255,255,0.95)'};
+      border-radius:20px;
+      box-shadow:${dark
+        ? '0 4px 24px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.06)'
+        : '4px 4px 12px rgba(166,180,200,0.5),-4px -4px 12px rgba(255,255,255,0.95),inset 0 1px 0 rgba(255,255,255,1)'};
+    ">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div style="
+        width:38px;height:38px;border-radius:12px;
+        background:linear-gradient(135deg,#E31837,#a01025);
+        display:flex;align-items:center;justify-content:center;
+        box-shadow:0 4px 12px rgba(227,24,55,0.4),inset 0 1px 0 rgba(255,255,255,0.2);
+        font-size:20px;flex-shrink:0;
+      ">🐯</div>
+      <div>
+        <div style="font-size:16px;font-weight:900;color:${d.text};letter-spacing:-0.3px;line-height:1.1">KBO 대시보드</div>
+        <div style="font-size:10px;font-weight:600;margin-top:1px">
+          <span style="color:var(--accent)">KIA</span>
+          <span style="color:${d.sub}"> · ${getDday()}</span>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <div data-clock style="font-size:14px;font-weight:800;color:${d.text};letter-spacing:0.5px;font-variant-numeric:tabular-nums">${state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:9px;color:${d.sub};font-weight:600">${state.clock.toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'short'})}</span>
+        <button onclick="toggleDark()" style="
+          width:28px;height:28px;border-radius:8px;
+          background:${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'};
+          border:1px solid ${dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)'};
+          font-size:13px;display:flex;align-items:center;justify-content:center;
+          box-shadow:${dark ? 'none' : '2px 2px 5px rgba(166,180,200,0.5),-2px -2px 5px rgba(255,255,255,0.8)'};
+        ">${dark ? '☀️' : '🌙'}</button>
+      </div>
+    </div>
+  </div>`;
+  return `${headerHtml}<div id="cal-section">${calHtml}</div>
     <hr id="cal-divider" style="display:none;border:none;border-top:1.5px solid rgba(127,127,127,0.2);margin:0 0 12px"/>
     <div id="list-section">${listHtml}</div>`;
 }
