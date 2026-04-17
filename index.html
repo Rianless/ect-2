@@ -3423,7 +3423,7 @@ function renderModal(d) {
             <div style="font-size:10px;font-weight:700;color:${d.sub};margin-bottom:6px;padding-left:2px">타 순 · ${ct.name||''}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
               ${(()=>{
-                const batterCards = cur.filter(p => p.p !== 'P').slice(0,9);
+                const batterCards = cur.filter(p => p.p !== 'P').sort((a,b)=>a.n-b.n).slice(0,9);
                 const pitcherName = lt==='away' ? (g.awayStarter||g.awayPitcher||'-') : (g.homeStarter||g.homePitcher||'-');
                 const cards = batterCards.map((p,idx) =>
                   `<div style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:9px;background:${d.card||d.bg};border:1px solid ${d.bgB}">
@@ -3488,7 +3488,7 @@ function renderModal(d) {
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">타점</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
             html2 += `</tr></thead><tbody>`;
-            batters.filter(p=>p.p!=='P'&&p.pos!=='P').slice(0,9).forEach(p => {
+            batters.filter(p=>p.p!=='P'&&p.pos!=='P').sort((a,b)=>a.n-b.n).slice(0,9).forEach(p => {
               if (p.sub) {
                 // 교체 전 선수 (sub) 행
                 html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
