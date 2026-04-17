@@ -3297,7 +3297,7 @@ function renderModal(d) {
             <div style="font-size:10px;font-weight:700;color:${d.sub};margin-bottom:6px;padding-left:2px">타 순 · ${ct.name||''}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
               ${(()=>{
-                const batterCards = cur.filter(p => p.p !== 'P').slice(0,9);
+                const batterCards = cur.filter(p => p.p !== 'P').sort((a,b)=>(a.n||99)-(b.n||99)).slice(0,9);
                 const pitcherName = lt==='away' ? (g.awayStarter||g.awayPitcher||'-') : (g.homeStarter||g.homePitcher||'-');
                 const cards = batterCards.map((p,idx) =>
                   `<div style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:9px;background:${d.card||d.bg};border:1px solid ${d.bgB}">
@@ -3359,6 +3359,7 @@ function renderModal(d) {
             html2 += `<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:${d.sub};width:100%">타자</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">타수</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">안타</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">득점</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">타점</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
             html2 += `</tr></thead><tbody>`;
@@ -3373,6 +3374,7 @@ function renderModal(d) {
                 html2 += `</div></td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.subAb||0}</td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subHit>0?700:400};color:${p.subHit>0?sideColor:d.sub}">${p.subHit||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subRun>0?700:400};color:${p.subRun>0?sideColor:d.sub}">${p.subRun||0}</td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subRbi>0?700:400};color:${p.subRbi>0?sideColor:d.sub}">${p.subRbi||0}</td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subBb>0?700:400};color:${p.subBb>0?sideColor:d.sub}">${p.subBb||0}</td>`;
                 html2 += `</tr>`;
@@ -3385,6 +3387,7 @@ function renderModal(d) {
                 html2 += `</div></td>`;
                 html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.curAb||0}</td>`;
                 html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curHit>0?700:400};color:${p.curHit>0?sideColor:d.sub}">${p.curHit||0}</td>`;
+                html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curRun>0?700:400};color:${p.curRun>0?sideColor:d.sub}">${p.curRun||0}</td>`;
                 html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curRbi>0?700:400};color:${p.curRbi>0?sideColor:d.sub}">${p.curRbi||0}</td>`;
                 html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curBb>0?700:400};color:${p.curBb>0?sideColor:d.sub}">${p.curBb||0}</td>`;
                 html2 += `</tr>`;
@@ -3397,6 +3400,7 @@ function renderModal(d) {
                 html2 += `</div></td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.ab||0}</td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</td>`;
+                html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.run>0?700:400};color:${p.run>0?sideColor:d.sub}">${p.run||0}</td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.rbi>0?700:400};color:${p.rbi>0?sideColor:d.sub}">${p.rbi||0}</td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?sideColor:d.sub}">${p.bb||0}</td>`;
                 html2 += `</tr>`;
@@ -4040,16 +4044,19 @@ function parseBrowserBatters(batters) {
         subAb:  replaced ? Number(replaced.ab||0)  : 0,
         subRbi: replaced ? Number(replaced.rbi||0) : 0,
         subBb:  replaced ? Number(replaced.bb||replaced.walk||0) : 0,
+        subRun: replaced ? Number(replaced.run||replaced.r||0) : 0,
         // 현재 선수(cur) 기록
         curHit: Number(current?.hit||0),
         curAb:  Number(current?.ab||0),
         curRbi: Number(current?.rbi||0),
         curBb:  Number(current?.bb||current?.walk||0),
+        curRun: Number(current?.run||current?.r||0),
         // 단일 선수일 때 통합 기록
         hit: Number(current?.hit||0),
         ab:  Number(current?.ab||0),
         rbi: Number(current?.rbi||0),
         bb:  Number(current?.bb||current?.walk||0),
+        run: Number(current?.run||current?.r||0),
       };
     });
 }
