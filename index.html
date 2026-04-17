@@ -954,6 +954,37 @@ function renderDiamond(players, color, dark) {
 }
 
 
+// ── KIA 연승/연패 스트릭 계산 ──
+function calcKiaStreak() {
+  // FINAL 경기만, 날짜 오름차순
+  const finalGames = SCH.filter(g =>
+    g.status === 'FINAL' &&
+    (g.away === 'KIA' || g.home === 'KIA') &&
+    g.awayScore != null && g.homeScore != null
+  ).sort((a, b) => a.date.localeCompare(b.date));
+
+  if (!finalGames.length) return null;
+
+  let streak = 0;
+  let streakType = null; // 'W' | 'L' | 'D'
+  for (let i = finalGames.length - 1; i >= 0; i--) {
+    const g = finalGames[i];
+    const isHome = g.home === 'KIA';
+    const kS = isHome ? g.homeScore : g.awayScore;
+    const oS = isHome ? g.awayScore : g.homeScore;
+    const result = kS > oS ? 'W' : kS < oS ? 'L' : 'D';
+    if (streakType === null) {
+      streakType = result; streak = 1;
+    } else if (result === streakType) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+  if (streakType === null) return null;
+  return { type: streakType, count: streak };
+}
+
 // ── 개막 D-day 자동 계산 ──
 function getDday() {
   const now = new Date();
@@ -1278,10 +1309,20 @@ function renderCalSplit(d) {
       rightContent = '';
     }
 
+    // 연승/연패 스트릭 배지
+    const streakInfo = calcKiaStreak();
+    let streakBadge = '';
+    if (streakInfo) {
+      const sIcon = streakInfo.type === 'W' ? '🔥' : streakInfo.type === 'L' ? '❄️' : '➖';
+      const sText = streakInfo.type === 'W' ? `${streakInfo.count}연승` : streakInfo.type === 'L' ? `${streakInfo.count}연패` : `${streakInfo.count}연속무`;
+      const sBg = streakInfo.type === 'W' ? 'rgba(255,200,0,0.25)' : streakInfo.type === 'L' ? 'rgba(100,160,255,0.25)' : 'rgba(255,255,255,0.15)';
+      streakBadge = `<span style="font-size:10px;font-weight:800;background:${sBg};color:#fff;border-radius:6px;padding:2px 7px;margin-left:6px;letter-spacing:0.03em">${sIcon} ${sText}</span>`;
+    }
+
     nextBannerHtml = `<div onclick="selDate('${bannerGame.date}')" style="background:linear-gradient(135deg,#E31837,#c0102a);border-radius:16px;padding:14px 16px;margin-bottom:14px;cursor:pointer;display:flex;align-items:center;gap:12px;box-shadow:0 4px 16px rgba(227,24,55,0.25)">
       ${logo('KIA',44)}
       <div style="flex:1;min-width:0">
-        <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;margin-bottom:3px">${subLabel}</div>
+        <div style="font-size:11px;color:rgba(255,255,255,0.7);font-weight:700;margin-bottom:3px;display:flex;align-items:center;flex-wrap:wrap;gap:2px">${subLabel}${streakBadge}</div>
         ${mainContent}
         <div style="font-size:11px;color:rgba(255,255,255,0.65);margin-top:3px">${stadDisp ? stadDisp.slice(3) : ''} · ${isHome2?'홈':'원정'}</div>
       </div>
@@ -2661,18 +2702,18 @@ async function fetchStanding() {
   }
 }
 
-// 2026 KBO 시즌 하드코딩 순위 (API 실패 시 폴백)
+// 2026 KBO 시즌 하드코딩 순위 (API 실패 시 폴백 / 2026-04-17 기준)
 const KBO_2026_FALLBACK = [
-  {rank:1, tkey:'한화', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
-  {rank:1, tkey:'SSG', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
-  {rank:1, tkey:'KT', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
-  {rank:1, tkey:'롯데', win:2, lose:0, draw:0, pct:'1.000', gb:'0'},
-  {rank:5, tkey:'NC', win:1, lose:1, draw:0, pct:'0.500', gb:'1'},
-  {rank:5, tkey:'두산', win:1, lose:1, draw:0, pct:'0.500', gb:'1'},
-  {rank:7, tkey:'LG', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
-  {rank:7, tkey:'삼성', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
-  {rank:7, tkey:'KIA', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
-  {rank:7, tkey:'키움', win:0, lose:2, draw:0, pct:'0.000', gb:'2'},
+  {rank:1, tkey:'LG',   win:14, lose:7,  draw:0, pct:'0.667', gb:'0'},
+  {rank:2, tkey:'한화', win:13, lose:7,  draw:1, pct:'0.650', gb:'0.5'},
+  {rank:3, tkey:'두산', win:11, lose:7,  draw:0, pct:'0.611', gb:'2'},
+  {rank:4, tkey:'KIA',  win:9,  lose:7,  draw:0, pct:'0.563', gb:'3.5'},
+  {rank:4, tkey:'SSG',  win:9,  lose:7,  draw:0, pct:'0.563', gb:'3.5'},
+  {rank:6, tkey:'NC',   win:8,  lose:9,  draw:0, pct:'0.471', gb:'5.5'},
+  {rank:7, tkey:'KT',   win:7,  lose:9,  draw:1, pct:'0.438', gb:'6'},
+  {rank:8, tkey:'롯데', win:7,  lose:10, draw:0, pct:'0.412', gb:'6.5'},
+  {rank:9, tkey:'삼성', win:6,  lose:11, draw:0, pct:'0.353', gb:'8'},
+  {rank:10,tkey:'키움', win:4,  lose:12, draw:1, pct:'0.250', gb:'9.5'},
 ];
 
 function renderStand(d) {
