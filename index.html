@@ -868,8 +868,9 @@ const buildDisplayLineup = lineup => {
   // 1단계: 각 batOrder별 최초(선발) 포지션 수집
   const orderToStarterPos = {};
   lineup.forEach(player => {
-    const order = player.order || player.batOrder || player.n;
-    if (!order) return;
+    const order = player.order != null ? player.order : (player.batOrder != null ? player.batOrder : player.n);
+    const orderNum = (order === 0 ? 1 : +order);
+    if (!orderNum) return;
     if (orderToStarterPos[order]) return; // 이미 선발 포지션 있음
     const sp = normalizePositionLabel(player.starterPos || player.pos || player.p || '');
     if (isFieldPos(sp)) orderToStarterPos[order] = sp;
@@ -880,7 +881,8 @@ const buildDisplayLineup = lineup => {
     const currentName = player.name || starterName;
     const starterPos = normalizePositionLabel(player.starterPos || '');
     const currentPos = normalizePositionLabel(player.pos || player.p || '');
-    const order = player.order || player.batOrder || player.n || idx + 1;
+    const _o = player.order != null ? player.order : (player.batOrder != null ? player.batOrder : player.n);
+    const order = (_o === 0 ? 1 : (+_o || idx + 1));
     // 현재 포지션이 비필드이면: starterPos → 같은 타순 선발포지션 → 빈 문자열 순으로 폴백
     const displayPos = isFieldPos(currentPos) ? currentPos
       : isFieldPos(starterPos) ? starterPos
@@ -3737,7 +3739,8 @@ function _parseBatters(src) {
   if (!arr.length) return [];
   const om = {};
   arr.forEach(p => {
-    const key = p.batOrder || p.order || p.n;
+    const _k = p.batOrder != null ? p.batOrder : (p.order != null ? p.order : p.n);
+    const key = (_k === 0 ? 1 : _k);
     if (!om[key]) om[key] = [];
     om[key].push(p);
   });
@@ -4141,7 +4144,8 @@ function parseBrowserBatters(batters) {
   if (!batters?.length) return [];
   const orderMap = {};
   batters.forEach(p => {
-    const order = p.batOrder;
+    const _ord = p.batOrder;
+    const order = (_ord === 0 ? 1 : _ord);
     if (!orderMap[order]) orderMap[order] = [];
     orderMap[order].push(p);
   });
