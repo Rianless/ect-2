@@ -209,10 +209,11 @@
     /* 중계 전체화면 패널 */
     #relay-panel{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s}
     #relay-panel.open{display:flex}
-    #relay-box{width:100%;max-width:520px;height:95vh;background:rgba(240,244,252,0.92);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.85);border-radius:26px 26px 0 0;display:flex;flex-direction:column;animation:slideUp 0.32s cubic-bezier(0.34,1.2,0.64,1);box-shadow:0 -8px 40px rgba(0,0,0,0.18);touch-action:pan-y}
+    #relay-box{width:100%;max-width:520px;height:95vh;background:rgba(245,247,252,0.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);border:1px solid rgba(255,255,255,0.95);border-radius:26px 26px 0 0;display:flex;flex-direction:column;animation:slideUp 0.32s cubic-bezier(0.34,1.2,0.64,1);box-shadow:0 -8px 40px rgba(0,0,0,0.18),inset 0 1px 0 rgba(255,255,255,1);touch-action:pan-y;color:#0A0E1A}
+    #relay-box.dark-relay{background:rgba(14,19,30,0.95);border-color:rgba(255,255,255,0.08);color:#fff}
     #relay-box.closing{animation:slideDown 0.28s ease forwards}
     #wallpaper-box.closing{animation:slideDown 0.28s ease forwards}
-    body.dark #relay-box{background:rgba(14,19,30,0.92);backdrop-filter:blur(20px);color:#fff}
+    /* relay dark: .dark-relay class */
     #relay-header{padding:14px 18px 10px;border-bottom:1px solid rgba(0,0,0,0.08);flex-shrink:0}
     body.dark #relay-header{border-color:rgba(255,255,255,0.08)}
     #relay-title{font-size:15px;font-weight:900;color:#0A0E1A}
@@ -224,8 +225,7 @@
     #relay-inn-tabs{display:flex;overflow-x:auto;padding:8px 14px 0;gap:6px;flex-shrink:0;border-bottom:1px solid rgba(0,0,0,0.07)}
     body.dark #relay-inn-tabs{border-color:rgba(255,255,255,0.08)}
     #relay-body{flex:1;overflow-y:auto;overflow-x:hidden;padding:0 0 20px;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y}
-    #relay-body div{color:#0A0E1A}
-    body.dark #relay-body div{color:#fff}
+    #relay-body div{color:inherit}
     /* 티켓팅 바텀시트 */
     #ticket-panel{position:fixed;inset:0;z-index:200;background:rgba(0,0,0,0.55);backdrop-filter:blur(4px);display:none;align-items:flex-end;justify-content:center;animation:fadeIn 0.2s}
     #ticket-panel.open{display:flex}
@@ -2508,15 +2508,15 @@ function renderStandRows(d, rows, footerLabel) {
       <button onclick="_standCache=null;fetchStanding().then(r=>{if(r){render();}});return false" style="font-size:10px;color:#E31837;border:1px solid rgba(227,24,55,0.3);border-radius:6px;padding:2px 8px;background:transparent;cursor:pointer">새로고침</button>
     </div>
     <div style="background:${d.card};border:1px solid ${d.cardB};border-radius:18px;overflow:hidden;box-shadow:${d.shadowSm}">
-      <div style="display:grid;grid-template-columns:36px 1fr 36px 36px 36px 48px;padding:8px 12px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
+      <div style="display:grid;grid-template-columns:30px 1fr 28px 28px 28px 44px;padding:8px 8px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
         <span>순위</span><span>팀</span><span style="text-align:center">승</span><span style="text-align:center">패</span><span style="text-align:center">무</span><span style="text-align:center">승률</span>
       </div>
       ${rows.map((row,i)=>`
-        <div style="display:grid;grid-template-columns:36px 1fr 36px 36px 36px 48px;padding:10px 12px;border-bottom:${i<rows.length-1?`1px solid ${d.cardB}`:'none'};background:${row.tkey==='KIA'?'rgba(227,24,55,0.07)':'transparent'};align-items:center">
+        <div style="display:grid;grid-template-columns:30px 1fr 28px 28px 28px 44px;padding:10px 8px;border-bottom:${i<rows.length-1?`1px solid ${d.cardB}`:'none'};background:${row.tkey==='KIA'?'rgba(227,24,55,0.07)':'transparent'};align-items:center">
           <span style="font-size:13px;font-weight:800;color:${row.rank===1?'#FFD700':row.rank===2?'#C0C0C0':row.rank===3?'#CD7F32':d.sub}">${row.rank}</span>
           <div style="display:flex;align-items:center;gap:6px">
-            ${logo(row.tkey,22)}
-            <span style="font-size:13px;font-weight:${row.tkey==='KIA'?800:500};color:${row.tkey==='KIA'?'#E31837':d.text}">${T[row.tkey]?.name||row.tkey}</span>
+            ${logo(row.tkey,20)}
+            <span style="font-size:12px;font-weight:${row.tkey==='KIA'?800:500};color:${row.tkey==='KIA'?'#E31837':d.text};white-space:nowrap">${T[row.tkey]?.name||row.tkey}</span>
           </div>
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.win}</span>
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.lose}</span>
@@ -4431,11 +4431,12 @@ function updateRelayUI() {
     }
   }
 
-  // 배경색 업데이트
+  // 다크모드 클래스만 토글 (CSS에서 글라스 스타일 적용)
   const box = document.getElementById('relay-box');
-  if (box) { 
-    box.style.background = dark ? '#0F1525' : '#fff'; 
-    box.style.color = dark ? '#fff' : '#0A0E1A'; 
+  if (box) {
+    box.classList.toggle('dark-relay', dark);
+    box.style.background = '';
+    box.style.color = '';
   }
 }
 
@@ -4638,7 +4639,11 @@ window.openRelay = async function(gameId, away, home, inn) {
     }
   } else {
     const body = document.getElementById('relay-body');
-    if (body) body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(0,0,0,0.35)">중계 데이터를 불러올 수 없습니다.</div>';
+    if (body) body.innerHTML = `<div style="text-align:center;padding:40px">
+      <div style="font-size:32px;margin-bottom:12px">📡</div>
+      <div style="font-size:13px;color:rgba(0,0,0,0.5);margin-bottom:16px">중계 데이터를 불러오지 못했어요</div>
+      <button onclick="refreshRelay()" style="padding:8px 20px;background:#E31837;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">🔄 다시 시도</button>
+    </div>`;
   }
   if (luData) {
     const _idx3b = SCH.findIndex(s => String(s.gameId) === String(gameId));
