@@ -230,10 +230,11 @@ export default async function handler(req, res) {
     const awayInnRaw = gameData.awayTeamScoreByInning || g.awayTeamScoreByInning || [];
     const homeInnRaw = gameData.homeTeamScoreByInning || g.homeTeamScoreByInning || [];
 
-    const awayInnings = Array(9).fill(-1);
-    const homeInnings = Array(9).fill(-1);
-    awayInnRaw.forEach((s,i)=>{ if(i<9 && s!=='-') awayInnings[i]=Number(s); });
-    homeInnRaw.forEach((s,i)=>{ if(i<9 && s!=='-') homeInnings[i]=Number(s); });
+    const maxInnCount = Math.max(9, awayInnRaw.length, homeInnRaw.length);
+    const awayInnings = Array(maxInnCount).fill(-1);
+    const homeInnings = Array(maxInnCount).fill(-1);
+    awayInnRaw.forEach((s,i)=>{ if(s!=='-') awayInnings[i]=Number(s); });
+    homeInnRaw.forEach((s,i)=>{ if(s!=='-') homeInnings[i]=Number(s); });
 
     const rawRelays = findTextRelaysRecursive(detail) || [];
     // 각 relay item에 resultText 추가 (textOptions 마지막 항목)
