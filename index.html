@@ -3640,10 +3640,28 @@ function _parseBatters(src) {
     om[key].push(p);
   });
   return Object.entries(om).sort(([a],[b])=>+a-+b).map(([o,ps]) => {
-    const cur = ps.find(p=>p.cin==='true'||p.cin===true)
-      || ps.find(p=>!(p.cout==='true'||p.cout===true))
-      || ps[ps.length-1];
-    const replaced = ps.find(p=>(p.cout==='true'||p.cout===true) && p!==cur);
+    // seqno(등장순서) 기준 정렬: 낮을수록 먼저 출전 = 선발
+    const sorted = [...ps].sort((a,b) => (+a.seqno||0) - (+b.seqno||0));
+
+    let cur, replaced;
+    if (ps.length === 1) {
+      // 단독: 교체 없음
+      cur = ps[0]; replaced = null;
+    } else {
+      // cout/cin 우선 판별
+      const cinP  = ps.find(p => p.cin==='true'  || p.cin===true);
+      const coutP = ps.find(p => p.cout==='true' || p.cout===true);
+      if (cinP && coutP && cinP !== coutP) {
+        cur = cinP; replaced = coutP;
+      } else if (coutP) {
+        cur = ps.find(p => p !== coutP) || ps[ps.length-1];
+        replaced = coutP;
+      } else {
+        // cout/cin 없으면 seqno 높은 쪽이 나중에 들어온 선수(현재), 낮은 쪽이 교체된 선수
+        cur      = sorted[sorted.length - 1];  // seqno 가장 높음 = 현재 선수
+        replaced = sorted[0] !== cur ? sorted[0] : null; // seqno 가장 낮음 = 교체 전
+      }
+    }
     const starter = replaced || cur;
     return {
       n:+o, order:+o,
