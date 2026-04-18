@@ -343,8 +343,13 @@ export default async function handler(req, res) {
     // ── 시즌 성적 액션 ──
     if (action === 'seasonStats') {
       const currentYear = kst.getUTCFullYear();
-      const seasonStart = `${currentYear}-03-01`;
-      const seasonEnd   = todayDash;
+      const seasonStart = `${currentYear}-03-22`;
+      // 오늘 경기가 진행 중일 수 있으므로 어제까지만 집계
+      const yesterday = new Date(kst.getTime() - 24 * 60 * 60 * 1000);
+      const yy = yesterday.getUTCFullYear();
+      const ym = String(yesterday.getUTCMonth() + 1).padStart(2, '0');
+      const yd = String(yesterday.getUTCDate()).padStart(2, '0');
+      const seasonEnd = `${yy}-${ym}-${yd}`;
 
       // 월별로 나눠서 병렬 요청 (한 번에 전체 시즌 조회)
       async function fetchRange(from, to) {
@@ -376,13 +381,15 @@ export default async function handler(req, res) {
       ));
       const allGames = results.flat();
 
-      // KIA 경기만 필터 + FINAL만
+      // KIA 경기만 필터 + FINAL만 (오늘 날짜 제외 — LIVE 중인 경기가 RESULT로 내려올 수 있음)
       const kiaGames = allGames.filter(g => {
         const away = mapTeam(g.awayTeamCode);
         const home = mapTeam(g.homeTeamCode);
         const sc = g.statusCode || '';
         const isFinal = sc === 'RESULT' || sc === 'FINAL';
-        return isFinal && (away === 'KIA' || home === 'KIA');
+        const gameDate = (g.gameDate || '').slice(0, 10);
+        const isToday = gameDate === todayDash;
+        return isFinal && !isToday && (away === 'KIA' || home === 'KIA');
       }).sort((a, b) => (a.gameDate || '').localeCompare(b.gameDate || ''));
 
       let wins = 0, losses = 0, draws = 0;
@@ -406,8 +413,9 @@ export default async function handler(req, res) {
       });
 
       const total = wins + losses + draws;
-      const pct = total > 0
-        ? (wins / (total - draws || 1)).toFixed(3).replace(/^0/, '')
+      const decisions = wins + losses;
+      const pct = decisions > 0
+        ? (wins / decisions).toFixed(3).replace(/^0/, '')
         : '.000';
 
       return res.status(200).json({
