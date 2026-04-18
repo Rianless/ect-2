@@ -3622,7 +3622,16 @@ function selDate(ds){state.sel=ds;render();fetchTodayScores(ds);}
 // 라인업+경기상황: 서버 프록시를 통해 호출 (CORS 방지)
 // 타자 배열 파싱 (배열 또는 객체)
 function _parseBatters(src) {
-  const arr = Array.isArray(src) ? src : (src?.batter || []);
+  // batter 배열 추출 — pitcher 배열에서 batOrder가 있는 선수도 포함 (타자→투수 교체 케이스)
+  const batterArr = Array.isArray(src) ? src : (src?.batter || []);
+  // pitcher 배열 중 batOrder가 있으면 타자 출신 → 함께 처리
+  const pitcherArr = Array.isArray(src) ? [] : (src?.pitcher || []);
+  const pitcherBatters = pitcherArr.filter(p => p.batOrder || p.order);
+  const arr = [...batterArr, ...pitcherBatters];
+
+  console.log('[_parseBatters] batter:', batterArr.length, 'pitcher(타자출신):', pitcherBatters.length,
+    '| batOrders:', arr.map(p=>p.batOrder||p.order).join(','));
+
   if (!arr.length) return [];
   const om = {};
   arr.forEach(p => {
@@ -3733,6 +3742,9 @@ async function fetchLineupDirect(gameId, inning) {
       };
     }
 
+    console.log('[fetchLineupDirect] homeL keys:', Object.keys(homeL||{}),
+      'homeL.batter:', homeL?.batter?.length, 'homeL.pitcher:', homeL?.pitcher?.length,
+      'homeL.batter names:', (homeL?.batter||[]).map(p=>p.name+'('+p.batOrder+')').join(','));
     return {
       home: { batters: _parseBatters(homeL), pitchers: _parsePitchers(homeL) },
       away: { batters: _parseBatters(awayL), pitchers: _parsePitchers(awayL) },
