@@ -715,6 +715,7 @@ function renderCalSplit(d) {
     const dw3=['일','월','화','수','목','금','토'][nextD.getDay()];
     const dateDisp = `${nm}/${nd}(${dw3})`;
     const stadDisp = bannerGame.stad ? ` · ${bannerGame.stad}` : '';
+    const kiaStarter = isHome2 ? bannerGame.homeStarter : bannerGame.awayStarter;
 
     let subLabel, mainContent, rightContent;
 
@@ -747,7 +748,7 @@ function renderCalSplit(d) {
         </div>
         ${logo(opp2,36)}
       </div>
-      <div style="font-size:9px;color:rgba(255,255,255,0.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${stadDisp?stadDisp.slice(3):''} · ${isHome2?'홈':'원정'}</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${stadDisp?stadDisp.slice(3):''} · ${isHome2?'홈':'원정'}${kiaStarter?` · 선발 ${kiaStarter}`:''}</div>
     </div>`;
   }
 
