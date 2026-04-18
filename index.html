@@ -3763,6 +3763,9 @@ async function fetchLineupDirect(gameId, inning) {
     console.log('[fetchLineupDirect] homeL keys:', Object.keys(homeL||{}),
       'homeL.batter:', homeL?.batter?.length, 'homeL.pitcher:', homeL?.pitcher?.length,
       'homeL.batter names:', (homeL?.batter||[]).map(p=>p.name+'('+p.batOrder+')').join(','));
+    console.log('[fetchLineupDirect] awayL keys:', Object.keys(awayL||{}),
+      'awayL.batter:', awayL?.batter?.length, 'awayL.pitcher:', awayL?.pitcher?.length,
+      'awayL.batter names+seqno:', (awayL?.batter||[]).map(p=>p.name+'(ord:'+p.batOrder+',seq:'+p.seqno+',cin:'+p.cin+',cout:'+p.cout+')').join(' | '));
     return {
       home: { batters: _parseBatters(homeL), pitchers: _parsePitchers(homeL) },
       away: { batters: _parseBatters(awayL), pitchers: _parsePitchers(awayL) },
