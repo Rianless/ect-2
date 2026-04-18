@@ -2932,10 +2932,16 @@ function renderModal(d) {
             <div style="font-size:10px;font-weight:700;color:${d.sub};margin-bottom:6px;padding-left:2px">타 순 · ${ct.name||''}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
               ${(()=>{
+                // 타자 배열(batters)에 있는 선수는 포지션이 P여도 포함
+                // 단, sub(교체전선수)가 없고 선발부터 P인 순수투수만 제외
                 const batterCards = cur.filter(p => {
                   if (p.p !== 'P') return true;
-                  if (p.pos === 'P' && (!p.starterPos || p.starterPos === 'P')) return false;
-                  return true; // DH→P 교체된 타자순 포함
+                  // 선발 포지션이 타자(DH 포함)였으면 무조건 포함
+                  if (p.starterPos && p.starterPos !== 'P') return true;
+                  // 교체된 타자가 있으면(sub) 해당 타순 자리 → 포함
+                  if (p.sub) return true;
+                  // starterPos가 비어있어도 sub가 있으면 타자 출신
+                  return false;
                 }).sort((a,b)=>(a.n||99)-(b.n||99)).slice(0,9);
                 const pitcherName = lt==='away' ? (g.awayStarter||g.awayPitcher||'-') : (g.homeStarter||g.homePitcher||'-');
                 const cards = batterCards.map((p,idx) =>
