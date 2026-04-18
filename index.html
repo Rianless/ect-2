@@ -2506,8 +2506,8 @@ function renderModal(d) {
   const isLive=g.status==='LIVE', isFinal=g.status==='FINAL';
 
   // 이닝 스코어 테이블
-  const lInn = (lTeam===g.away ? g.awayInnings : g.homeInnings) || Array(9).fill(-1);
-  const rInn = (rTeam===g.away ? g.awayInnings : g.homeInnings) || Array(9).fill(-1);
+  const lInn = (lTeam===g.away ? g.awayInnings : g.homeInnings) || [];
+  const rInn = (rTeam===g.away ? g.awayInnings : g.homeInnings) || [];
   // LIVE/FINAL이면 스코어나 이닝 배열 중 하나라도 있으면 표시
   const hasInn = !isSch && lInn && (
     lInn.some(x=>x>=0) ||
@@ -2533,7 +2533,7 @@ function renderModal(d) {
         <thead>
           <tr>
             <td class="team-cell" style="color:${d.sub};font-weight:700;font-size:10px"></td>
-            ${[1,2,3,4,5,6,7,8,9].map(n=>`<td style="color:${d.sub};font-size:10px;font-weight:700;padding:4px 3px">${n}</td>`).join('')}
+            ${Array.from({length:totalInnings},(_,i)=>i+1).map(n=>`<td style="color:${d.sub};font-size:10px;font-weight:700;padding:4px 3px">${n}</td>`).join('')}
             <td style="color:${d.sub};font-size:10px;font-weight:700;border-left:1px solid ${d.bgB};padding:4px 5px">R</td>
             <td style="color:${d.sub};font-size:10px;font-weight:700;padding:4px 4px">H</td>
             <td style="color:${d.sub};font-size:10px;font-weight:700;padding:4px 4px">E</td>
@@ -2546,6 +2546,7 @@ function renderModal(d) {
             const awayTeam = g.away, homeTeam = g.home;
             const awayInn = g.awayInnings || Array(9).fill(-1);
             const homeInn = g.homeInnings || Array(9).fill(-1);
+            const totalInnings = Math.max(9, awayInn.length, homeInn.length);
             const awayScore = g.awayScore ?? 0;
             const homeScore = g.homeScore ?? 0;
             const awayHit = g.awayHit ?? '-', homeHit = g.homeHit ?? '-';
@@ -2554,7 +2555,7 @@ function renderModal(d) {
             return `
           <tr>
             <td class="team-cell" style="color:${awayTeam==='KIA'?'#ff6b6b':d.text}">${awayTeam}</td>
-            ${awayInn.map((s,i)=>cellSt(s,i,g.inning)).join('')}
+            ${Array.from({length:totalInnings},(_,i)=>cellSt(awayInn[i]??-1,i,g.inning)).join('')}
             <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${awayScore}</td>
             <td style="font-size:11px;color:${d.sub}">${awayHit}</td>
             <td style="font-size:11px;color:${awayErr>0?'#E31837':d.sub}">${awayErr}</td>
@@ -2562,7 +2563,7 @@ function renderModal(d) {
           </tr>
           <tr>
             <td class="team-cell" style="color:${homeTeam==='KIA'?'#ff6b6b':d.text}">${homeTeam}</td>
-            ${homeInn.map((s,i)=>cellSt(s,i,g.inning)).join('')}
+            ${Array.from({length:totalInnings},(_,i)=>cellSt(homeInn[i]??-1,i,g.inning)).join('')}
             <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${homeScore}</td>
             <td style="font-size:11px;color:${d.sub}">${homeHit}</td>
             <td style="font-size:11px;color:${homeErr>0?'#E31837':d.sub}">${homeErr}</td>
@@ -3824,13 +3825,14 @@ function convertBrowserGame(game, detail) {
     : 'SCHEDULED';
   const awayRaw = gameData.awayTeamScoreByInning || game.awayTeamScoreByInning || [];
   const homeRaw = gameData.homeTeamScoreByInning || game.homeTeamScoreByInning || [];
-  const awayInnings = Array(9).fill(-1);
-  const homeInnings = Array(9).fill(-1);
+  const maxInn = Math.max(9, awayRaw.length, homeRaw.length);
+  const awayInnings = Array(maxInn).fill(-1);
+  const homeInnings = Array(maxInn).fill(-1);
   awayRaw.forEach((score, index) => {
-    if (index < 9 && score !== '-') awayInnings[index] = Number(score);
+    if (score !== '-') awayInnings[index] = Number(score);
   });
   homeRaw.forEach((score, index) => {
-    if (index < 9 && score !== '-') homeInnings[index] = Number(score);
+    if (score !== '-') homeInnings[index] = Number(score);
   });
 
   return {
