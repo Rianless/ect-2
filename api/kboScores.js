@@ -340,6 +340,80 @@ export default async function handler(req, res) {
     const inning = req.query.inning ? parseInt(req.query.inning) : null;
     const action = req.query.action || '';
 
+    // ── 시즌 성적 액션 ──
+    if (action === 'seasonStats') {
+      const currentYear = kst.getUTCFullYear();
+      const seasonStart = `${currentYear}-03-01`;
+      const seasonEnd   = todayDash;
+
+      // 월별로 나눠서 병렬 요청 (한 번에 전체 시즌 조회)
+      async function fetchRange(from, to) {
+        const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule&upperCategoryId=kbaseball&fromDate=${from}&toDate=${to}&size=500`;
+        const r = await fetch(url, { headers: HEADERS });
+        if (!r.ok) return [];
+        const data = await r.json();
+        return (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
+      }
+
+      // 3월부터 오늘까지 월별 분할 요청
+      const months = [];
+      let cur = new Date(`${currentYear}-03-01`);
+      const end = new Date(todayDash);
+      while (cur <= end) {
+        const y = cur.getUTCFullYear();
+        const m = String(cur.getUTCMonth() + 1).padStart(2, '0');
+        const lastDay = new Date(y, cur.getUTCMonth() + 1, 0).getDate();
+        const from = `${y}-${m}-01`;
+        const to   = cur.getUTCMonth() === end.getUTCMonth() && y === end.getUTCFullYear()
+          ? todayDash
+          : `${y}-${m}-${String(lastDay).padStart(2, '0')}`;
+        months.push({ from, to });
+        cur = new Date(y, cur.getUTCMonth() + 1, 1);
+      }
+
+      const results = await Promise.all(months.map(({ from, to }) =>
+        fetchRange(from, to).catch(() => [])
+      ));
+      const allGames = results.flat();
+
+      // KIA 경기만 필터 + FINAL만
+      const kiaGames = allGames.filter(g => {
+        const away = mapTeam(g.awayTeamCode);
+        const home = mapTeam(g.homeTeamCode);
+        const sc = g.statusCode || '';
+        const isFinal = sc === 'RESULT' || sc === 'FINAL';
+        return isFinal && (away === 'KIA' || home === 'KIA');
+      }).sort((a, b) => (a.gameDate || '').localeCompare(b.gameDate || ''));
+
+      let wins = 0, losses = 0, draws = 0;
+      let streak = 0, streakType = null;
+
+      kiaGames.forEach(g => {
+        const isHome = mapTeam(g.homeTeamCode) === 'KIA';
+        const ks = isHome ? Number(g.homeTeamScore) : Number(g.awayTeamScore);
+        const os = isHome ? Number(g.awayTeamScore) : Number(g.homeTeamScore);
+        if (isNaN(ks) || isNaN(os)) return;
+        let res;
+        if (ks > os)      { wins++;   res = 'W'; }
+        else if (ks < os) { losses++; res = 'L'; }
+        else              { draws++;  res = 'D'; }
+        if (res === streakType) streak++;
+        else { streakType = res; streak = 1; }
+      });
+
+      const total = wins + losses + draws;
+      const pct = total > 0
+        ? (wins / (total - draws || 1)).toFixed(3).replace(/^0/, '')
+        : '.000';
+
+      return res.status(200).json({
+        wins, losses, draws, total,
+        pct,
+        streak,
+        streakType, // 'W' | 'L' | 'D' | null
+      });
+    }
+
     if (gameId && action === 'lineup') {
       const inn = inning || 1;
 
