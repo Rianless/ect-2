@@ -3297,7 +3297,16 @@ function renderModal(d) {
             <div style="font-size:10px;font-weight:700;color:${d.sub};margin-bottom:6px;padding-left:2px">타 순 · ${ct.name||''}</div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
               ${(()=>{
-                const batterCards = cur.filter(p => p.p !== 'P').sort((a,b)=>(a.n||99)-(b.n||99)).slice(0,9);
+                // p.p가 P여도 타자 배열에 있으면 타자로 표시 (DH→투수 교체 케이스)
+                // starterPos가 P가 아닌 경우(선발이 타자)는 반드시 포함
+                const batterCards = cur.filter(p => {
+                  // 포지션이 P가 아니면 무조건 포함
+                  if (p.p !== 'P') return true;
+                  // P인데 선발 포지션도 P면 순수 투수 → 제외 (pitcherCard로 따로 표시)
+                  if (p.pos === 'P' && (!p.starterPos || p.starterPos === 'P')) return false;
+                  // P인데 선발이 타자(DH 등)였으면 → 교체된 타자순 자리, 포함
+                  return true;
+                }).sort((a,b)=>(a.n||99)-(b.n||99)).slice(0,9);
                 const pitcherName = lt==='away' ? (g.awayStarter||g.awayPitcher||'-') : (g.homeStarter||g.homePitcher||'-');
                 const cards = batterCards.map((p,idx) =>
                   `<div style="display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:9px;background:${d.card||d.bg};border:1px solid ${d.bgB}">
@@ -4043,19 +4052,19 @@ function parseBrowserBatters(batters) {
         subHit: replaced ? Number(replaced.hit||0) : 0,
         subAb:  replaced ? Number(replaced.ab||0)  : 0,
         subRbi: replaced ? Number(replaced.rbi||0) : 0,
-        subBb:  replaced ? Number(replaced.bb||replaced.walk||0) : 0,
+        subBb:  replaced ? Number(replaced.bb||replaced.walk||replaced.walks||0) : 0,
         subRun: replaced ? Number(replaced.run||replaced.r||0) : 0,
         // 현재 선수(cur) 기록
         curHit: Number(current?.hit||0),
         curAb:  Number(current?.ab||0),
         curRbi: Number(current?.rbi||0),
-        curBb:  Number(current?.bb||current?.walk||0),
+        curBb:  Number(current?.bb||current?.walk||current?.walks||0),
         curRun: Number(current?.run||current?.r||0),
         // 단일 선수일 때 통합 기록
         hit: Number(current?.hit||0),
         ab:  Number(current?.ab||0),
         rbi: Number(current?.rbi||0),
-        bb:  Number(current?.bb||current?.walk||0),
+        bb:  Number(current?.bb||current?.walk||current?.walks||current?.baseOnBalls||0),
         run: Number(current?.run||current?.r||0),
       };
     });
@@ -4070,7 +4079,7 @@ function parseBrowserPitchers(pitchers) {
     kk: p.kk || 0,
     bb: p.bb || 0,
     hit: Number(p.hit||p.ha||p.allowedHit||0),
-    pc: Number(p.pc||p.pitchCount||p.numPitch||p.pitches||0),
+    pc: Number(p.pc||p.pitchCount||p.numPitch||p.pitches||p.pitchNum||0),
   }));
 }
 
@@ -5658,4 +5667,3 @@ if (typeof Notification !== 'undefined' && Notification.permission === 'granted'
 </script>
 </body>
 </html>
-
