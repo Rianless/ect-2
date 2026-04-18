@@ -3639,30 +3639,35 @@ function _parseBatters(src) {
     return {
       n:+o, order:+o,
       name: cur.name || cur.playerName || '',
-      p: cur.posName || cur.position || '',
-      pos: cur.posName || cur.position || '',
+      // posName이 한글로 올 수 있으므로 영문으로 정규화
+      p: normalizePositionLabel(cur.posName || cur.position || ''),
+      pos: normalizePositionLabel(cur.posName || cur.position || ''),
       sub: replaced ? (replaced.name || replaced.playerName) : null,
       starterName: starter.name || cur.name || '',
-      starterPos: starter.posName || starter.position || cur.posName || '',
+      // starterPos: 선발 포지션 우선 — 타자→투수 교체 시 선발(replaced) 포지션 유지
+      starterPos: normalizePositionLabel(starter.posName || starter.position || cur.posName || ''),
       // 교체 전 선수(sub) 기록
       subHit: replaced ? Number(replaced.hit||0) : 0,
       subAb:  replaced ? Number(replaced.ab||0)  : 0,
       subRbi: replaced ? Number(replaced.rbi||0) : 0,
-      subBb:  replaced ? Number(replaced.bb||replaced.walk||0) : 0,
+      subBb:  replaced ? Number(replaced.bb||replaced.walk||replaced.walks||0) : 0,
+      subRun: replaced ? Number(replaced.run||replaced.r||0) : 0,
       // 현재 선수(cur) 기록
       curHit: Number(cur.hit||0),
       curAb:  Number(cur.ab||0),
       curRbi: Number(cur.rbi||0),
-      curBb:  Number(cur.bb||cur.walk||0),
+      curBb:  Number(cur.bb||cur.walk||cur.walks||0),
+      curRun: Number(cur.run||cur.r||0),
       // 단일 선수일 때 쓰는 통합 기록
       hit: Number(cur.hit||0), ab: Number(cur.ab||0),
-      rbi: Number(cur.rbi||0), bb: Number(cur.bb||cur.walk||0),
+      rbi: Number(cur.rbi||0), bb: Number(cur.bb||cur.walk||cur.walks||0),
+      run: Number(cur.run||cur.r||0),
     };
   });
 }
 function _parsePitchers(src) {
   const arr = Array.isArray(src) ? src : (src?.pitcher || []);
-  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:p.er||0, kk:p.kk||0, bb:p.bb||0, hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.pitchCount||p.numPitch||0) }));
+  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:p.er||0, kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.pitchCount||p.numPitch||p.pitches||0) }));
 }
 
 async function fetchLineupDirect(gameId, inning) {
