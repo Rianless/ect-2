@@ -390,9 +390,13 @@ export default async function handler(req, res) {
 
       kiaGames.forEach(g => {
         const isHome = mapTeam(g.homeTeamCode) === 'KIA';
-        const ks = isHome ? Number(g.homeTeamScore) : Number(g.awayTeamScore);
-        const os = isHome ? Number(g.awayTeamScore) : Number(g.homeTeamScore);
+        const rawKs = isHome ? g.homeTeamScore : g.awayTeamScore;
+        const rawOs = isHome ? g.awayTeamScore : g.homeTeamScore;
+        if (rawKs == null || rawOs == null) return;
+        const ks = Number(rawKs);
+        const os = Number(rawOs);
         if (isNaN(ks) || isNaN(os)) return;
+        if (ks === 0 && os === 0) return;
         let res;
         if (ks > os)      { wins++;   res = 'W'; }
         else if (ks < os) { losses++; res = 'L'; }
