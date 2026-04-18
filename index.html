@@ -715,7 +715,6 @@ function renderCalSplit(d) {
     const dw3=['일','월','화','수','목','금','토'][nextD.getDay()];
     const dateDisp = `${nm}/${nd}(${dw3})`;
     const stadDisp = bannerGame.stad ? ` · ${bannerGame.stad}` : '';
-    const kiaStarter = isHome2 ? bannerGame.homeStarter : bannerGame.awayStarter;
 
     let subLabel, mainContent, rightContent;
 
@@ -748,7 +747,7 @@ function renderCalSplit(d) {
         </div>
         ${logo(opp2,36)}
       </div>
-      <div style="font-size:9px;color:rgba(255,255,255,0.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${stadDisp?stadDisp.slice(3):''} · ${isHome2?'홈':'원정'}${kiaStarter?` · 선발 ${kiaStarter}`:''}</div>
+      <div style="font-size:9px;color:rgba(255,255,255,0.55);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${stadDisp?stadDisp.slice(3):''} · ${isHome2?'홈':'원정'}</div>
     </div>`;
   }
 
@@ -2641,10 +2640,13 @@ function renderModal(d) {
             const _isBottom = (g.inningInfo||'').includes('말');
             let _curP = pitcher || '';
             if (isAway) {
-              if (!_curP && _isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
+              // 초: 원정팀 공격 → 홈팀 투수가 던짐. 말: 홈팀 공격 → 원정팀 투수가 던짐
+              // 원정팀 현재 투수 = 말(홈공격)이 아닐 때(=초) → !_isBottom
+              if (!_curP && !_isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
               if (!_curP) { const _pl = g.lineup?.away?.pitchers||[]; if (_pl.length) _curP = _pl[_pl.length-1]?.name||''; }
             } else {
-              if (!_curP && !_isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
+              // 홈팀 현재 투수 = 말(홈공격)일 때 → _isBottom
+              if (!_curP && _isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
               if (!_curP) { const _pl = g.lineup?.home?.pitchers||[]; if (_pl.length) _curP = _pl[_pl.length-1]?.name||''; }
             }
             return `<div style="background:${d.bg};border:1.5px solid ${d.bgB};border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px">
