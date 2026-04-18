@@ -2527,8 +2527,17 @@ function renderModal(d) {
     return `<td style="color:${hi?'#E31837':d.text};font-weight:${hi||cur?900:400};background:${cur?'rgba(227,24,55,0.07)':'transparent'}">${s>=0?s:'·'}</td>`;
   };
 
-  const inningHtml = hasInn ? `
-    <div style="overflow-x:auto">
+  const inningHtml = hasInn ? (()=>{
+            const awayTeam = g.away, homeTeam = g.home;
+            const awayInn = g.awayInnings || [];
+            const homeInn = g.homeInnings || [];
+            const totalInnings = Math.max(9, awayInn.length, homeInn.length);
+            const awayScore = g.awayScore ?? 0;
+            const homeScore = g.homeScore ?? 0;
+            const awayHit = g.awayHit ?? '-', homeHit = g.homeHit ?? '-';
+            const awayErr = g.awayError ?? '-', homeErr = g.homeError ?? '-';
+            const awayBall = g.awayBallFour ?? '-', homeBall = g.homeBallFour ?? '-';
+            return `<div style="overflow-x:auto">
       <table class="inn-table">
         <thead>
           <tr>
@@ -2541,18 +2550,6 @@ function renderModal(d) {
           </tr>
         </thead>
         <tbody>
-          ${(()=>{
-            // 야구 관례: AWAY(원정)가 위, HOME(홈)이 아래
-            const awayTeam = g.away, homeTeam = g.home;
-            const awayInn = g.awayInnings || Array(9).fill(-1);
-            const homeInn = g.homeInnings || Array(9).fill(-1);
-            const totalInnings = Math.max(9, awayInn.length, homeInn.length);
-            const awayScore = g.awayScore ?? 0;
-            const homeScore = g.homeScore ?? 0;
-            const awayHit = g.awayHit ?? '-', homeHit = g.homeHit ?? '-';
-            const awayErr = g.awayError ?? '-', homeErr = g.homeError ?? '-';
-            const awayBall = g.awayBallFour ?? '-', homeBall = g.homeBallFour ?? '-';
-            return `
           <tr>
             <td class="team-cell" style="color:${awayTeam==='KIA'?'#ff6b6b':d.text}">${awayTeam}</td>
             ${Array.from({length:totalInnings},(_,i)=>cellSt(awayInn[i]??-1,i,g.inning)).join('')}
@@ -2568,11 +2565,11 @@ function renderModal(d) {
             <td style="font-size:11px;color:${d.sub}">${homeHit}</td>
             <td style="font-size:11px;color:${homeErr>0?'#E31837':d.sub}">${homeErr}</td>
             <td style="font-size:11px;color:${d.sub}">${homeBall}</td>
-          </tr>`;
-          })()}
+          </tr>
         </tbody>
       </table>
-    </div>` : `<div style="text-align:center;padding:16px;color:${d.sub};font-size:12px">${isLive?`${g.inningInfo||g.inning+'회'||''} 진행 중`:'경기 예정 · 경기 후 스코어가 표시됩니다'}</div>`;
+    </div>`;
+          })() : `<div style="text-align:center;padding:16px;color:${d.sub};font-size:12px">${isLive?`${g.inningInfo||g.inning+'회'||''} 진행 중`:'경기 예정 · 경기 후 스코어가 표시됩니다'}</div>`;
 
   document.getElementById('modal-content').innerHTML = `
     <div style="display:flex;justify-content:center;padding:10px 0 2px">
