@@ -1456,7 +1456,7 @@ window.saveRecordMemoEl = function(el) {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(key)||'{}'); if(typeof data==='string') data={text:data}; } catch(e) {}
   data.text = el.value;
-  localStorage.setItem(key, JSON.stringify(data));
+  _recSaveMemo(date, away, home, data);
 };
 
 function _recGetMemo(date, away, home) {
