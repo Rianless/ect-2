@@ -30,7 +30,6 @@ export default async function handler(req, res) {
   const { action, key } = req.query;
 
   try {
-    // 전체 조회
     if (action === 'getAll') {
       const rows = await supabase('GET', 'game_records?select=key,value');
       const result = {};
@@ -38,9 +37,15 @@ export default async function handler(req, res) {
       return res.status(200).json(result);
     }
 
-    // 저장
     if (action === 'set' && req.method === 'POST') {
-      const value = req.body;
+      // body를 직접 문자열로 읽어서 파싱
+      const raw = await new Promise((resolve, reject) => {
+        let data = '';
+        req.on('data', chunk => { data += chunk; });
+        req.on('end', () => resolve(data));
+        req.on('error', reject);
+      });
+      const value = JSON.parse(raw);
       await supabase('POST', 'game_records', {
         key,
         value,
@@ -49,7 +54,6 @@ export default async function handler(req, res) {
       return res.status(200).json({ ok: true });
     }
 
-    // 삭제
     if (action === 'del' && req.method === 'DELETE') {
       await supabase('DELETE', `game_records?key=eq.${encodeURIComponent(key)}`);
       return res.status(200).json({ ok: true });
