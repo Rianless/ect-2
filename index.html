@@ -163,13 +163,588 @@
     .ticket-link-btn:active{transform:scale(0.98);box-shadow:var(--nm-inset)}
     @media (hover:hover){.nm-card.pressable:hover{transform:translateY(-1px);box-shadow:var(--nm-3),var(--edge-top)}.nm-btn:hover{transform:translateY(-1px)}}
     @media (prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms !important;transition-duration:0.01ms !important}}
+
+    /* ═══════════════════════════════════════════════════════════════
+       PC LAYOUT — HUD 미래형 데이터 대시보드 (≥1080px: 3-column)
+       PC LAYOUT — 2-column (900–1079px)
+    ═══════════════════════════════════════════════════════════════ */
+
+    /* ── 공통: 모바일 nav 숨김 / 스크롤바 ── */
+    @media (min-width:900px) {
+      .nav { display: none !important; }
+
+      ::-webkit-scrollbar { display: block !important; width: 5px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: var(--c-faint); border-radius: 4px; }
+      body.dark ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.08); }
+
+      /* ── 모달 → 중앙 팝업 ── */
+      #modal-overlay { align-items: center !important; }
+      #modal-box {
+        max-width: 640px; height: 85vh;
+        border-radius: var(--r-xl) !important;
+        border-bottom: 1px solid var(--glass-border) !important;
+        margin-bottom: 0;
+        animation: fadeIn 0.22s var(--ease-soft) !important;
+      }
+      #ticket-panel { align-items: center !important; }
+      #ticket-box {
+        max-width: 480px;
+        border-radius: var(--r-xl) !important;
+        border-bottom: 1px solid var(--glass-border) !important;
+        animation: fadeIn 0.22s var(--ease-soft) !important;
+      }
+      #relay-panel { align-items: center !important; }
+      #relay-box {
+        border-radius: var(--r-xl) !important;
+        border-bottom: 1px solid var(--glass-border) !important;
+      }
+    }
+
+    /* ── PC 공통 배경 ── */
+    @media (min-width:900px) {
+      body:not(.dark) {
+        background:
+          radial-gradient(ellipse 70% 50% at 20% 0%, rgba(255,255,255,0.5), transparent 55%),
+          radial-gradient(ellipse 50% 40% at 85% 95%, rgba(227,24,55,0.05), transparent 50%),
+          linear-gradient(155deg, #cdd6e4 0%, #dae2ef 45%, #cfd8e6 100%);
+        background-attachment: fixed;
+      }
+      body.dark {
+        background:
+          radial-gradient(ellipse 80% 60% at 50% -5%, rgba(30,45,100,0.22), transparent 60%),
+          radial-gradient(ellipse 55% 40% at 95% 100%, rgba(255,40,80,0.14), transparent 50%),
+          radial-gradient(ellipse 40% 30% at 0% 60%, rgba(0,200,180,0.04), transparent 50%),
+          linear-gradient(160deg, #020408 0%, #060a12 50%, #090e1a 100%);
+        background-attachment: fixed;
+      }
+    }
+
+    /* ══════════════════════════════
+       3-COLUMN: ≥1080px
+    ══════════════════════════════ */
+    @media (min-width:1080px) {
+      #app {
+        display: grid;
+        grid-template-columns: 200px 1fr 260px;
+        grid-template-rows: 100vh;
+        max-width: 1600px;
+        margin: 0 auto;
+      }
+      #pc-sidebar   { display: flex !important; grid-column: 1; }
+      #content-wrapper { grid-column: 2; overflow-y: auto; height: 100vh; }
+      #pc-right-panel  { display: flex !important; grid-column: 3; }
+      #content {
+        max-width: 100% !important;
+        padding: 28px 28px 48px !important;
+        margin: 0 !important;
+      }
+    }
+
+    /* ══════════════════════════════
+       2-COLUMN: 900–1079px
+    ══════════════════════════════ */
+    @media (min-width:900px) and (max-width:1079px) {
+      #app {
+        display: grid;
+        grid-template-columns: 190px 1fr;
+        grid-template-rows: 100vh;
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      #pc-sidebar   { display: flex !important; grid-column: 1; }
+      #content-wrapper { grid-column: 2; overflow-y: auto; height: 100vh; }
+      #pc-right-panel  { display: none !important; }
+      #content {
+        max-width: 100% !important;
+        padding: 28px 28px 48px !important;
+        margin: 0 !important;
+      }
+    }
+
+    /* ── 모바일: 사이드바·우측 패널 숨김 ── */
+    @media (max-width:899px) {
+      #pc-sidebar      { display: none !important; }
+      #pc-right-panel  { display: none !important; }
+      #content-wrapper { display: contents; }
+    }
+
+    /* ══════════════════════════════════════════════
+       공통 사이드바 스타일
+    ══════════════════════════════════════════════ */
+    #pc-sidebar {
+      display: none; /* 모바일 기본값, PC에서 flex로 오버라이드 */
+      flex-direction: column;
+      position: sticky; top: 0; height: 100vh;
+      padding: 24px 14px 20px;
+      overflow: hidden;
+      z-index: 40;
+      border-right: 1px solid var(--glass-border);
+    }
+    body:not(.dark) #pc-sidebar {
+      background: rgba(220,228,242,0.88);
+      border-right-color: rgba(255,255,255,0.75);
+      box-shadow: 2px 0 24px rgba(163,177,198,0.2);
+      backdrop-filter: blur(20px) saturate(1.3);
+      -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    }
+    body.dark #pc-sidebar {
+      background: rgba(5,8,16,0.92);
+      border-right-color: rgba(255,255,255,0.04);
+      box-shadow: 2px 0 40px rgba(0,0,0,0.6), 1px 0 0 rgba(255,40,80,0.04);
+      backdrop-filter: blur(24px) saturate(1.5);
+      -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    }
+    /* 스캔라인 */
+    #pc-sidebar::before {
+      content: '';
+      position: absolute; inset: 0; pointer-events: none; z-index: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.01) 3px, rgba(0,0,0,0.01) 4px);
+    }
+    body.dark #pc-sidebar::before {
+      background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,200,255,0.012) 3px, rgba(0,200,255,0.012) 4px);
+    }
+    /* 다크모드: 오른쪽 엣지 글로우 라인 */
+    body.dark #pc-sidebar::after {
+      content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 1px;
+      background: linear-gradient(to bottom, transparent 0%, rgba(255,40,80,0.25) 30%, rgba(255,40,80,0.1) 70%, transparent 100%);
+      pointer-events: none;
+    }
+    #pc-sidebar > * { position: relative; z-index: 1; }
+
+    /* ── 로고 ── */
+    #pc-logo {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 24px; padding: 0 2px;
+    }
+    #pc-logo-emblem {
+      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
+      box-shadow: var(--accent-glow), 0 4px 16px rgba(227,24,55,0.3);
+      position: relative; overflow: hidden;
+    }
+    #pc-logo-emblem::after {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 50%;
+      background: rgba(255,255,255,0.18); border-radius: 10px 10px 0 0;
+    }
+    body.dark #pc-logo-emblem {
+      box-shadow: 0 0 0 1px rgba(255,40,80,0.5), 0 0 16px rgba(255,40,80,0.35), 0 4px 12px rgba(0,0,0,0.5);
+    }
+    #pc-logo-text { display: flex; flex-direction: column; line-height: 1.1; }
+    #pc-logo-text .title {
+      font-size: 12px; font-weight: 900; color: var(--c-text); letter-spacing: 0.02em;
+    }
+    #pc-logo-text .sub {
+      font-size: 8.5px; font-weight: 700; color: var(--c-sub);
+      letter-spacing: 0.1em; text-transform: uppercase; margin-top: 2px;
+    }
+    body.dark #pc-logo-text .sub {
+      color: var(--accent); text-shadow: 0 0 8px rgba(255,40,80,0.6);
+    }
+
+    /* ── 시계 위젯 ── */
+    #pc-clock-widget {
+      border-radius: var(--r-md); padding: 10px 12px; margin-bottom: 20px;
+      font-variant-numeric: tabular-nums; position: relative; overflow: hidden;
+    }
+    body:not(.dark) #pc-clock-widget {
+      background: rgba(255,255,255,0.45);
+      border: 1px solid rgba(255,255,255,0.8);
+      box-shadow: var(--nm-inset);
+    }
+    body.dark #pc-clock-widget {
+      background: rgba(255,255,255,0.025);
+      border: 1px solid rgba(255,255,255,0.05);
+      box-shadow: inset 0 2px 8px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,40,80,0.06);
+    }
+    body.dark #pc-clock-widget::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(255,40,80,0.3), transparent);
+    }
+    #pc-clock-time {
+      font-size: 20px; font-weight: 900; letter-spacing: 0.06em;
+      color: var(--c-text); line-height: 1; font-variant-numeric: tabular-nums;
+    }
+    body.dark #pc-clock-time {
+      color: #ff2a50;
+      text-shadow: 0 0 10px rgba(255,40,80,0.5), 0 0 24px rgba(255,40,80,0.2);
+    }
+    #pc-clock-date {
+      font-size: 9.5px; font-weight: 600; color: var(--c-sub); margin-top: 3px; letter-spacing: 0.03em;
+    }
+    body.dark #pc-clock-date { color: rgba(255,255,255,0.35); }
+
+    /* ── 내비 버튼 ── */
+    #pc-nav { display: flex; flex-direction: column; gap: 3px; flex: 1; }
+    .pc-nav-btn {
+      display: flex; align-items: center; gap: 10px;
+      width: 100%; padding: 10px 12px; border-radius: var(--r-md);
+      font-size: 12.5px; font-weight: 700; font-family: 'Noto Sans KR', sans-serif;
+      color: var(--c-sub); background: transparent; border: none; cursor: pointer;
+      transition: all 0.18s var(--ease-soft); text-align: left;
+      position: relative; overflow: hidden;
+    }
+    /* 왼쪽 액티브 인디케이터 바 */
+    .pc-nav-btn::before {
+      content: ''; position: absolute; left: 0; top: 18%; bottom: 18%;
+      width: 2.5px; border-radius: 2px; background: var(--accent);
+      opacity: 0; transition: opacity 0.18s, transform 0.22s var(--ease-bounce);
+      transform: scaleY(0.2);
+    }
+    /* 다크모드: 호버시 배경 스캔 효과 */
+    .pc-nav-btn::after {
+      content: ''; position: absolute; inset: 0; border-radius: var(--r-md);
+      background: linear-gradient(90deg, transparent, rgba(255,40,80,0.04), transparent);
+      opacity: 0; transition: opacity 0.2s;
+      transform: translateX(-100%);
+    }
+    .pc-nav-btn:hover::after { opacity: 1; transform: translateX(0); }
+    .pc-nav-btn .nav-icon {
+      width: 30px; height: 30px; border-radius: 8px; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center; font-size: 15px;
+      background: var(--c-bg); box-shadow: var(--nm-1);
+      transition: all 0.2s var(--ease-bounce);
+    }
+    body.dark .pc-nav-btn .nav-icon {
+      background: rgba(255,255,255,0.03);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .pc-nav-btn:hover { color: var(--c-text); background: var(--c-bg); }
+    body.dark .pc-nav-btn:hover { background: rgba(255,255,255,0.03); }
+    .pc-nav-btn:hover .nav-icon { transform: scale(1.1) rotate(-4deg); }
+    .pc-nav-btn.active { color: var(--accent); background: var(--accent-soft); }
+    body.dark .pc-nav-btn.active {
+      background: rgba(255,40,80,0.08);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.03), inset 0 0 12px rgba(255,40,80,0.04);
+    }
+    .pc-nav-btn.active::before { opacity: 1; transform: scaleY(1); }
+    body.dark .pc-nav-btn.active::before { box-shadow: 0 0 6px rgba(255,40,80,0.6); }
+    .pc-nav-btn.active .nav-icon {
+      background: linear-gradient(135deg, var(--accent-soft), transparent);
+      box-shadow: var(--nm-1), inset 0 1px 0 rgba(255,255,255,0.3);
+      transform: translateY(-1px) scale(1.06);
+    }
+    body.dark .pc-nav-btn.active .nav-icon {
+      background: linear-gradient(135deg, rgba(255,40,80,0.2), rgba(255,40,80,0.05));
+      box-shadow: 0 0 12px rgba(255,40,80,0.2), 0 2px 8px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.05);
+    }
+    .pc-nav-btn .nav-label { flex: 1; }
+
+    /* ── 사이드바 푸터 ── */
+    #pc-sidebar-footer {
+      border-top: 1px solid var(--c-faint); padding-top: 14px; margin-top: 6px;
+      display: flex; flex-direction: column; gap: 8px;
+    }
+    body.dark #pc-sidebar-footer { border-top-color: rgba(255,255,255,0.05); }
+    #pc-dark-toggle {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 12px; border-radius: var(--r-md);
+      background: var(--c-bg); border: 1px solid var(--glass-border);
+      cursor: pointer; font-size: 11.5px; font-weight: 700; color: var(--c-sub);
+      box-shadow: var(--nm-1), var(--edge-top);
+      transition: all 0.15s var(--ease-soft); font-family: 'Noto Sans KR', sans-serif;
+    }
+    body.dark #pc-dark-toggle {
+      background: rgba(255,255,255,0.025); border-color: rgba(255,255,255,0.05);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+    }
+    #pc-dark-toggle:hover { color: var(--c-text); }
+    #pc-dark-toggle .toggle-track {
+      width: 32px; height: 17px; border-radius: 9px;
+      background: var(--c-bg-b); box-shadow: var(--nm-inset);
+      position: relative; transition: background 0.25s; flex-shrink: 0;
+    }
+    body.dark #pc-dark-toggle .toggle-track {
+      background: var(--accent);
+      box-shadow: 0 0 8px rgba(255,40,80,0.45), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    #pc-dark-toggle .toggle-thumb {
+      width: 11px; height: 11px; border-radius: 50%; background: #fff;
+      position: absolute; top: 3px; left: 3px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+      transition: transform 0.25s var(--ease-bounce);
+    }
+    body.dark #pc-dark-toggle .toggle-thumb { transform: translateX(15px); }
+    #pc-version {
+      text-align: center; font-size: 8.5px; font-weight: 700; color: var(--c-muted);
+      letter-spacing: 0.08em; text-transform: uppercase;
+    }
+    body.dark #pc-version { color: rgba(255,40,80,0.25); }
+
+    /* ══════════════════════════════════════════════
+       오른쪽 정보 패널 (PC 전용, ≥1080px)
+    ══════════════════════════════════════════════ */
+    #pc-right-panel {
+      display: none; /* 모바일 기본값, ≥1080px에서 flex로 오버라이드 */
+      flex-direction: column;
+      position: sticky; top: 0; height: 100vh;
+      padding: 24px 16px 20px;
+      overflow-y: auto; overflow-x: hidden;
+      z-index: 40;
+      border-left: 1px solid var(--glass-border);
+      scrollbar-width: none;
+    }
+    #pc-right-panel::-webkit-scrollbar { display: none; }
+    body:not(.dark) #pc-right-panel {
+      background: rgba(220,228,242,0.82);
+      border-left-color: rgba(255,255,255,0.7);
+      box-shadow: -2px 0 24px rgba(163,177,198,0.18);
+      backdrop-filter: blur(20px) saturate(1.3);
+      -webkit-backdrop-filter: blur(20px) saturate(1.3);
+    }
+    body.dark #pc-right-panel {
+      background: rgba(4,7,14,0.92);
+      border-left-color: rgba(255,255,255,0.04);
+      box-shadow: -2px 0 40px rgba(0,0,0,0.55), -1px 0 0 rgba(255,40,80,0.04);
+      backdrop-filter: blur(24px) saturate(1.5);
+      -webkit-backdrop-filter: blur(24px) saturate(1.5);
+    }
+    body.dark #pc-right-panel::before {
+      content: ''; position: absolute; top: 0; left: 0; bottom: 0; width: 1px;
+      background: linear-gradient(to bottom, transparent 0%, rgba(255,40,80,0.2) 30%, rgba(255,40,80,0.08) 70%, transparent 100%);
+      pointer-events: none;
+    }
+    #pc-right-panel > * { position: relative; z-index: 1; }
+
+    /* 우측 패널 섹션 헤더 */
+    .rp-section {
+      margin-bottom: 16px;
+    }
+    .rp-section-title {
+      font-size: 9px; font-weight: 800; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--c-muted);
+      margin-bottom: 8px; padding: 0 2px;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .rp-section-title::after {
+      content: ''; flex: 1; height: 1px;
+      background: linear-gradient(90deg, var(--c-faint), transparent);
+    }
+    body.dark .rp-section-title {
+      color: rgba(255,40,80,0.45);
+    }
+    body.dark .rp-section-title::after {
+      background: linear-gradient(90deg, rgba(255,40,80,0.15), transparent);
+    }
+
+    /* 우측 카드 공통 */
+    .rp-card {
+      background: var(--c-bg);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--r-md);
+      padding: 12px 13px;
+      margin-bottom: 8px;
+      box-shadow: var(--nm-1), var(--edge-top);
+      transition: transform 0.15s var(--ease-soft);
+    }
+    body.dark .rp-card {
+      background: rgba(255,255,255,0.025);
+      border-color: rgba(255,255,255,0.05);
+      box-shadow: 0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.04);
+    }
+    .rp-card:hover { transform: translateY(-1px); }
+    body.dark .rp-card:hover { box-shadow: 0 4px 18px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,40,80,0.08); }
+
+    /* 시스템 상태 지표 */
+    .rp-stat-row {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 0; font-size: 11px;
+    }
+    .rp-stat-row + .rp-stat-row { border-top: 1px solid var(--c-faint); }
+    body.dark .rp-stat-row + .rp-stat-row { border-top-color: rgba(255,255,255,0.04); }
+    .rp-stat-label { font-weight: 600; color: var(--c-sub); font-size: 10.5px; }
+    .rp-stat-val { font-weight: 800; color: var(--c-text); font-size: 11px; font-variant-numeric: tabular-nums; }
+    body.dark .rp-stat-val { color: rgba(200,220,255,0.9); }
+    .rp-stat-val.live { color: var(--accent); }
+    body.dark .rp-stat-val.live { text-shadow: 0 0 8px rgba(255,40,80,0.45); }
+    .rp-stat-val.ok { color: #22c55e; }
+    body.dark .rp-stat-val.ok { color: #4ade80; text-shadow: 0 0 8px rgba(74,222,128,0.3); }
+
+    /* 순위 미니 리스트 */
+    .rp-rank-row {
+      display: flex; align-items: center; gap: 7px;
+      padding: 5px 0; font-size: 11px;
+    }
+    .rp-rank-row + .rp-rank-row { border-top: 1px solid var(--c-faint); }
+    body.dark .rp-rank-row + .rp-rank-row { border-top-color: rgba(255,255,255,0.04); }
+    .rp-rank-num {
+      font-size: 10px; font-weight: 900; color: var(--c-muted);
+      width: 14px; text-align: center; flex-shrink: 0;
+    }
+    .rp-rank-num.top3 { color: var(--accent); }
+    body.dark .rp-rank-num.top3 { text-shadow: 0 0 6px rgba(255,40,80,0.5); }
+    .rp-rank-team { font-weight: 800; font-size: 11px; color: var(--c-text); flex: 1; }
+    .rp-rank-note { font-size: 9.5px; font-weight: 600; color: var(--c-muted); }
+
+    /* HUD 배지 */
+    .rp-hud-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 9px; font-weight: 800; letter-spacing: 0.06em;
+      padding: 2px 7px; border-radius: var(--r-full);
+      border: 1px solid currentColor; opacity: 0.75;
+    }
+    .rp-hud-badge.green { color: #22c55e; }
+    .rp-hud-badge.red { color: var(--accent); }
+    body.dark .rp-hud-badge.green { color: #4ade80; box-shadow: 0 0 6px rgba(74,222,128,0.25); }
+    body.dark .rp-hud-badge.red { box-shadow: 0 0 6px rgba(255,40,80,0.25); }
+
+    /* 오늘의 KIA 경기 카드 */
+    .rp-game-card {
+      border-radius: var(--r-md); padding: 12px;
+      background: linear-gradient(135deg, rgba(227,24,55,0.08), rgba(227,24,55,0.02));
+      border: 1px solid rgba(227,24,55,0.2);
+      margin-bottom: 8px;
+      box-shadow: var(--nm-1), 0 2px 10px rgba(227,24,55,0.06);
+    }
+    body.dark .rp-game-card {
+      background: linear-gradient(135deg, rgba(255,40,80,0.1), rgba(255,40,80,0.03));
+      border-color: rgba(255,40,80,0.18);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,40,80,0.08);
+    }
+    .rp-game-teams {
+      display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 6px;
+    }
+    .rp-game-team { font-size: 13px; font-weight: 900; color: var(--c-text); }
+    .rp-game-vs { font-size: 9px; font-weight: 700; color: var(--c-muted); }
+    .rp-game-score {
+      text-align: center; font-size: 22px; font-weight: 900;
+      letter-spacing: 0.04em; color: var(--c-text); line-height: 1;
+      font-variant-numeric: tabular-nums; margin-bottom: 4px;
+    }
+    body.dark .rp-game-score { color: #fff; }
+    .rp-game-meta { text-align: center; font-size: 10px; font-weight: 600; color: var(--c-sub); }
+
+    /* 세그먼트 바 (이닝 진행 등) */
+    .rp-seg-bar {
+      height: 3px; border-radius: 2px; background: var(--c-faint);
+      overflow: hidden; margin-top: 8px;
+    }
+    .rp-seg-fill {
+      height: 100%; border-radius: 2px;
+      background: linear-gradient(90deg, var(--accent), var(--accent-2));
+      transition: width 0.6s var(--ease-soft);
+    }
+    body.dark .rp-seg-fill {
+      box-shadow: 0 0 6px rgba(255,40,80,0.5);
+    }
+
+    /* D-day 큰 배지 */
+    .rp-dday {
+      text-align: center; padding: 10px 12px;
+      border-radius: var(--r-md);
+      background: linear-gradient(135deg, var(--accent-soft), transparent);
+      border: 1px solid rgba(227,24,55,0.2);
+    }
+    body.dark .rp-dday { border-color: rgba(255,40,80,0.2); }
+    .rp-dday-val {
+      font-size: 26px; font-weight: 900; color: var(--accent); line-height: 1;
+    }
+    body.dark .rp-dday-val { text-shadow: 0 0 16px rgba(255,40,80,0.5); }
+    .rp-dday-label { font-size: 9.5px; font-weight: 700; color: var(--c-sub); margin-top: 3px; letter-spacing: 0.04em; }
+
+    /* ── 메인 콘텐츠 래퍼 ── */
+    #content-wrapper { display: block; }
   </style>
 
 </head>
 <body>
 
 <div id="app">
-  <div id="content" style="max-width:600px;margin:0 auto;padding:14px 16px 80px"></div>
+  <!-- ── 왼쪽 사이드바 ── -->
+  <aside id="pc-sidebar">
+    <div id="pc-logo">
+      <div id="pc-logo-emblem">⚾</div>
+      <div id="pc-logo-text">
+        <span class="title">KBO 대시보드</span>
+        <span class="sub">horang2 · 2026</span>
+      </div>
+    </div>
+    <div id="pc-clock-widget">
+      <div id="pc-clock-time">--:--:--</div>
+      <div id="pc-clock-date">날짜 로딩중...</div>
+    </div>
+    <nav id="pc-nav">
+      <button class="pc-nav-btn active" onclick="setTab('cal')" id="pc-btn-cal">
+        <div class="nav-icon">⚾</div>
+        <span class="nav-label">일정</span>
+      </button>
+      <button class="pc-nav-btn" onclick="setTab('stand')" id="pc-btn-stand">
+        <div class="nav-icon">📊</div>
+        <span class="nav-label">기록</span>
+      </button>
+      <button class="pc-nav-btn" onclick="setTab('my')" id="pc-btn-my">
+        <div class="nav-icon">🐯</div>
+        <span class="nav-label">마이페이지</span>
+      </button>
+    </nav>
+    <div id="pc-sidebar-footer">
+      <button id="pc-dark-toggle" onclick="toggleDark()">
+        <span>다크 모드</span>
+        <div class="toggle-track"><div class="toggle-thumb"></div></div>
+      </button>
+      <div id="pc-version">KBO · SYSTEM ONLINE · KST</div>
+    </div>
+  </aside>
+
+  <!-- ── 메인 콘텐츠 ── -->
+  <div id="content-wrapper">
+    <div id="content" style="max-width:600px;margin:0 auto;padding:14px 16px 80px"></div>
+  </div>
+
+  <!-- ── 오른쪽 정보 패널 ── -->
+  <aside id="pc-right-panel">
+    <!-- KIA 오늘 경기 -->
+    <div class="rp-section" id="rp-today-section">
+      <div class="rp-section-title">오늘의 KIA</div>
+      <div id="rp-today-game">
+        <div class="rp-dday">
+          <div class="rp-dday-val" id="rp-dday-val">--</div>
+          <div class="rp-dday-label">KBO 정규시즌</div>
+        </div>
+      </div>
+    </div>
+    <!-- 현재 순위 스냅샷 -->
+    <div class="rp-section">
+      <div class="rp-section-title">순위 스냅샷</div>
+      <div class="rp-card" id="rp-standings">
+        <div class="rp-rank-row"><span class="rp-rank-num top3">1</span><span class="rp-rank-team">LG 트윈스</span><span class="rp-rank-note">2025 🏆</span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num top3">2</span><span class="rp-rank-team">한화 이글스</span><span class="rp-rank-note">준우승</span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num top3">3</span><span class="rp-rank-team">SSG 랜더스</span><span class="rp-rank-note"></span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num">4</span><span class="rp-rank-team">삼성 라이온즈</span><span class="rp-rank-note"></span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num">5</span><span class="rp-rank-team">NC 다이노스</span><span class="rp-rank-note"></span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num">6</span><span class="rp-rank-team">KT 위즈</span><span class="rp-rank-note"></span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num">7</span><span class="rp-rank-team">롯데 자이언츠</span><span class="rp-rank-note"></span></div>
+        <div class="rp-rank-row" style="background:var(--accent-soft);border-radius:6px;padding:5px 6px;margin:-2px -6px"><span class="rp-rank-num" style="color:var(--accent)">8</span><span class="rp-rank-team" style="color:var(--accent)">KIA 타이거즈</span><span class="rp-rank-note">🐯</span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num">9</span><span class="rp-rank-team">두산 베어스</span><span class="rp-rank-note"></span></div>
+        <div class="rp-rank-row"><span class="rp-rank-num">10</span><span class="rp-rank-team">키움 히어로즈</span><span class="rp-rank-note"></span></div>
+      </div>
+    </div>
+    <!-- 시스템 상태 -->
+    <div class="rp-section">
+      <div class="rp-section-title">시스템 상태</div>
+      <div class="rp-card">
+        <div class="rp-stat-row">
+          <span class="rp-stat-label">데이터 소스</span>
+          <span class="rp-stat-val ok" id="rp-status-source">● ONLINE</span>
+        </div>
+        <div class="rp-stat-row">
+          <span class="rp-stat-label">마지막 갱신</span>
+          <span class="rp-stat-val" id="rp-last-update">--:--</span>
+        </div>
+        <div class="rp-stat-row">
+          <span class="rp-stat-label">경기 알림</span>
+          <span class="rp-stat-val" id="rp-notify-status">대기중</span>
+        </div>
+        <div class="rp-stat-row">
+          <span class="rp-stat-label">시즌</span>
+          <span class="rp-stat-val">2026 KBO</span>
+        </div>
+      </div>
+    </div>
+  </aside>
+
   <nav class="nav" id="nav"></nav>
 </div>
 <div id="modal-overlay">
@@ -282,43 +857,31 @@ let _scoringCache = null; // { gameId, plays[] }
 // 용여찾기 로드
 
 // ── 서버 동기화 ──
-const _SUPABASE_URL = 'https://vgzcslmpihnjhbzeqehm.supabase.co';
-const _SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnemNzbG1waWhuamhiemVxZWhtIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzY1ODUwMjcsImV4cCI6MjA5MjE2MTAyN30.anNsBtkiDDhddwVxRcWgGC7_2ufhSzGZYkJHf-d6Jl0';
+const _API_RECORDS = '/api/records';
 let _serverSyncDone = false;
 
 async function serverGetAll() {
   try {
-    const r = await fetch(_SUPABASE_URL + '/rest/v1/game_records?select=key,value', {
-      headers: { 'apikey': _SUPABASE_KEY, 'Authorization': 'Bearer ' + _SUPABASE_KEY }
-    });
+    const r = await fetch(_API_RECORDS + '?action=getAll');
     if (!r.ok) return null;
-    const rows = await r.json();
-    const result = {};
-    (rows || []).forEach(row => { result[row.key] = row.value; });
-    return result;
+    return await r.json();
   } catch(e) { return null; }
 }
 
 async function serverSet(key, value) {
   try {
-    await fetch(_SUPABASE_URL + '/rest/v1/game_records', {
+    await fetch(_API_RECORDS + '?action=set&key=' + encodeURIComponent(key), {
       method: 'POST',
-      headers: {
-        'apikey': _SUPABASE_KEY,
-        'Authorization': 'Bearer ' + _SUPABASE_KEY,
-        'Content-Type': 'application/json',
-        'Prefer': 'resolution=merge-duplicates'
-      },
-      body: JSON.stringify({ key, value, updated_at: new Date().toISOString() })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(value)
     });
   } catch(e) {}
 }
 
 async function serverDel(key) {
   try {
-    await fetch(_SUPABASE_URL + '/rest/v1/game_records?key=eq.' + encodeURIComponent(key), {
-      method: 'DELETE',
-      headers: { 'apikey': _SUPABASE_KEY, 'Authorization': 'Bearer ' + _SUPABASE_KEY }
+    await fetch(_API_RECORDS + '?action=del&key=' + encodeURIComponent(key), {
+      method: 'DELETE'
     });
   } catch(e) {}
 }
@@ -904,6 +1467,8 @@ function renderSeasonCard(d) {
 function renderCal(d) {
   const dark = state.dark;
   const {calHtml, listHtml} = renderCalSplit(d);
+  const isPC = window.innerWidth >= 1080;
+
   const headerHtml = `<div style="
       display:flex;justify-content:space-between;align-items:center;
       padding:10px 14px;margin-bottom:14px;
@@ -945,6 +1510,252 @@ function renderCal(d) {
       </div>
     </div>
   </div>`;
+
+  // ── PC 전용: 시즌 성적 히어로 배너 ──
+  const pcHeroBanner = (() => {
+    if (!isPC) return '';
+    const { wins, losses, draws, pct, streak, streakType } = getKiaSeasonStats();
+    const streakLabel = streakType==='W'?`${streak}연승 🔥`:streakType==='L'?`${streak}연패 💧`:streakType==='D'?`${streak}연속무`:null;
+    const streakColor = streakType==='W'?'#ff3b5c':streakType==='L'?'#4FC3F7':'#FF9500';
+
+    // 오늘 KIA 경기
+    const kst=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+    const td=kst.getFullYear()+'-'+String(kst.getMonth()+1).padStart(2,'0')+'-'+String(kst.getDate()).padStart(2,'0');
+    const tg=SCH.find(g=>g.date===td&&(g.away==='KIA'||g.home==='KIA'));
+    const isHome=tg&&tg.home==='KIA';
+    const opp=tg?(isHome?tg.away:tg.home):'';
+    const oppData=opp&&T[opp]?T[opp]:{name:opp,color:'#555'};
+    const oppColor=oppData.color;
+    const oppName=oppData.name||opp;
+    const kiaS=tg?(isHome?tg.homeScore:tg.awayScore):null;
+    const oppS=tg?(isHome?tg.awayScore:tg.homeScore):null;
+    const hasScore=kiaS!=null&&oppS!=null;
+    const isLive=tg&&tg.status==='LIVE';
+    const isFinal=tg&&tg.status==='FINAL';
+    const kiaWin=hasScore&&kiaS>oppS;
+    const oppWin=hasScore&&oppS>kiaS;
+
+    // 이닝 스코어 테이블
+    const kiaInnings=tg?(isHome?tg.homeInnings||[]:tg.awayInnings||[]):[];
+    const oppInnings=tg?(isHome?tg.awayInnings||[]:tg.homeInnings||[]):[];
+    const maxInn=Math.max(kiaInnings.length,oppInnings.length,9);
+    const innNums=Array.from({length:maxInn},(_,i)=>i+1);
+    const iv=(arr,i)=>{const v=arr[i];return v==null||v<0?'-':String(v);};
+    const hasInn=kiaInnings.some(x=>x>=0)||oppInnings.some(x=>x>=0);
+    const innTableHtml = (hasInn&&(isLive||isFinal)) ? `
+      <div style="overflow-x:auto;scrollbar-width:none;margin-top:14px">
+        <table style="width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums">
+          <thead>
+            <tr>
+              <td style="padding:4px 8px;font-size:10px;font-weight:800;color:rgba(255,255,255,0.4);text-align:left;min-width:72px">팀</td>
+              ${innNums.map(n=>`<td style="padding:4px 5px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);min-width:22px">${n}</td>`).join('')}
+              <td style="padding:4px 8px;text-align:center;font-size:10px;font-weight:800;color:rgba(255,255,255,0.5);border-left:1px solid rgba(255,255,255,0.12);min-width:30px">R</td>
+              <td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);min-width:26px">H</td>
+              <td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);min-width:26px">E</td>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="background:rgba(255,255,255,0.04);border-radius:6px">
+              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${kiaWin?'#fff':'rgba(255,255,255,0.7)'};text-align:left">KIA</td>
+              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${kiaInnings[i]>0?'#fff':'rgba(255,255,255,0.45)'}">${iv(kiaInnings,i)}</td>`).join('')}
+              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${kiaWin?'#ff3b5c':'#fff'};border-left:1px solid rgba(255,255,255,0.12)">${hasScore?kiaS:'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.45)">${tg.kiaHit??'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.45)">${tg.kiaError??'-'}</td>
+            </tr>
+            <tr>
+              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${oppWin?'#fff':'rgba(255,255,255,0.55)'};text-align:left">${opp}</td>
+              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${oppInnings[i]>0?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.35)'}">${iv(oppInnings,i)}</td>`).join('')}
+              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${oppWin?'#ff3b5c':'rgba(255,255,255,0.7)'};border-left:1px solid rgba(255,255,255,0.12)">${hasScore?oppS:'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.35)">${tg.oppHit??'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.35)">${tg.oppError??'-'}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>` : '';
+
+    // 상태 뱃지
+    const statusBadge = isLive
+      ? `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,40,80,0.2);border:1px solid rgba(255,40,80,0.5);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:900;color:#ff3b5c;letter-spacing:.06em;animation:pulseRed 1.5s infinite">
+          <span style="width:6px;height:6px;border-radius:50%;background:#ff3b5c;display:inline-block"></span>
+          LIVE · ${tg.inningInfo||tg.inning+'회'||'진행중'}
+         </div>`
+      : isFinal
+      ? `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.08);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:800;color:rgba(255,255,255,0.55);letter-spacing:.06em">FINAL</div>`
+      : tg
+      ? `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.06);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:800;color:rgba(255,255,255,0.45);letter-spacing:.04em">⏰ ${tg.time} 시작예정</div>`
+      : '';
+
+    // 오늘 경기 없을 때
+    if (!tg) {
+      return `<div style="
+        background:${dark?'linear-gradient(135deg,#0d1020 0%,#151a2e 100%)':'linear-gradient(135deg,#1a1f3a 0%,#0f1428 100%)'};
+        border-radius:20px;margin-bottom:20px;overflow:hidden;
+        border:1px solid rgba(255,255,255,0.07);
+        box-shadow:0 8px 40px rgba(0,0,0,0.4);
+        display:grid;grid-template-columns:1fr 1fr;
+      ">
+        <div style="padding:24px 28px;border-right:1px solid rgba(255,255,255,0.07)">
+          <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.35);letter-spacing:.14em;text-transform:uppercase;margin-bottom:14px">2026 KIA 타이거즈</div>
+          <div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:10px">
+            <div style="font-size:52px;font-weight:900;color:#fff;line-height:1;letter-spacing:-2px">${wins}<span style="font-size:18px;color:rgba(255,255,255,0.45);letter-spacing:0;margin-left:2px">승</span></div>
+            <div style="padding-bottom:10px;font-size:24px;font-weight:900;color:rgba(255,255,255,0.4)">${losses}<span style="font-size:14px">패</span>${draws>0?` ${draws}<span style="font-size:14px">무</span>`:''}</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <span style="font-size:12px;color:rgba(255,255,255,0.45)">승률 <b style="color:#fff;font-size:15px">${pct}</b></span>
+            ${streakLabel?`<span style="font-size:11px;font-weight:900;color:${streakColor};background:rgba(0,0,0,0.3);border-radius:6px;padding:2px 10px">${streakLabel}</span>`:''}
+          </div>
+        </div>
+        <div style="padding:24px 28px;display:flex;flex-direction:column;justify-content:center;align-items:center">
+          <div style="font-size:28px;margin-bottom:8px">😴</div>
+          <div style="font-size:13px;font-weight:700;color:rgba(255,255,255,0.5)">오늘 KIA 경기 없음</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);margin-top:4px">${getDday()}</div>
+        </div>
+      </div>`;
+    }
+
+    // 팀 컬러 배경 (oppColor 기반 그라데이션)
+    const heroBg = dark
+      ? `linear-gradient(135deg, #0a0c14 0%, rgba(${parseInt(oppColor.slice(1,3),16)},${parseInt(oppColor.slice(3,5),16)},${parseInt(oppColor.slice(5,7),16)},0.15) 100%)`
+      : `linear-gradient(135deg, #10131f 0%, rgba(${parseInt(oppColor.slice(1,3),16)},${parseInt(oppColor.slice(3,5),16)},${parseInt(oppColor.slice(5,7),16)},0.2) 100%)`;
+
+    return `<div style="
+      background:${heroBg};
+      border-radius:20px;margin-bottom:20px;overflow:hidden;
+      border:1px solid rgba(255,255,255,0.07);
+      box-shadow:0 8px 48px rgba(0,0,0,0.5),0 1px 0 rgba(255,255,255,0.04);
+      position:relative;
+    ">
+      <!-- 상단 컬러 바 -->
+      <div style="height:3px;background:linear-gradient(90deg,#E31837 0%,#E31837 50%,${oppColor} 50%,${oppColor} 100%)"></div>
+
+      <!-- 메인 스코어보드 -->
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:24px 32px 0;gap:16px">
+
+        <!-- KIA 팀 -->
+        <div style="display:flex;align-items:center;gap:14px">
+          <div style="
+            width:52px;height:52px;border-radius:14px;flex-shrink:0;
+            background:linear-gradient(135deg,#E31837,#a01025);
+            display:flex;align-items:center;justify-content:center;
+            font-size:22px;
+            box-shadow:0 4px 16px rgba(227,24,55,0.4),inset 0 1px 0 rgba(255,255,255,0.2);
+          ">🐯</div>
+          <div>
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:.06em;margin-bottom:3px">${isHome?'홈':'원정'}</div>
+            <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:-.5px">KIA 타이거즈</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">${wins}승 ${losses}패${draws?` ${draws}무`:''} · ${pct}</div>
+          </div>
+        </div>
+
+        <!-- 스코어 + 상태 -->
+        <div style="text-align:center;min-width:140px">
+          ${statusBadge}
+          <div style="display:flex;align-items:center;justify-content:center;gap:14px;margin:10px 0 6px">
+            <div style="font-size:56px;font-weight:900;color:${kiaWin?'#fff':'rgba(255,255,255,0.75)'};line-height:1;font-variant-numeric:tabular-nums;${kiaWin?'text-shadow:0 0 24px rgba(255,59,92,0.4)':''}">${hasScore?kiaS:'–'}</div>
+            <div style="font-size:18px;font-weight:300;color:rgba(255,255,255,0.25)">:</div>
+            <div style="font-size:56px;font-weight:900;color:${oppWin?'#fff':'rgba(255,255,255,0.5)'};line-height:1;font-variant-numeric:tabular-nums">${hasScore?oppS:'–'}</div>
+          </div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.3);font-weight:600">${tg.stadium||''}</div>
+        </div>
+
+        <!-- 상대팀 -->
+        <div style="display:flex;align-items:center;gap:14px;justify-content:flex-end">
+          <div style="text-align:right">
+            <div style="font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);letter-spacing:.06em;margin-bottom:3px">${isHome?'원정':'홈'}</div>
+            <div style="font-size:18px;font-weight:900;color:#fff;letter-spacing:-.5px">${oppName}</div>
+            <div style="font-size:10px;color:rgba(255,255,255,0.35);margin-top:2px">&nbsp;</div>
+          </div>
+          <div style="
+            width:52px;height:52px;border-radius:14px;flex-shrink:0;
+            background:linear-gradient(135deg,${oppColor},${oppColor}99);
+            display:flex;align-items:center;justify-content:center;
+            font-size:14px;font-weight:900;color:#fff;
+            box-shadow:0 4px 16px ${oppColor}55,inset 0 1px 0 rgba(255,255,255,0.15);
+          ">${opp}</div>
+        </div>
+      </div>
+
+      <!-- 이닝 스코어 -->
+      ${hasInn ? `<div style="padding:0 32px 20px">${innTableHtml}</div>` : `<div style="padding:0 32px 20px"></div>`}
+
+      <!-- 하단 바: 시즌 성적 + 승리 확률 -->
+      <div style="
+        border-top:1px solid rgba(255,255,255,0.06);
+        padding:14px 32px;
+        display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:24px;
+        background:rgba(0,0,0,0.2);
+      ">
+        <!-- 시즌 성적 -->
+        <div style="display:flex;align-items:center;gap:16px">
+          <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:.12em;text-transform:uppercase">시즌</div>
+          <div style="display:flex;align-items:center;gap:14px">
+            <div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#ff3b5c">${wins}</div><div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:.06em">승</div></div>
+            <div style="text-align:center"><div style="font-size:16px;font-weight:900;color:rgba(255,255,255,0.6)">${losses}</div><div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:.06em">패</div></div>
+            ${draws?`<div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#FF9500">${draws}</div><div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:.06em">무</div></div>`:''}
+            <div style="width:1px;height:28px;background:rgba(255,255,255,0.08)"></div>
+            <div style="text-align:center"><div style="font-size:16px;font-weight:900;color:#fff">${pct}</div><div style="font-size:8px;color:rgba(255,255,255,0.35);font-weight:700;letter-spacing:.06em">승률</div></div>
+            ${streakLabel?`<div style="font-size:12px;font-weight:900;color:${streakColor};background:rgba(0,0,0,0.25);border-radius:8px;padding:4px 12px">${streakLabel}</div>`:''}
+          </div>
+        </div>
+
+        <!-- 승리 확률 게이지 (경기 중/후에만) -->
+        ${(()=>{
+          if (!tg || (!isLive && !isFinal)) return '<div></div>';
+          var kiaWp2 = isFinal ? (kiaS!=null&&oppS!=null ? (kiaS>oppS?100:kiaS<oppS?0:50) : null) : (()=>{
+            return typeof calcWinProb==='undefined' ? null :
+              calcWinProb(kiaS, oppS, tg.inning||1, tg.inningInfo, isHome);
+          })();
+          if (kiaWp2 == null) return '<div></div>';
+          var oppWp2 = 100 - kiaWp2;
+          var wpLabel = kiaWp2>70?'우세':kiaWp2>55?'유리':kiaWp2>45?'박빙':kiaWp2>30?'불리':'열세';
+          var wpLabelC = kiaWp2>=55?'#ff3b5c':kiaWp2>=45?'#FFB300':'#4FC3F7';
+          return `<div style="min-width:220px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:5px">
+              <div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.35);letter-spacing:.1em">승리 확률</div>
+              <div style="font-size:9px;font-weight:900;color:${wpLabelC};background:rgba(0,0,0,0.3);border-radius:4px;padding:1px 7px">${wpLabel}</div>
+            </div>
+            <div style="display:flex;align-items:center;height:20px;border-radius:10px;overflow:hidden;background:rgba(0,0,0,0.3);position:relative">
+              <div style="width:${kiaWp2}%;height:100%;background:linear-gradient(90deg,#c8102e,#ff3b5c);transition:width .8s;display:flex;align-items:center;justify-content:flex-end;padding-right:6px">
+                ${kiaWp2>15?`<span style="font-size:10px;font-weight:900;color:#fff">${kiaWp2}%</span>`:''}
+              </div>
+              <div style="flex:1;height:100%;background:linear-gradient(90deg,rgba(79,195,247,0.3),rgba(79,195,247,0.5));display:flex;align-items:center;padding-left:6px">
+                ${oppWp2>15?`<span style="font-size:10px;font-weight:900;color:rgba(255,255,255,0.7)">${oppWp2}%</span>`:''}
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:3px">
+              <div style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:700">KIA</div>
+              <div style="font-size:9px;color:rgba(255,255,255,0.4);font-weight:700">${opp}</div>
+            </div>
+          </div>`;
+        })()}
+
+        <div style="font-size:10px;color:rgba(255,255,255,0.2);font-weight:600;text-align:right">${getDday()} · KBO 2026</div>
+      </div>
+    </div>`;
+  })();
+
+  // PC: 캘린더(좌) + 경기목록(오른쪽) 2단, 모바일: 기존 세로
+  if (isPC) {
+    return `
+      ${pcHeroBanner}
+      <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start">
+        <div>
+          <div id="cal-section">${calHtml}</div>
+        </div>
+        <div style="
+          background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
+          border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
+          border-radius:20px;
+          padding:18px 16px;
+          box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
+          backdrop-filter:blur(16px);
+          position:sticky;top:20px;
+        ">
+          <div id="list-section">${listHtml}</div>
+        </div>
+      </div>`;
+  }
+
   return `${headerHtml}<div id="cal-section">${calHtml}</div>
     <hr id="cal-divider" style="display:none;border:none;border-top:1.5px solid rgba(127,127,127,0.2);margin:0 0 12px"/>
     <div id="list-section">${listHtml}</div>`;
@@ -1208,11 +2019,14 @@ function _renderGameRecord(d) {
       + '</div>';
   }
 
+  const isPC = window.innerWidth >= 1080;
   const filteredGames = _applyRecordFilter(kiaGames);
   let html = _renderRecordFilters(d, kiaGames.length, filteredGames.length);
   html += '<div style="font-size:13px;font-weight:800;color:'+d.text+';margin-bottom:16px">경기 기록 <span style="font-size:11px;color:'+d.sub+';font-weight:400">'+filteredGames.length+'경기</span></div>';
-  // kiaGames를 필터 결과로 교체
   kiaGames = filteredGames;
+
+  // PC: 2열 그리드 시작
+  if (isPC) html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">';
 
   kiaGames.forEach(function(g) {
     const isHome = g.home === 'KIA';
@@ -1430,6 +2244,9 @@ function _renderGameRecord(d) {
     html += '</div>'; // 영수증 전체 끝
   });
 
+  // PC: 2열 그리드 닫기
+  if (isPC) html += '</div>';
+
   return html;
 }
 // _renderGameRecord 끝 (renderBaseballRecord에서 호출됨)
@@ -1456,7 +2273,7 @@ window.saveRecordMemoEl = function(el) {
   let data = {};
   try { data = JSON.parse(localStorage.getItem(key)||'{}'); if(typeof data==='string') data={text:data}; } catch(e) {}
   data.text = el.value;
-  _recSaveMemo(date, away, home, data);
+  localStorage.setItem(key, JSON.stringify(data));
 };
 
 function _recGetMemo(date, away, home) {
@@ -3245,7 +4062,10 @@ function setTab(t){
   if(t !== 'my') state.myTab = null; // 마이페이지 벗어나면 카드 모두 닫기
   state.tab=t;
   render();
-  window.scrollTo({top:0,behavior:'instant'});
+  // PC: content-wrapper 스크롤, 모바일: window 스크롤
+  var cw = document.getElementById('content-wrapper');
+  if (cw && window.innerWidth >= 900) { cw.scrollTop = 0; }
+  else { window.scrollTo({top:0,behavior:'instant'}); }
 }
 function setLcat(c){state.lcat=c;render();}
 function goToday(){
@@ -5329,6 +6149,272 @@ if (typeof Notification !== 'undefined' && Notification.permission === 'granted'
   window._notifyEnabled = true;
   _startHitCheck();
 }
+
+// ── PC 사이드바 시계 ──
+(function() {
+  function updatePcClock() {
+    var el = document.getElementById('pc-clock-time');
+    var elD = document.getElementById('pc-clock-date');
+    if (!el || !elD) return;
+    var now = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Seoul'}));
+    var hh = String(now.getHours()).padStart(2,'0');
+    var mm = String(now.getMinutes()).padStart(2,'0');
+    var ss = String(now.getSeconds()).padStart(2,'0');
+    el.textContent = hh + ':' + mm + ':' + ss;
+    var days = ['일','월','화','수','목','금','토'];
+    var y = now.getFullYear(), mo = now.getMonth()+1, d = now.getDate();
+    var dw = days[now.getDay()];
+    elD.textContent = y + '년 ' + mo + '월 ' + d + '일 (' + dw + ')';
+  }
+  setInterval(updatePcClock, 1000);
+  updatePcClock();
+})();
+
+// ── PC 사이드바 탭 버튼 active 상태 동기화 ──
+var _origRenderNav = renderNav;
+renderNav = function() {
+  _origRenderNav();
+  ['cal','stand','my'].forEach(function(id) {
+    var btn = document.getElementById('pc-btn-' + id);
+    if (btn) btn.classList.toggle('active', state.tab === id);
+  });
+};
+
+// ══════════════════════════════════════════════════════════
+// 승리 확률 계산 엔진 (이닝/점수차/아웃 기반 WP 테이블)
+// 야구 통계학 기반 근사값 (출처: Tango/Lichtman/Dolphin)
+// ══════════════════════════════════════════════════════════
+var _wpHistory = []; // [{inn, half, kiaWp}]  — 그래프용 히스토리
+
+function calcWinProb(kiaScore, oppScore, inning, inningInfo, isKiaHome) {
+  if (kiaScore == null || oppScore == null) return null;
+  var inn = Math.max(1, Math.min(9, inning || 1));
+  var diff = kiaScore - oppScore; // KIA 기준 점수차 (양수=앞서는 중)
+  if (!isKiaHome) diff = -diff;  // 홈팀 관점으로 통일 후 다시 KIA로
+
+  // 이닝 half: 말(bottom)=1, 초(top)=0
+  var isBottom = inningInfo ? inningInfo.includes('말') : false;
+  // 홈팀 = isKiaHome 일 때, 말 공격이면 KIA 공격
+  // WP 기준: "현재 상황에서 홈팀이 이길 확률" → KIA 기준으로 변환
+  
+  // 단순화된 WP 테이블 (이닝 × 점수차)
+  // 기준: 동점(0), 리드/뒤짐 1~3점+
+  var table = {
+    // [이닝][점수차] = 홈팀 WP (50% 기준)
+    1: {'-3':0.18,'-2':0.25,'-1':0.35,'0':0.54,'1':0.65,'2':0.76,'3':0.84},
+    2: {'-3':0.16,'-2':0.22,'-1':0.32,'0':0.54,'1':0.68,'2':0.79,'3':0.87},
+    3: {'-3':0.13,'-2':0.19,'-1':0.30,'0':0.54,'1':0.70,'2':0.82,'3':0.90},
+    4: {'-3':0.10,'-2':0.16,'-1':0.27,'0':0.54,'1':0.73,'2':0.85,'3':0.92},
+    5: {'-3':0.08,'-2':0.13,'-1':0.23,'0':0.54,'1':0.77,'2':0.88,'3':0.94},
+    6: {'-3':0.06,'-2':0.10,'-1':0.19,'0':0.54,'1':0.81,'2':0.91,'3':0.96},
+    7: {'-3':0.04,'-2':0.07,'-1':0.14,'0':0.55,'1':0.86,'2':0.94,'3':0.97},
+    8: {'-3':0.02,'-2':0.04,'-1':0.09,'0':0.55,'1':0.91,'2':0.97,'3':0.99},
+    9: {'-3':0.01,'-2':0.02,'-1':0.05,'0':0.50,'1':0.95,'2':0.98,'3':0.99},
+  };
+
+  var row = table[inn] || table[9];
+  var dKey = String(Math.max(-3, Math.min(3, diff)));
+  // 홈팀 관점 WP
+  var homeWP = row[dKey] != null ? row[dKey] : (diff > 3 ? 0.995 : 0.005);
+  // 말 이닝이면 공격팀(홈)이 한 번 더 치므로 WP 약간 보정
+  if (isBottom) homeWP = Math.min(0.999, homeWP * 1.03);
+
+  // KIA WP: KIA가 홈이면 homeWP, 원정이면 1-homeWP
+  var kiaWP = isKiaHome ? homeWP : (1 - homeWP);
+  return Math.round(kiaWP * 100);
+}
+
+function recordWpHistory(kiaWp, inning, inningInfo) {
+  if (kiaWp == null) return;
+  var label = inning + (inningInfo && inningInfo.includes('말') ? '말' : '초');
+  // 같은 이닝이면 덮어쓰기
+  var last = _wpHistory[_wpHistory.length - 1];
+  if (last && last.label === label) {
+    last.wp = kiaWp;
+  } else {
+    _wpHistory.push({label: label, wp: kiaWp});
+    if (_wpHistory.length > 20) _wpHistory.shift();
+  }
+}
+
+function renderWpGauge(kiaWp) {
+  // kiaWp: 0~100
+  if (kiaWp == null) return '';
+  var opp = 100 - kiaWp;
+  var kiaColor = kiaWp >= 50 ? '#E31837' : 'rgba(255,255,255,0.4)';
+  var oppColor = opp >= 50 ? '#4FC3F7' : 'rgba(255,255,255,0.25)';
+  var barKia = kiaWp;
+  var barOpp = opp;
+  var label = kiaWp > 70 ? '우세' : kiaWp > 55 ? '유리' : kiaWp > 45 ? '박빙' : kiaWp > 30 ? '불리' : '열세';
+  var labelColor = kiaWp >= 55 ? '#ff3b5c' : kiaWp >= 45 ? '#FFB300' : '#4FC3F7';
+
+  return '<div style="margin-top:12px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
+      '<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.35);letter-spacing:.1em;text-transform:uppercase">승리 확률</div>' +
+      '<div style="font-size:9px;font-weight:800;color:' + labelColor + ';background:rgba(0,0,0,0.25);border-radius:4px;padding:1px 6px">' + label + '</div>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
+      '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.6);width:26px;text-align:right">KIA</div>' +
+      '<div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;position:relative">' +
+        '<div style="height:100%;width:' + barKia + '%;background:linear-gradient(90deg,#E31837,#ff3b5c);border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(227,24,55,0.5)"></div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:900;color:' + kiaColor + ';width:34px;text-align:left;font-variant-numeric:tabular-nums">' + kiaWp + '%</div>' +
+    '</div>' +
+    '<div style="display:flex;align-items:center;gap:8px">' +
+      '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.4);width:26px;text-align:right">상대</div>' +
+      '<div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden">' +
+        '<div style="height:100%;width:' + barOpp + '%;background:linear-gradient(90deg,rgba(79,195,247,0.6),rgba(79,195,247,0.3));border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>' +
+      '</div>' +
+      '<div style="font-size:13px;font-weight:900;color:' + oppColor + ';width:34px;text-align:left;font-variant-numeric:tabular-nums">' + opp + '%</div>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderWpGraph() {
+  if (_wpHistory.length < 2) return '';
+  var W = 228, H = 64, PAD = 4;
+  var pts = _wpHistory;
+  var n = pts.length;
+  // SVG path
+  var xStep = (W - PAD*2) / Math.max(n-1, 1);
+  var toY = function(wp) { return PAD + (H - PAD*2) * (1 - wp/100); };
+  var path = pts.map(function(p,i) {
+    var x = PAD + i * xStep;
+    var y = toY(p.wp);
+    return (i===0?'M':'L') + x.toFixed(1) + ',' + y.toFixed(1);
+  }).join(' ');
+  // 50% 기준선 y
+  var midY = toY(50);
+  // 마지막 포인트
+  var lastPt = pts[pts.length-1];
+  var lastX = PAD + (n-1)*xStep;
+  var lastY = toY(lastPt.wp);
+  var lastColor = lastPt.wp >= 50 ? '#E31837' : '#4FC3F7';
+
+  // Fill under curve (위험: 50% 기준선 아래는 다른 색)
+  var fillPath = path + ' L' + (PAD+(n-1)*xStep).toFixed(1) + ',' + H + ' L' + PAD + ',' + H + ' Z';
+
+  return '<div style="margin-top:14px">' +
+    '<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">WP 추이 그래프</div>' +
+    '<div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:8px 10px;border:1px solid rgba(255,255,255,0.06)">' +
+      '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" style="overflow:visible">' +
+        // 배경 그리드
+        '<line x1="' + PAD + '" y1="' + midY.toFixed(1) + '" x2="' + (W-PAD) + '" y2="' + midY.toFixed(1) + '" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3,3"/>' +
+        // 50% 라벨
+        '<text x="' + (W-PAD+2) + '" y="' + (midY+3).toFixed(1) + '" font-size="7" fill="rgba(255,255,255,0.25)" font-weight="700">50</text>' +
+        // fill
+        '<path d="' + fillPath + '" fill="url(#wpGrad)" opacity="0.3"/>' +
+        // line
+        '<path d="' + path + '" fill="none" stroke="' + lastColor + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
+        // 마지막 점
+        '<circle cx="' + lastX.toFixed(1) + '" cy="' + lastY.toFixed(1) + '" r="3.5" fill="' + lastColor + '" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>' +
+        // 그라디언트
+        '<defs><linearGradient id="wpGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E31837" stop-opacity="0.6"/><stop offset="100%" stop-color="#E31837" stop-opacity="0"/></linearGradient></defs>' +
+        // 이닝 라벨 (처음/중간/마지막)
+        (function() {
+          var labels = '';
+          [0, Math.floor(n/2), n-1].forEach(function(idx) {
+            if (idx < 0 || idx >= n) return;
+            var p = pts[idx];
+            var x = PAD + idx * xStep;
+            labels += '<text x="' + x.toFixed(1) + '" y="' + (H+12) + '" font-size="7" fill="rgba(255,255,255,0.3)" text-anchor="middle" font-weight="600">' + p.label + '</text>';
+          });
+          return labels;
+        })() +
+      '</svg>' +
+    '</div>' +
+  '</div>';
+}
+
+// ── 오른쪽 패널: 오늘의 KIA 경기 + 상태 업데이트 ──
+function updateRightPanel() {
+  if (window.innerWidth < 1080) return;
+
+  // D-day
+  var ddEl = document.getElementById('rp-dday-val');
+  if (ddEl && typeof getDday === 'function') ddEl.textContent = getDday();
+
+  // 오늘 날짜 KST
+  var kst = new Date(new Date().toLocaleString('en-US', {timeZone:'Asia/Seoul'}));
+  var today = kst.getFullYear() + '-' + String(kst.getMonth()+1).padStart(2,'0') + '-' + String(kst.getDate()).padStart(2,'0');
+
+  // 마지막 갱신 시각
+  var upEl = document.getElementById('rp-last-update');
+  if (upEl) upEl.textContent = String(kst.getHours()).padStart(2,'0') + ':' + String(kst.getMinutes()).padStart(2,'0');
+
+  // 알림 상태
+  var notEl = document.getElementById('rp-notify-status');
+  if (notEl) {
+    if (window._notifyEnabled) {
+      notEl.textContent = '● 활성화';
+      notEl.className = 'rp-stat-val live';
+    } else {
+      notEl.textContent = '대기중';
+      notEl.className = 'rp-stat-val';
+    }
+  }
+
+  // 오늘 KIA 경기 찾기
+  var todaySec = document.getElementById('rp-today-game');
+  if (!todaySec || typeof SCH === 'undefined') return;
+  var kiaGame = SCH.find(function(g) {
+    return g.date === today && (g.away === 'KIA' || g.home === 'KIA');
+  });
+
+  if (!kiaGame) {
+    todaySec.innerHTML = '<div class="rp-dday"><div class="rp-dday-val" id="rp-dday-val">' + (typeof getDday==='function'?getDday():'--') + '</div><div class="rp-dday-label">KBO 정규시즌</div></div>';
+    return;
+  }
+
+  var isHome = kiaGame.home === 'KIA';
+  var opp = isHome ? kiaGame.away : kiaGame.home;
+  var kiaS = isHome ? kiaGame.homeScore : kiaGame.awayScore;
+  var oppS = isHome ? kiaGame.awayScore : kiaGame.homeScore;
+  var hasScore = kiaS != null && oppS != null;
+  var isLive = kiaGame.status === 'LIVE';
+  var isFinal = kiaGame.status === 'FINAL';
+  var statusText = isLive ? (kiaGame.inningInfo || 'LIVE') : isFinal ? '최종' : (kiaGame.time || '예정');
+  var inn = kiaGame.inning || 1;
+  var innPct = Math.min(100, Math.round((inn / 9) * 100));
+  var kiaWin = hasScore && kiaS > oppS;
+  var scoreDisp = hasScore ? (kiaS + ' : ' + oppS) : 'vs ' + opp;
+  var scoreColor = !hasScore ? '' : (kiaWin ? 'color:#22c55e' : (kiaS < oppS ? 'color:var(--accent)' : ''));
+
+  // ── 승리 확률 계산 ──
+  var kiaWp = null;
+  var wpGaugeHtml = '';
+  var wpGraphHtml = '';
+
+  if ((isLive || isFinal) && hasScore) {
+    kiaWp = calcWinProb(kiaS, oppS, inn, kiaGame.inningInfo, isHome);
+    if (isFinal) kiaWp = kiaWin ? 100 : (kiaS === oppS ? 50 : 0);
+    if (isLive) recordWpHistory(kiaWp, inn, kiaGame.inningInfo);
+    wpGaugeHtml = renderWpGauge(kiaWp);
+    wpGraphHtml = renderWpGraph();
+  }
+
+  todaySec.innerHTML =
+    '<div class="rp-game-card">' +
+      '<div class="rp-game-teams">' +
+        '<span class="rp-game-team">KIA</span>' +
+        '<span class="rp-game-vs">' + (isHome ? '홈' : '원정') + '</span>' +
+        '<span class="rp-game-team">' + opp + '</span>' +
+      '</div>' +
+      '<div class="rp-game-score" style="' + scoreColor + '">' + scoreDisp + '</div>' +
+      '<div class="rp-game-meta">' +
+        (isLive ? '<span style="color:var(--accent);font-weight:900">● ' + statusText + '</span>' : statusText) +
+        ' · ' + (kiaGame.stadium || (isHome ? '광주' : '')) +
+      '</div>' +
+      (isLive ? '<div class="rp-seg-bar"><div class="rp-seg-fill" style="width:' + innPct + '%"></div></div>' : '') +
+      wpGaugeHtml +
+      wpGraphHtml +
+    '</div>';
+}
+
+// render 후 우측 패널도 갱신
+document.addEventListener('renderDone', updateRightPanel);
+updateRightPanel();
+setInterval(updateRightPanel, 30000);
 </script>
 </body>
 </html>
