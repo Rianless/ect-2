@@ -3926,7 +3926,7 @@ function renderModal(d) {
             html2 += `<thead><tr style="border-bottom:1px solid ${d.bgB}">`;
             html2 += `<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:${d.sub};width:100%">투수</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">이닝</th>`;
-            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">투구수</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:52px">투구수(S)</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">피안타</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">삼진</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
@@ -3940,7 +3940,7 @@ function renderModal(d) {
               html2 += `<span style="font-size:12px;font-weight:700;color:${d.text}">${p.name}</span>`;
               html2 += `</div></td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.inn||0}</td>`;
-              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.pc||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.pc ? p.pc + (p.sp ? '<span style="font-size:10px;color:'+d.muted+'">(' + p.sp + ')</span>' : '') : 0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.kk||0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?'#E31837':d.sub}">${p.bb||0}</td>`;
@@ -4187,7 +4187,7 @@ function _parseBatters(src) {
 }
 function _parsePitchers(src) {
   const arr = Array.isArray(src) ? src : (src?.pitcher || []);
-  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:p.er||0, kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.pitchCount||p.numPitch||p.pitches||0) }));
+  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:p.er||0, kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0), sp:Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0) }));
 }
 
 async function fetchLineupDirect(gameId, inning) {
@@ -4612,7 +4612,8 @@ function parseBrowserPitchers(pitchers) {
     kk: p.kk || 0,
     bb: p.bb || 0,
     hit: Number(p.hit||p.ha||p.allowedHit||0),
-    pc: Number(p.pc||p.pitchCount||p.numPitch||p.pitches||0),
+    pc: Number(p.pc||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0),
+    sp: Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0),
   }));
 }
 
