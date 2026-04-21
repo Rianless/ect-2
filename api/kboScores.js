@@ -539,7 +539,8 @@ export default async function handler(req, res) {
           bb:  Number(p.bb  ?? p.walk  ?? p.walks     ?? 0),
           er:  Number(p.er  ?? p.earnedRun ?? p.earnedRuns ?? 0),
           hit: Number(p.hit ?? p.hits  ?? 0),
-          pc:  Number(p.pc  ?? p.pitchCount ?? p.numPitch ?? p.pitches ?? 0),
+          pc:  Number(p.pc  ?? p.pitchCount ?? p.numPitch ?? p.pitches ?? p.np ?? p.numberOfPitches ?? p.pitchThrown ?? p.totalPitches ?? 0),
+          sp:  Number(p.sp  ?? p.strikeCount ?? p.strikes ?? p.numStrike ?? p.numberOfStrikes ?? 0),
         }));
       }
 
