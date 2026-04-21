@@ -736,16 +736,7 @@
     <div class="rp-section">
       <div class="rp-section-title">순위 스냅샷</div>
       <div class="rp-card" id="rp-standings">
-        <div class="rp-rank-row"><span class="rp-rank-num top3">1</span><span class="rp-rank-team">LG 트윈스</span><span class="rp-rank-note">2025 🏆</span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num top3">2</span><span class="rp-rank-team">한화 이글스</span><span class="rp-rank-note">준우승</span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num top3">3</span><span class="rp-rank-team">SSG 랜더스</span><span class="rp-rank-note"></span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num">4</span><span class="rp-rank-team">삼성 라이온즈</span><span class="rp-rank-note"></span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num">5</span><span class="rp-rank-team">NC 다이노스</span><span class="rp-rank-note"></span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num">6</span><span class="rp-rank-team">KT 위즈</span><span class="rp-rank-note"></span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num">7</span><span class="rp-rank-team">롯데 자이언츠</span><span class="rp-rank-note"></span></div>
-        <div class="rp-rank-row" style="background:var(--accent-soft);border-radius:6px;padding:5px 6px;margin:-2px -6px"><span class="rp-rank-num" style="color:var(--accent)">8</span><span class="rp-rank-team" style="color:var(--accent)">KIA 타이거즈</span><span class="rp-rank-note">🐯</span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num">9</span><span class="rp-rank-team">두산 베어스</span><span class="rp-rank-note"></span></div>
-        <div class="rp-rank-row"><span class="rp-rank-num">10</span><span class="rp-rank-team">키움 히어로즈</span><span class="rp-rank-note"></span></div>
+        <div style="text-align:center;padding:10px;font-size:11px;color:var(--c-muted)">순위 로딩 중...</div>
       </div>
     </div>
     <!-- 시스템 상태 -->
@@ -1138,8 +1129,10 @@ function renderNav() {
 }
 
 function renderContent(d) {
-  // PC 인라인 중계 열려있으면 content 재렌더 스킵
+  // PC 인라인 중계 열려있으면 content 재렌더 스킵 (새 방식: pc-relay-inline-wrapper 존재 여부)
   if (window.innerWidth >= 1080) {
+    const wrapper = document.getElementById('pc-relay-inline-wrapper');
+    if (wrapper) return;
     const panel = document.getElementById('relay-panel');
     if (panel && panel.classList.contains('pc-inline')) return;
   }
@@ -1575,47 +1568,67 @@ function renderCal(d) {
     const innNums=Array.from({length:maxInn},(_,i)=>i+1);
     const iv=(arr,i)=>{const v=arr[i];return v==null||v<0?'-':String(v);};
     const hasInn=kiaInnings.some(x=>x>=0)||oppInnings.some(x=>x>=0);
+    // 이닝 테이블 색상: 다크모드=흰색계열, 라이트모드=어두운색계열
+    const _itc1 = dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
+    const _itc2 = dark ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.55)';
+    const _itc3 = dark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+    const _itcDiv = dark ? 'rgba(255,255,255,0.12)' : 'rgba(0,0,0,0.1)';
+    const _itcKiaWin = dark ? '#fff' : '#0d1022';
+    const _itcKiaName = dark ? (kiaWin?'#fff':'rgba(255,255,255,0.7)') : (kiaWin?'#0d1022':'rgba(0,0,0,0.7)');
+    const _itcKiaInnVal = dark ? (v => v?'#fff':'rgba(255,255,255,0.45)') : (v => v?'#0d1022':'rgba(0,0,0,0.38)');
+    const _itcKiaR = dark ? (kiaWin?'#ff3b5c':'#fff') : (kiaWin?'#E31837':'#0d1022');
+    const _itcKiaSub = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
+    const _itcOppName = dark ? (oppWin?'#fff':'rgba(255,255,255,0.55)') : (oppWin?'#0d1022':'rgba(0,0,0,0.55)');
+    const _itcOppInnVal = dark ? (v => v?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.35)') : (v => v?'rgba(0,0,0,0.75)':'rgba(0,0,0,0.3)');
+    const _itcOppR = dark ? (oppWin?'#ff3b5c':'rgba(255,255,255,0.7)') : (oppWin?'#E31837':'rgba(0,0,0,0.6)');
+    const _itcOppSub = dark ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.35)';
+    const _itcRowBg = dark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.03)';
+
     const innTableHtml = (hasInn&&(isLive||isFinal)) ? `
       <div style="overflow-x:auto;scrollbar-width:none;margin-top:14px">
         <table style="width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums">
           <thead>
             <tr>
-              <td style="padding:4px 8px;font-size:10px;font-weight:800;color:rgba(255,255,255,0.4);text-align:left;min-width:72px">팀</td>
-              ${innNums.map(n=>`<td style="padding:4px 5px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.4);min-width:22px">${n}</td>`).join('')}
-              <td style="padding:4px 8px;text-align:center;font-size:10px;font-weight:800;color:rgba(255,255,255,0.5);border-left:1px solid rgba(255,255,255,0.12);min-width:30px">R</td>
-              <td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);min-width:26px">H</td>
-              <td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700;color:rgba(255,255,255,0.35);min-width:26px">E</td>
+              <td style="padding:4px 8px;font-size:10px;font-weight:800;color:${_itc1};text-align:left;min-width:72px">팀</td>
+              ${innNums.map(n=>`<td style="padding:4px 5px;text-align:center;font-size:10px;font-weight:700;color:${_itc1};min-width:22px">${n}</td>`).join('')}
+              <td style="padding:4px 8px;text-align:center;font-size:10px;font-weight:800;color:${_itc2};border-left:1px solid ${_itcDiv};min-width:30px">R</td>
+              <td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700;color:${_itc3};min-width:26px">H</td>
+              <td style="padding:4px 6px;text-align:center;font-size:10px;font-weight:700;color:${_itc3};min-width:26px">E</td>
             </tr>
           </thead>
           <tbody>
-            <tr style="background:rgba(255,255,255,0.04);border-radius:6px">
-              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${kiaWin?'#fff':'rgba(255,255,255,0.7)'};text-align:left">KIA</td>
-              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${kiaInnings[i]>0?'#fff':'rgba(255,255,255,0.45)'}">${iv(kiaInnings,i)}</td>`).join('')}
-              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${kiaWin?'#ff3b5c':'#fff'};border-left:1px solid rgba(255,255,255,0.12)">${hasScore?kiaS:'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.45)">${tg.kiaHit??'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.45)">${tg.kiaError??'-'}</td>
+            <tr style="background:${_itcRowBg};border-radius:6px">
+              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${_itcKiaName};text-align:left">KIA</td>
+              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${_itcKiaInnVal(kiaInnings[i]>0)}">${iv(kiaInnings,i)}</td>`).join('')}
+              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${_itcKiaR};border-left:1px solid ${_itcDiv}">${hasScore?kiaS:'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcKiaSub}">${tg.kiaHit??'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcKiaSub}">${tg.kiaError??'-'}</td>
             </tr>
             <tr>
-              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${oppWin?'#fff':'rgba(255,255,255,0.55)'};text-align:left">${opp}</td>
-              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${oppInnings[i]>0?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.35)'}">${iv(oppInnings,i)}</td>`).join('')}
-              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${oppWin?'#ff3b5c':'rgba(255,255,255,0.7)'};border-left:1px solid rgba(255,255,255,0.12)">${hasScore?oppS:'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.35)">${tg.oppHit??'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:rgba(255,255,255,0.35)">${tg.oppError??'-'}</td>
+              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${_itcOppName};text-align:left">${opp}</td>
+              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${_itcOppInnVal(oppInnings[i]>0)}">${iv(oppInnings,i)}</td>`).join('')}
+              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${_itcOppR};border-left:1px solid ${_itcDiv}">${hasScore?oppS:'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcOppSub}">${tg.oppHit??'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcOppSub}">${tg.oppError??'-'}</td>
             </tr>
           </tbody>
         </table>
       </div>` : '';
 
-    // 상태 뱃지
+    // 상태 뱃지 (FINAL/시작예정: 다크=흰색계열, 라이트=어두운색계열)
+    const _sbFinalBg = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+    const _sbFinalC  = dark ? 'rgba(255,255,255,0.55)' : 'rgba(0,0,0,0.5)';
+    const _sbSchedBg = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+    const _sbSchedC  = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.55)';
     const statusBadge = isLive
       ? `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,40,80,0.2);border:1px solid rgba(255,40,80,0.5);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:900;color:#ff3b5c;letter-spacing:.06em;animation:pulseRed 1.5s infinite">
           <span style="width:6px;height:6px;border-radius:50%;background:#ff3b5c;display:inline-block"></span>
           LIVE · ${tg.inningInfo||tg.inning+'회'||'진행중'}
          </div>`
       : isFinal
-      ? `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.08);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:800;color:rgba(255,255,255,0.55);letter-spacing:.06em">FINAL</div>`
+      ? `<div style="display:inline-flex;align-items:center;gap:5px;background:${_sbFinalBg};border-radius:6px;padding:3px 10px;font-size:10px;font-weight:800;color:${_sbFinalC};letter-spacing:.06em">FINAL</div>`
       : tg
-      ? `<div style="display:inline-flex;align-items:center;gap:5px;background:rgba(255,255,255,0.06);border-radius:6px;padding:3px 10px;font-size:10px;font-weight:800;color:rgba(255,255,255,0.45);letter-spacing:.04em">⏰ ${tg.time} 시작예정</div>`
+      ? `<div style="display:inline-flex;align-items:center;gap:5px;background:${_sbSchedBg};border-radius:6px;padding:3px 10px;font-size:10px;font-weight:800;color:${_sbSchedC};letter-spacing:.04em">⏰ ${tg.time} 시작예정</div>`
       : '';
 
     // 오늘 경기 없을 때
@@ -1760,25 +1773,23 @@ function renderCal(d) {
     </div>`;
   })();
 
-  // PC: 캘린더(좌) + 경기목록(오른쪽) 2단, 모바일: 기존 세로
+  // PC: 캘린더 위, 경기목록 아래 (세로 배치), 모바일: 기존 세로
   if (isPC) {
     return `
       ${pcHeroBanner}
-      <div style="display:grid;grid-template-columns:1fr 320px;gap:20px;align-items:start">
-        <div>
-          <div id="cal-section">${calHtml}</div>
-        </div>
-        <div style="
-          background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
-          border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
-          border-radius:20px;
-          padding:18px 16px;
-          box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
-          backdrop-filter:blur(16px);
-          position:sticky;top:20px;
-        ">
-          <div id="list-section">${listHtml}</div>
-        </div>
+      <div id="pc-cal-relay-area">
+        <div id="cal-section">${calHtml}</div>
+      </div>
+      <div style="
+        background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
+        border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
+        border-radius:20px;
+        padding:18px 16px;
+        margin-top:20px;
+        box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
+        backdrop-filter:blur(16px);
+      ">
+        <div id="list-section">${listHtml}</div>
       </div>`;
   }
 
@@ -5437,29 +5448,48 @@ window.openRelay = async function(gameId, away, home, inn) {
   const box = document.getElementById('relay-box');
 
   if (window.innerWidth >= 1080) {
-    // PC: relay-panel을 body에 유지하면서 pc-inline 클래스로 가운데 컬럼에 표시
-    if (panel) {
-      // body 직계로 복귀 (혹시 이동됐을 경우)
-      if (panel.parentElement !== document.body) document.body.appendChild(panel);
-      panel.classList.add('pc-inline');
-      panel.style.display = 'flex';
-    }
-    if (box) {
-      box.classList.remove('closing');
-      if (state.dark) box.classList.add('dark-relay');
-      else box.classList.remove('dark-relay');
-    }
-    // 뒤로가기 버튼 추가
-    const header = document.getElementById('relay-header');
-    if (header && !document.getElementById('pc-relay-back-btn')) {
-      const btn = document.createElement('button');
-      btn.id = 'pc-relay-back-btn';
-      btn.innerHTML = '← 일정으로';
-      btn.style.cssText = 'margin-bottom:8px;padding:5px 10px;background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:7px;font-size:12px;font-weight:700;color:rgba(0,0,0,0.5);cursor:pointer;font-family:"Noto Sans KR",sans-serif;display:block;';
-      btn.onclick = () => closeRelay();
-      header.insertBefore(btn, header.firstChild);
-    }
-  } else {
+    // PC: 달력 영역(#pc-cal-relay-area)에 relay-box 인라인으로 표시
+    const calRelayArea = document.getElementById('pc-cal-relay-area');
+    if (calRelayArea) {
+      if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
+      calRelayArea.innerHTML = '';
+      const wrapper = document.createElement('div');
+      wrapper.id = 'pc-relay-inline-wrapper';
+      wrapper.style.cssText = 'width:100%;';
+      const backBtn = document.createElement('button');
+      backBtn.id = 'pc-relay-back-btn';
+      backBtn.innerHTML = '← 일정으로';
+      const isDark = state.dark;
+      backBtn.style.cssText = 'margin-bottom:12px;padding:6px 14px;background:' + (isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)') + ';border:1px solid ' + (isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.12)') + ';border-radius:8px;font-size:12px;font-weight:700;color:' + (isDark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.5)') + ';cursor:pointer;font-family:"Noto Sans KR",sans-serif;display:inline-block;';
+      backBtn.onclick = () => closeRelay();
+      wrapper.appendChild(backBtn);
+      if (box) {
+        box.classList.remove('closing');
+        if (state.dark) box.classList.add('dark-relay'); else box.classList.remove('dark-relay');
+        box.style.cssText = 'width:100%;max-width:100%;height:auto;min-height:0;border-radius:20px;border:1px solid var(--glass-border);box-shadow:var(--nm-3);animation:fadeIn 0.2s ease;background:' + (state.dark?'rgba(14,19,30,0.96)':'rgba(245,247,252,0.97)') + ';';
+        const relayBody = document.getElementById('relay-body');
+        if (relayBody) relayBody.style.cssText = 'overflow-y:visible;max-height:none;flex:none;padding-bottom:0;';
+        wrapper.appendChild(box);
+      }
+      calRelayArea.appendChild(wrapper);
+    } else {
+      if (panel) {
+        if (panel.parentElement !== document.body) document.body.appendChild(panel);
+        panel.classList.add('pc-inline'); panel.style.display = 'flex';
+      }
+      if (box) {
+        box.classList.remove('closing');
+        if (state.dark) box.classList.add('dark-relay'); else box.classList.remove('dark-relay');
+      }
+      const header = document.getElementById('relay-header');
+      if (header && !document.getElementById('pc-relay-back-btn')) {
+        const btn = document.createElement('button');
+        btn.id = 'pc-relay-back-btn'; btn.innerHTML = '← 일정으로';
+        btn.style.cssText = 'margin-bottom:8px;padding:5px 10px;background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:7px;font-size:12px;font-weight:700;color:rgba(0,0,0,0.5);cursor:pointer;font-family:"Noto Sans KR",sans-serif;display:block;';
+        btn.onclick = () => closeRelay();
+        header.insertBefore(btn, header.firstChild);
+      }
+    }  } else {
     // 모바일: 기존 바텀시트
     if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'flex'; }
     document.body.style.overflow = 'hidden';
@@ -5838,11 +5868,32 @@ window.addEventListener('popstate', function(e) {
 
 window.closePcRelay = function() {
   const panel = document.getElementById('relay-panel');
-  if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
+  const box = document.getElementById('relay-box');
   const btn = document.getElementById('pc-relay-back-btn');
   if (btn) btn.remove();
   clearInterval(_relayInterval); _relayInterval = null;
   _relayGameId = null;
+
+  // PC 인라인 모드: relay-box를 relay-panel로 복귀시키고, 달력 영역 재렌더
+  const wrapper = document.getElementById('pc-relay-inline-wrapper');
+  if (wrapper) {
+    // relay-box를 relay-panel에 다시 넣기
+    if (box && panel) {
+      box.style.cssText = '';
+      const relayBody = document.getElementById('relay-body');
+      if (relayBody) relayBody.style.cssText = '';
+      panel.appendChild(box);
+    }
+    // 달력 영역 원상복구 (renderContent 호출)
+    const calRelayArea = document.getElementById('pc-cal-relay-area');
+    if (calRelayArea) {
+      calRelayArea.innerHTML = '<div id="cal-section"></div>';
+    }
+    // renderContent로 전체 재렌더
+    renderContent(D());
+  } else {
+    if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
+  }
 };
 
 window.closeRelay = function() {
@@ -6482,10 +6533,35 @@ function updateRightPanel() {
     '</div>';
 }
 
+// ── 우측 패널 순위 스냅샷 업데이트 ──
+function updateRpStandings() {
+  var el = document.getElementById('rp-standings');
+  if (!el || typeof calcStandingFromSCH === 'undefined') return;
+  var rows = calcStandingFromSCH();
+  if (!rows || !rows.length) return;
+  el.innerHTML = rows.map(function(row) {
+    var isKia = row.tkey === 'KIA';
+    var isTop3 = row.rank <= 3;
+    var numStyle = isTop3 ? 'class="rp-rank-num top3"' : (isKia ? 'class="rp-rank-num" style="color:var(--accent)"' : 'class="rp-rank-num"');
+    var rowStyle = isKia ? ' style="background:var(--accent-soft);border-radius:6px;padding:5px 6px;margin:-2px -6px"' : '';
+    var teamStyle = isKia ? ' style="color:var(--accent)"' : '';
+    var teamName = (typeof T !== 'undefined' && T[row.tkey]) ? T[row.tkey].name : row.tkey;
+    var note = isKia ? '🐯' : '';
+    return '<div class="rp-rank-row"' + rowStyle + '>' +
+      '<span ' + numStyle + '>' + row.rank + '</span>' +
+      '<span class="rp-rank-team"' + teamStyle + '>' + teamName + '</span>' +
+      '<span class="rp-rank-note">' + note + '</span>' +
+      '</div>';
+  }).join('');
+}
+
 // render 후 우측 패널도 갱신
 document.addEventListener('renderDone', updateRightPanel);
+document.addEventListener('renderDone', updateRpStandings);
 updateRightPanel();
+updateRpStandings();
 setInterval(updateRightPanel, 30000);
+setInterval(updateRpStandings, 60000);
 </script>
 </body>
 </html>
