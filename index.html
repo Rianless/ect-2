@@ -4921,6 +4921,14 @@ function renderRelayDiamond(gs, lineup, away, home) {
   const pitcherName = gs._pitcherName || '';
   const batterName = gs._batterName || '';
   const b1c = base1?'#FFB300':'#d4a44c', b2c = base2?'#FFB300':'#d4a44c', b3c = base3?'#FFB300':'#d4a44c';
+  // 주자 이름 해석
+  const _rPcMap = { ...(_relayData?.pcodeMap||{}), ...(lineup?.pcodeMap||{}) };
+  const _allLP = [...(lineup?.home?.batters||[]),...(lineup?.away?.batters||[]),...(lineup?.home?.pitchers||[]),...(lineup?.away?.pitchers||[])];
+  _allLP.forEach(p => { if(p.pcode) _rPcMap[String(p.pcode)] = p.name || ''; });
+  const _rName = v => { if(!v) return ''; const k=String(v); if(/[가-힣]/.test(k)) return k; return _rPcMap[k]||''; };
+  const r1Name = gs?.base1Name || _rName(gs?.base1) || (base1?'주자':'');
+  const r2Name = gs?.base2Name || _rName(gs?.base2) || (base2?'주자':'');
+  const r3Name = gs?.base3Name || _rName(gs?.base3) || (base3?'주자':'');
 
   // 수비팀 결정: 이닝 초(top)=away공격→home수비, 말(bottom)=home공격→away수비
   const inningInfo2 = gs?._inningInfo || gs?.inningDisplay || gs?.inningText || '';
@@ -4986,6 +4994,9 @@ function renderRelayDiamond(gs, lineup, away, home) {
           <polygon points="160,200 167,193 167,185 153,185 153,193" fill="#c0392b"/>
         </svg>
         ${pins2}
+        ${base1 ? `<div style="position:absolute;left:75%;top:55%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r1Name}</span></div></div>` : ''}
+        ${base2 ? `<div style="position:absolute;left:50%;top:18%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r2Name}</span></div></div>` : ''}
+        ${base3 ? `<div style="position:absolute;left:25%;top:55%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r3Name}</span></div></div>` : ''}
       </div>
     </div>`;
 }
@@ -6363,31 +6374,35 @@ function renderWpGauge(kiaWp) {
   // kiaWp: 0~100
   if (kiaWp == null) return '';
   var opp = 100 - kiaWp;
-  var kiaColor = kiaWp >= 50 ? '#E31837' : 'rgba(255,255,255,0.4)';
-  var oppColor = opp >= 50 ? '#4FC3F7' : 'rgba(255,255,255,0.25)';
-  var barKia = kiaWp;
-  var barOpp = opp;
+  var _dk = (typeof state !== 'undefined' && state.dark);
+  var _tc  = _dk ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.65)';
+  var _tc2 = _dk ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.5)';
+  var _tc3 = _dk ? 'rgba(255,255,255,0.35)' : 'rgba(0,0,0,0.45)';
+  var _barBg = _dk ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  var _labelBg = _dk ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.06)';
+  var kiaColor = kiaWp >= 50 ? '#E31837' : _tc2;
+  var oppColor = opp >= 50 ? '#4FC3F7' : _tc2;
   var label = kiaWp > 70 ? '우세' : kiaWp > 55 ? '유리' : kiaWp > 45 ? '박빙' : kiaWp > 30 ? '불리' : '열세';
   var labelColor = kiaWp >= 55 ? '#ff3b5c' : kiaWp >= 45 ? '#FFB300' : '#4FC3F7';
 
   return '<div style="margin-top:12px">' +
     '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">' +
-      '<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.35);letter-spacing:.1em;text-transform:uppercase">승리 확률</div>' +
-      '<div style="font-size:9px;font-weight:800;color:' + labelColor + ';background:rgba(0,0,0,0.25);border-radius:4px;padding:1px 6px">' + label + '</div>' +
+      '<div style="font-size:9px;font-weight:800;color:' + _tc3 + ';letter-spacing:.1em;text-transform:uppercase">승리 확률</div>' +
+      '<div style="font-size:9px;font-weight:800;color:' + labelColor + ';background:' + _labelBg + ';border-radius:4px;padding:1px 6px">' + label + '</div>' +
     '</div>' +
     '<div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">' +
-      '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.6);width:26px;text-align:right">KIA</div>' +
-      '<div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden;position:relative">' +
-        '<div style="height:100%;width:' + barKia + '%;background:linear-gradient(90deg,#E31837,#ff3b5c);border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(227,24,55,0.5)"></div>' +
+      '<div style="font-size:10px;font-weight:800;color:' + _tc + ';width:26px;text-align:right">KIA</div>' +
+      '<div style="flex:1;height:8px;border-radius:4px;background:' + _barBg + ';overflow:hidden;position:relative">' +
+        '<div style="height:100%;width:' + kiaWp + '%;background:linear-gradient(90deg,#E31837,#ff3b5c);border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1);box-shadow:0 0 8px rgba(227,24,55,0.5)"></div>' +
       '</div>' +
       '<div style="font-size:13px;font-weight:900;color:' + kiaColor + ';width:34px;text-align:left;font-variant-numeric:tabular-nums">' + kiaWp + '%</div>' +
     '</div>' +
     '<div style="display:flex;align-items:center;gap:8px">' +
-      '<div style="font-size:10px;font-weight:800;color:rgba(255,255,255,0.4);width:26px;text-align:right">상대</div>' +
-      '<div style="flex:1;height:8px;border-radius:4px;background:rgba(255,255,255,0.08);overflow:hidden">' +
-        '<div style="height:100%;width:' + barOpp + '%;background:linear-gradient(90deg,rgba(79,195,247,0.6),rgba(79,195,247,0.3));border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>' +
+      '<div style="font-size:10px;font-weight:800;color:' + _tc2 + ';width:26px;text-align:right">상대</div>' +
+      '<div style="flex:1;height:8px;border-radius:4px;background:' + _barBg + ';overflow:hidden">' +
+        '<div style="height:100%;width:' + (100-kiaWp) + '%;background:linear-gradient(90deg,rgba(79,195,247,0.6),rgba(79,195,247,0.3));border-radius:4px;transition:width .8s cubic-bezier(.4,0,.2,1)"></div>' +
       '</div>' +
-      '<div style="font-size:13px;font-weight:900;color:' + oppColor + ';width:34px;text-align:left;font-variant-numeric:tabular-nums">' + opp + '%</div>' +
+      '<div style="font-size:13px;font-weight:900;color:' + oppColor + ';width:34px;text-align:left;font-variant-numeric:tabular-nums">' + (100-kiaWp) + '%</div>' +
     '</div>' +
   '</div>';
 }
@@ -6416,30 +6431,32 @@ function renderWpGraph() {
   // Fill under curve (위험: 50% 기준선 아래는 다른 색)
   var fillPath = path + ' L' + (PAD+(n-1)*xStep).toFixed(1) + ',' + H + ' L' + PAD + ',' + H + ' Z';
 
+  var _dk2 = (typeof state !== 'undefined' && state.dark);
+  var _gTitle = _dk2 ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)';
+  var _gBg    = _dk2 ? 'rgba(0,0,0,0.25)' : 'rgba(0,0,0,0.04)';
+  var _gBord  = _dk2 ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)';
+  var _gGrid  = _dk2 ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+  var _g50    = _dk2 ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.3)';
+  var _gLabel = _dk2 ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.4)';
+  var _gDot   = _dk2 ? 'rgba(255,255,255,0.3)' : 'rgba(0,0,0,0.2)';
+
   return '<div style="margin-top:14px">' +
-    '<div style="font-size:9px;font-weight:800;color:rgba(255,255,255,0.3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">WP 추이 그래프</div>' +
-    '<div style="background:rgba(0,0,0,0.25);border-radius:10px;padding:8px 10px;border:1px solid rgba(255,255,255,0.06)">' +
+    '<div style="font-size:9px;font-weight:800;color:' + _gTitle + ';letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px">WP 추이 그래프</div>' +
+    '<div style="background:' + _gBg + ';border-radius:10px;padding:8px 10px;border:1px solid ' + _gBord + '">' +
       '<svg width="100%" viewBox="0 0 ' + W + ' ' + H + '" style="overflow:visible">' +
-        // 배경 그리드
-        '<line x1="' + PAD + '" y1="' + midY.toFixed(1) + '" x2="' + (W-PAD) + '" y2="' + midY.toFixed(1) + '" stroke="rgba(255,255,255,0.1)" stroke-width="1" stroke-dasharray="3,3"/>' +
-        // 50% 라벨
-        '<text x="' + (W-PAD+2) + '" y="' + (midY+3).toFixed(1) + '" font-size="7" fill="rgba(255,255,255,0.25)" font-weight="700">50</text>' +
-        // fill
+        '<line x1="' + PAD + '" y1="' + midY.toFixed(1) + '" x2="' + (W-PAD) + '" y2="' + midY.toFixed(1) + '" stroke="' + _gGrid + '" stroke-width="1" stroke-dasharray="3,3"/>' +
+        '<text x="' + (W-PAD+2) + '" y="' + (midY+3).toFixed(1) + '" font-size="7" fill="' + _g50 + '" font-weight="700">50</text>' +
         '<path d="' + fillPath + '" fill="url(#wpGrad)" opacity="0.3"/>' +
-        // line
         '<path d="' + path + '" fill="none" stroke="' + lastColor + '" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>' +
-        // 마지막 점
-        '<circle cx="' + lastX.toFixed(1) + '" cy="' + lastY.toFixed(1) + '" r="3.5" fill="' + lastColor + '" stroke="rgba(255,255,255,0.3)" stroke-width="1"/>' +
-        // 그라디언트
+        '<circle cx="' + lastX.toFixed(1) + '" cy="' + lastY.toFixed(1) + '" r="3.5" fill="' + lastColor + '" stroke="' + _gDot + '" stroke-width="1"/>' +
         '<defs><linearGradient id="wpGrad" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E31837" stop-opacity="0.6"/><stop offset="100%" stop-color="#E31837" stop-opacity="0"/></linearGradient></defs>' +
-        // 이닝 라벨 (처음/중간/마지막)
         (function() {
           var labels = '';
           [0, Math.floor(n/2), n-1].forEach(function(idx) {
             if (idx < 0 || idx >= n) return;
             var p = pts[idx];
             var x = PAD + idx * xStep;
-            labels += '<text x="' + x.toFixed(1) + '" y="' + (H+12) + '" font-size="7" fill="rgba(255,255,255,0.3)" text-anchor="middle" font-weight="600">' + p.label + '</text>';
+            labels += '<text x="' + x.toFixed(1) + '" y="' + (H+12) + '" font-size="7" fill="' + _gLabel + '" text-anchor="middle" font-weight="600">' + p.label + '</text>';
           });
           return labels;
         })() +
