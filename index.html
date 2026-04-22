@@ -866,6 +866,7 @@ let state = {
   lcat:'batting', modalGame:null, modalLt:'away', clock:new Date(),
   memoTab: false, myTab: null, myTabInitialized: false,
   recordTab: 'game', playerStats: null, playerStatsLoading: false, playerStatsError: null,
+  grecOpen: {},
 };
 // 중계 전체보기 전역 변수
 let _relayGameId = null, _relayAway = '', _relayHome = '', _relayInn = 1, _relayData = null, _relayInterval = null;
@@ -1108,6 +1109,19 @@ function render() {
     _renderState.dark = state.dark;
   }
   renderContent(d);
+  // 기록 탭 경기카드 열림 상태 복원
+  if (state.tab === 'stand' && state.grecOpen) {
+    Object.keys(state.grecOpen).forEach(function(cardId) {
+      if (!state.grecOpen[cardId]) return;
+      var b = document.getElementById(cardId);
+      if (b) b.style.display = 'block';
+      var header = b && b.previousElementSibling;
+      if (header) {
+        var arrow = header.querySelector('.grec-arrow');
+        if (arrow) arrow.textContent = '▼';
+      }
+    });
+  }
   document.dispatchEvent(new Event('renderDone'));
 }
 
@@ -2170,12 +2184,14 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor) {
 }
 
 window.toggleGameRecord = function(cardId, el) {
+  state.grecOpen = state.grecOpen || {};
+  state.grecOpen[cardId] = !state.grecOpen[cardId];
   var b = document.getElementById(cardId);
   if (!b) return;
-  var open = b.style.display !== 'none';
-  b.style.display = open ? 'none' : 'block';
+  var open = state.grecOpen[cardId];
+  b.style.display = open ? 'block' : 'none';
   var arrow = el.querySelector('.grec-arrow');
-  if (arrow) arrow.textContent = open ? '▶' : '▼';
+  if (arrow) arrow.textContent = open ? '▼' : '▶';
 };
 
 window.recSwitchTab = function(cardId, tab, sideKey) {
