@@ -1130,7 +1130,7 @@ function renderNav() {
 
 function renderContent(d) {
   // PC 인라인 중계 열려있으면 content 재렌더 스킵 (새 방식: pc-relay-inline-wrapper 존재 여부)
-  if (window.innerWidth >= 1080) {
+  if (window.innerWidth >= 1080 && state.tab !== 'stand' && state.tab !== 'my') {
     const wrapper = document.getElementById('pc-relay-inline-wrapper');
     if (wrapper) return;
     const panel = document.getElementById('relay-panel');
@@ -4187,7 +4187,7 @@ function _parseBatters(src) {
 }
 function _parsePitchers(src) {
   const arr = Array.isArray(src) ? src : (src?.pitcher || []);
-  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:p.er||0, kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0), sp:Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0) }));
+  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:p.er||0, kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.ballCount||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0), sp:Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0) }));
 }
 
 async function fetchLineupDirect(gameId, inning) {
@@ -4612,7 +4612,7 @@ function parseBrowserPitchers(pitchers) {
     kk: p.kk || 0,
     bb: p.bb || 0,
     hit: Number(p.hit||p.ha||p.allowedHit||0),
-    pc: Number(p.pc||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0),
+    pc: Number(p.pc||p.ballCount||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0),
     sp: Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0),
   }));
 }
