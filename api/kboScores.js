@@ -198,6 +198,9 @@ export default async function handler(req, res) {
         const hasBatters = (homeL?.batter?.length || 0) + (awayL?.batter?.length || 0) > 0;
         if (hasBatters) {
           console.log('[fetchGameRecord] found from:', url.split('games/')[1]);
+          // 투수 원본 필드 확인용 로그
+          const sampleP = (homeL?.pitcher || homeL?.pitchers || awayL?.pitcher || awayL?.pitchers || [])[0];
+          if (sampleP) console.log('[pitcher raw fields]', JSON.stringify(sampleP));
           return res;
         }
       } catch(e) {}
@@ -693,3 +696,4 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: e.message });
   }
 }
+
