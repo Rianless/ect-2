@@ -1922,126 +1922,33 @@ function renderPitcherTable(d, players) {
 
 function renderBaseballRecord(d) {
   const rt = state.recordTab || 'game';
-
-  // ── 서브탭 헤더 없음 (경기기록만) ──
-  let html = '';
-
-  if (true) {
-    html += _renderGameRecord(d);
-    return html;
-  }
-
-  // ── 선수 기록 탭 ──
-  if (state.playerStatsLoading) {
-    html += '<div style="text-align:center;padding:60px 20px">'
-      + '<div style="font-size:32px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div>'
-      + '<div style="font-size:13px;color:'+d.sub+';margin-top:8px">불러오는 중...</div></div>';
-    return html;
-  }
-
-  if (state.playerStatsError) {
-    html += '<div style="text-align:center;padding:60px 20px">'
-      + '<div style="font-size:40px;margin-bottom:12px">😢</div>'
-      + '<div style="font-size:14px;font-weight:700;color:'+d.text+'">데이터를 불러오지 못했어요</div>'
-      + '<div style="font-size:11px;color:'+d.sub+';margin-top:6px;word-break:break-all">'+state.playerStatsError+'</div>'
-      + '<button onclick="window._fetchPlayerStats(\''+rt+'\')" style="margin-top:16px;padding:10px 24px;background:#E31837;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;cursor:pointer">다시 시도</button>'
-      + '</div>';
-    return html;
-  }
-
-  if (!state.playerStats || state.playerStats.tab !== rt) {
-    // 데이터 없으면 자동 fetch
-    setTimeout(() => window._fetchPlayerStats(rt), 0);
-    html += '<div style="text-align:center;padding:60px 20px">'
-      + '<div style="font-size:32px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div>'
-      + '<div style="font-size:13px;color:'+d.sub+';margin-top:8px">불러오는 중...</div></div>';
-    return html;
-  }
-
-  const players = state.playerStats.data;
-  html += '<div style="font-size:11px;color:'+d.sub+';margin-bottom:10px;text-align:right">2026 시즌 · KIA 타이거즈 <button onclick="window._fetchPlayerStats(\''+rt+'\')" style="margin-left:6px;background:none;border:1px solid '+d.bgB+';border-radius:6px;padding:2px 8px;font-size:10px;color:'+d.sub+';font-family:\'Noto Sans KR\',sans-serif;cursor:pointer">🔄 새로고침</button></div>';
-
-  if (rt === 'hitter') {
-    html += renderHitterTable(d, players);
-  } else {
-    html += renderPitcherTable(d, players);
-  }
-
+  const tabs = [
+    { key: 'game', label: '경기기록', icon: '📊' },
+    { key: 'memo', label: '내 기록',  icon: '✍️'  },
+  ];
+  let html = '<div style="display:flex;gap:6px;margin-bottom:18px">';
+  tabs.forEach(function(t) {
+    const active = rt === t.key;
+    html += '<button onclick="window._setRecordTab(\'' + t.key + '\')" style="'
+      + 'flex:1;padding:9px 0;border-radius:10px;font-size:12px;font-weight:700;'
+      + 'font-family:\'Noto Sans KR\',sans-serif;cursor:pointer;transition:all 0.15s;'
+      + (active
+        ? 'background:#E31837;color:#fff;border:1.5px solid #E31837;'
+        : 'background:' + d.bg + ';color:' + d.sub + ';border:1.5px solid ' + d.bgB + ';')
+      + '">' + t.icon + ' ' + t.label + '</button>';
+  });
+  html += '</div>';
+  if (rt === 'game') { html += _renderGameRecord(d); return html; }
+  html += _renderMemoRecord(d);
   return html;
 }
 
 window._setRecordTab = function(t) {
   state.recordTab = t;
-  // 탭 전환 시 기존 데이터 지우고 새로 fetch
-  if (t !== 'game') {
-    state.playerStats = null;
-    state.playerStatsError = null;
-  }
+  state.playerStats = null;
+  state.playerStatsError = null;
   render();
 };
-
-// ── 기록 탭 검색/필터 상태 ──
-let _recordFilter = { q: '', result: 'all', watch: 'all' };
-
-function _applyRecordFilter(games) {
-  return games.filter(g => {
-    const isHome = g.home === 'KIA';
-    const opp = isHome ? g.away : g.home;
-    const ks = isHome ? g.homeScore : g.awayScore;
-    const os = isHome ? g.awayScore : g.homeScore;
-    const res = ks > os ? 'win' : ks < os ? 'lose' : 'draw';
-    // 결과 필터
-    if (_recordFilter.result !== 'all' && res !== _recordFilter.result) return false;
-    // 시청 필터
-    if (_recordFilter.watch !== 'all') {
-      const memoKey = 'm_'+g.date+'_'+g.away+'_'+g.home;
-      let md = {};
-      try { md = JSON.parse(localStorage.getItem(memoKey)||'{}'); } catch(e) {}
-      const w = md.watch || '';
-      if (_recordFilter.watch === 'jikgwan' && w !== '직관') return false;
-      if (_recordFilter.watch === 'jipgwan' && w !== '집관') return false;
-      if (_recordFilter.watch === 'memo' && !md.text) return false;
-    }
-    // 텍스트 검색
-    if (_recordFilter.q) {
-      const q = _recordFilter.q;
-      if (!opp.includes(q) && !g.date.includes(q) && !g.stad.includes(q)) return false;
-    }
-    return true;
-  });
-}
-
-function _renderRecordFilters(d, total, filtered) {
-  const btn = (label, key, val, cur) => {
-    const active = cur === val;
-    return `<button onclick="_recordFilter.${key}='${val}';render()" style="padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;background:${active?'#E31837':'transparent'};color:${active?'#fff':d.sub};border:1.5px solid ${active?'#E31837':d.bgB}">${label}</button>`;
-  };
-  return `<div style="margin-bottom:12px">
-    <div style="display:flex;gap:6px;margin-bottom:8px">
-      <input id="rec-search" type="text" value="${_recordFilter.q.replace(/"/g,'&quot;')}" placeholder="상대팀·날짜·구장 검색..." maxlength="20"
-        oninput="if(!this._composing){_recordFilter.q=this.value;render()}"
-        oncompositionstart="this._composing=true"
-        oncompositionend="this._composing=false;_recordFilter.q=this.value;render()"
-        onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()"
-        style="flex:1;padding:8px 12px;border-radius:10px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;
-        background:${d.bg};border:1px solid ${d.bgB};color:${d.text};-webkit-user-select:text;user-select:text"/>
-      ${_recordFilter.q ? `<button onclick="_recordFilter.q='';render()" style="padding:8px 10px;border-radius:10px;background:${d.bg};border:1px solid ${d.bgB};font-size:13px;color:${d.sub}">✕</button>` : ''}
-    </div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
-      ${btn('전체','result','all',_recordFilter.result)}
-      ${btn('승리','result','win',_recordFilter.result)}
-      ${btn('패배','result','lose',_recordFilter.result)}
-      ${btn('무승부','result','draw',_recordFilter.result)}
-    </div>
-    <div style="display:flex;gap:5px;flex-wrap:wrap">
-      ${btn('전체','watch','all',_recordFilter.watch)}
-      ${btn('⚾ 직관','watch','jikgwan',_recordFilter.watch)}
-      ${btn('📺 집관','watch','jipgwan',_recordFilter.watch)}
-      ${btn('📝 메모 있음','watch','memo',_recordFilter.watch)}
-    </div>
-    ${filtered < total ? `<div style="font-size:11px;color:${d.sub};margin-top:8px">${filtered}경기 표시 중 (전체 ${total}경기)</div>` : ''}
-  </div>`;
-}
 
 function _renderGameRecord(d) {
   let kiaGames = SCH.filter(g =>
@@ -2207,20 +2114,81 @@ function _renderGameRecord(d) {
       }
     }
 
-    // 점선 구분
-    html += '<div style="border-top:1px dashed '+dashed+';margin-bottom:14px"></div>';
 
-    // 직관/집관/미시청 버튼
+    html += '</div>'; // 영수증 내용 끝
+    html += '</div>'; // 영수증 전체 끝
+  });
+
+  // PC: 2열 그리드 닫기
+  if (isPC) html += '</div>';
+
+  return html;
+}
+
+
+function _renderMemoRecord(d) {
+  let kiaGames = SCH.filter(g =>
+    g.status === 'FINAL' && (g.away === 'KIA' || g.home === 'KIA')
+  ).sort((a,b) => b.date.localeCompare(a.date));
+
+  if (!kiaGames.length) {
+    return '<div style="text-align:center;padding:60px 20px">'
+      + '<div style="font-size:40px;margin-bottom:12px">✍️</div>'
+      + '<div style="font-size:15px;font-weight:700;color:'+d.text+'">아직 기록이 없어요</div>'
+      + '<div style="font-size:12px;color:'+d.sub+';margin-top:6px">경기가 끝나면 후기를 남겨보세요!</div>'
+      + '</div>';
+  }
+
+  const isPC = window.innerWidth >= 1080;
+  const filteredGames = _applyRecordFilter(kiaGames);
+  let html = _renderRecordFilters(d, kiaGames.length, filteredGames.length);
+  html += '<div style="font-size:13px;font-weight:800;color:'+d.text+';margin-bottom:16px">내 기록 <span style="font-size:11px;color:'+d.sub+';font-weight:400">'+filteredGames.length+'경기</span></div>';
+  kiaGames = filteredGames;
+
+  if (isPC) html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">';
+
+  kiaGames.forEach(function(g) {
+    const isHome = g.home === 'KIA';
+    const opp = isHome ? g.away : g.home;
+    const kiaScore = isHome ? g.homeScore : g.awayScore;
+    const oppScore = isHome ? g.awayScore : g.homeScore;
+    const isWin = kiaScore > oppScore;
+    const isDraw = kiaScore === oppScore;
+    const resultColor = isWin ? '#E31837' : isDraw ? '#FF9500' : '#3B9EF5';
+    const resultKr = isWin ? '승' : isDraw ? '무' : '패';
+
+    const memoKey = 'm_'+g.date+'_'+g.away+'_'+g.home;
+    let memoData = {};
+    try { memoData = JSON.parse(localStorage.getItem(memoKey)||'{}'); if(typeof memoData==='string') memoData={text:memoData}; } catch(e) {}
+
+    const [yr2,mo2,da2] = g.date.split('-');
+    const dw2 = ['일','월','화','수','목','금','토'][new Date(g.date+'T12:00:00').getDay()];
+    const dashed = (d.dark?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.13)');
+    const memoId = 'rec-memo-'+g.date+'-'+g.away+'-'+g.home;
+    const safeD = g.date, safeA = g.away, safeH = g.home;
+    const oppFullName = T[opp] ? T[opp].name : opp;
+    const watchIcon = memoData.watch==='직관'?'⚾':memoData.watch==='집관'?'📺':'';
+
+    html += '<div style="margin-bottom:16px;border-radius:14px;overflow:hidden;border:1px solid '+dashed+';background:'+d.card+'">';
+    // 헤더
+    html += '<div style="padding:12px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid '+dashed+'">';
+    html += '<div><div style="font-size:11px;color:'+d.sub+'">'+yr2+'.'+mo2+'.'+da2+' ('+dw2+') '+g.stad+'</div>';
+    html += '<div style="font-size:13px;font-weight:700;color:'+d.text+';margin-top:2px">KIA vs '+oppFullName+'</div></div>';
+    html += '<div style="text-align:right"><div style="font-size:18px;font-weight:900;color:'+resultColor+'">'+kiaScore+':'+oppScore+'</div>';
+    html += '<div style="font-size:10px;color:'+resultColor+';font-weight:700">'+resultKr+(watchIcon?' · '+watchIcon:'')+'</div></div>';
+    html += '</div>';
+
+    html += '<div style="padding:12px 16px">';
+    // 직관/집관/미시청
     html += '<div style="display:flex;gap:6px;margin-bottom:12px" onclick="event.stopPropagation()">';
     ['직관','집관','미시청'].forEach(function(v) {
       const sel = (memoData.watch||'') === v;
-      const vc = v==='직관'?'#E31837':v==='집관'?'#0078ff':'rgba(0,0,0,0.3)';
-      html += '<button onclick="event.stopPropagation();recSetWatch(\''+safeD+'\',\''+safeA+'\',\''+safeH+'\',\''+v+'\')" '
+      const vc = v==='직관'?'#E31837':v==='집관'?'#0078ff':'rgba(120,120,120,0.5)';
+      html += '<button onclick="event.stopPropagation();recSetWatch(\'' + safeD + '\',\'' + safeA + '\',\'' + safeH + '\',\'' + v + '\')" '
         + 'id="recwatch-'+memoId+'-'+v+'" '
         + 'style="flex:1;padding:7px 0;background:'+(sel?vc:'transparent')+';border:1.5px solid '+vc+';border-radius:8px;'
         + 'font-size:11px;font-weight:700;color:'+(sel?'#fff':vc)+';font-family:\'Noto Sans KR\',sans-serif;cursor:pointer">'
-        + (v==='직관'?'⚾ 직관':v==='집관'?'📺 집관':'— 미시청')
-        + '</button>';
+        + (v==='직관'?'⚾ 직관':v==='집관'?'📺 집관':'— 미시청')+'</button>';
     });
     html += '</div>';
 
@@ -2231,22 +2199,21 @@ function _renderGameRecord(d) {
       html += '<div onclick="event.stopPropagation()" style="margin-bottom:10px">';
       html += '<div style="position:relative;border-radius:10px;overflow:hidden;background:#111">';
       html += '<img src="'+recPhotos[0]+'" onclick="openPhotoViewer(JSON.parse(this.dataset.photos||&quot;[]&quot;),0)" '
-        + 'data-photos="'+pj+'" style="width:100%;max-height:340px;object-fit:contain;display:block;cursor:zoom-in"/>';
-      html += '<button onclick="event.stopPropagation();recDeletePhoto(\''+safeD+'\',\''+safeA+'\',\''+safeH+'\',0)" '
+        + 'data-photos="'+pj+'" style="width:100%;max-height:300px;object-fit:contain;display:block;cursor:zoom-in"/>';
+      html += '<button onclick="event.stopPropagation();recDeletePhoto(\'' + safeD + '\',\'' + safeA + '\',\'' + safeH + '\',0)" '
         + 'style="position:absolute;top:8px;right:8px;background:rgba(0,0,0,0.55);color:#fff;border:none;border-radius:50%;'
         + 'width:28px;height:28px;font-size:15px;display:flex;align-items:center;justify-content:center;cursor:pointer">✕</button>';
       if(recPhotos.length > 1) {
-        html += '<div onclick="openPhotoViewer(JSON.parse(\''+pj.replace(/'/g,"\\'")+'\'),0)" '
+        html += '<div onclick="openPhotoViewer(JSON.parse(this.parentNode.querySelector(\"img\").dataset.photos||\"[]\"),0)" '
           + 'style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;'
           + 'font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px;cursor:zoom-in">+'+(recPhotos.length-1)+'장 더</div>';
       }
       html += '</div></div>';
     }
 
-    // 후기 - 영수증 열전사 프린터 스타일
+    // 후기
     const memoText = memoData.text||'';
     html += '<div class="rec-print-wrap" onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()">';
-    // 영수증 글자 표시 div
     html += '<div class="rec-print-display'+(memoText?'':' empty-hint')+'" '
       + 'id="recdisplay-'+memoId+'" '
       + 'data-placeholder="오늘 경기 후기를 남겨보세요 ✍️" '
@@ -2254,36 +2221,30 @@ function _renderGameRecord(d) {
       + 'style="background:'+d.bg+';border:1px dashed '+dashed+';color:'+d.text+'">'
       + memoText.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>')
       + '</div>';
-    // 실제 textarea (편집시에만 visible)
     html += '<textarea class="rec-print-textarea" id="'+memoId+'" '
       + 'data-date="'+safeD+'" data-away="'+safeA+'" data-home="'+safeH+'" '
       + 'placeholder="오늘 경기 후기를 남겨보세요 ✍️" '
       + 'oninput="saveRecordMemoEl(this);recUpdatePrintDisplay(this)" '
       + 'onfocus="this.closest(\'.rec-print-wrap\').classList.add(\'editing\')" '
       + 'onblur="recBlurPrintDisplay(this)" '
-      + 'style="padding:10px 12px;background:'+d.bg+';border:1px dashed '+dashed+';'
-      + 'color:'+d.text+';line-height:1.75;box-sizing:border-box;">'
+      + 'style="padding:10px 12px;background:'+d.bg+';border:1px dashed '+dashed+';color:'+d.text+';line-height:1.75;box-sizing:border-box;">'
       + (memoData.text||'')+'</textarea>';
     html += '</div>';
 
-    // 사진 추가 버튼
+    // 사진 추가
     html += '<label onclick="event.stopPropagation()" '
-      + 'style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:'+d.bg+';border:1px dashed '+dashed+';'
-      + 'border-radius:8px;cursor:pointer;margin-bottom:20px">';
-    html += '<span style="font-size:15px">📷</span>';
-    html += '<span style="font-size:12px;color:'+d.sub+';flex:1">사진 추가</span>';
+      + 'style="display:flex;align-items:center;gap:8px;padding:9px 12px;background:'+d.bg+';border:1px dashed '+dashed+';border-radius:8px;cursor:pointer;margin-top:10px">';
+    html += '<span style="font-size:15px">📷</span><span style="font-size:12px;color:'+d.sub+';flex:1">사진 추가</span>';
     html += '<input type="file" accept="image/*" multiple style="display:none" '
-      + 'onchange="event.stopPropagation();recUploadPhoto(this,\''+safeD+'\',\''+safeA+'\',\''+safeH+'\')">';
+      + 'onchange="event.stopPropagation();recUploadPhoto(this,\''+safeD+'\',\''+safeA+'\',\''+safeH+'\')"> ';
     html += '<span style="font-size:11px;color:#E31837;font-weight:700;border:1px solid #E31837;border-radius:6px;padding:3px 8px">선택</span>';
     html += '</label>';
 
-    html += '</div>'; // 영수증 내용 끝
-    html += '</div>'; // 영수증 전체 끝
+    html += '</div>'; // 본문 끝
+    html += '</div>'; // 카드 끝
   });
 
-  // PC: 2열 그리드 닫기
   if (isPC) html += '</div>';
-
   return html;
 }
 // _renderGameRecord 끝 (renderBaseballRecord에서 호출됨)
@@ -3926,7 +3887,7 @@ function renderModal(d) {
             html2 += `<thead><tr style="border-bottom:1px solid ${d.bgB}">`;
             html2 += `<th style="padding:8px 12px;text-align:left;font-size:10px;font-weight:700;color:${d.sub};width:100%">투수</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">이닝</th>`;
-            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:52px">투구수(S)</th>`;
+            html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">투구수</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">피안타</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">삼진</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
@@ -3940,7 +3901,7 @@ function renderModal(d) {
               html2 += `<span style="font-size:12px;font-weight:700;color:${d.text}">${p.name}</span>`;
               html2 += `</div></td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.inn||0}</td>`;
-              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.pc ? p.pc + (p.sp ? '<span style="font-size:10px;color:'+d.muted+'">(' + p.sp + ')</span>' : '') : 0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.pc||0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.kk||0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?'#E31837':d.sub}">${p.bb||0}</td>`;
