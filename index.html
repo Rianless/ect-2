@@ -2045,7 +2045,7 @@ function _renderGameRecord(d) {
     html += '<div style="margin-bottom:12px;border-radius:14px;overflow:hidden;border:1px solid '+(d.dark?'rgba(255,255,255,0.1)':'rgba(0,0,0,0.08)')+';background:'+d.card+'">';
 
     // ── 헤더 (클릭하면 토글) ──
-    html += '<div onclick="(function(el){var b=document.getElementById(\''+cardId+'\');if(!b)return;var open=b.style.display!==\'none\';b.style.display=open?\'none\':\'block\';el.querySelector(\'.grec-arrow\').textContent=open?\'▶\':\'▼\';})(this)" '
+    html += '<div onclick="event.stopPropagation();window.toggleGameRecord(\'' + cardId + '\',this)" '
       + 'style="padding:12px 16px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none">';
     html += '<div style="flex:1">';
     html += '<div style="font-size:11px;color:'+d.sub+'">'+yr+'.'+mo+'.'+da+' ('+dw+') · '+(g.stad||'')+'</div>';
@@ -2168,6 +2168,15 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor) {
   }
   return html;
 }
+
+window.toggleGameRecord = function(cardId, el) {
+  var b = document.getElementById(cardId);
+  if (!b) return;
+  var open = b.style.display !== 'none';
+  b.style.display = open ? 'none' : 'block';
+  var arrow = el.querySelector('.grec-arrow');
+  if (arrow) arrow.textContent = open ? '▶' : '▼';
+};
 
 window.recSwitchTab = function(cardId, tab, sideKey) {
   const kiaEl = document.getElementById(cardId + '-kia');
