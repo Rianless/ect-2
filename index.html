@@ -1949,6 +1949,66 @@ window._setRecordTab = function(t) {
   state.playerStatsError = null;
   render();
 };
+// ── 기록 탭 검색/필터 상태 ──
+let _recordFilter = { q: '', result: 'all', watch: 'all' };
+
+function _applyRecordFilter(games) {
+  return games.filter(g => {
+    const isHome = g.home === 'KIA';
+    const opp = isHome ? g.away : g.home;
+    const ks = isHome ? g.homeScore : g.awayScore;
+    const os = isHome ? g.awayScore : g.homeScore;
+    const res = ks > os ? 'win' : ks < os ? 'lose' : 'draw';
+    if (_recordFilter.result !== 'all' && res !== _recordFilter.result) return false;
+    if (_recordFilter.watch !== 'all') {
+      const memoKey = 'm_'+g.date+'_'+g.away+'_'+g.home;
+      let md = {};
+      try { md = JSON.parse(localStorage.getItem(memoKey)||'{}'); } catch(e) {}
+      const w = md.watch || '';
+      if (_recordFilter.watch === 'jikgwan' && w !== '직관') return false;
+      if (_recordFilter.watch === 'jipgwan' && w !== '집관') return false;
+      if (_recordFilter.watch === 'memo' && !md.text) return false;
+    }
+    if (_recordFilter.q) {
+      const q = _recordFilter.q;
+      if (!opp.includes(q) && !g.date.includes(q) && !(g.stad||'').includes(q)) return false;
+    }
+    return true;
+  });
+}
+
+function _renderRecordFilters(d, total, filtered) {
+  const btn = (label, key, val, cur) => {
+    const active = cur === val;
+    return `<button onclick="_recordFilter.${key}='${val}';render()" style="padding:5px 10px;border-radius:20px;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;background:${active?'#E31837':'transparent'};color:${active?'#fff':d.sub};border:1.5px solid ${active?'#E31837':d.bgB}">${label}</button>`;
+  };
+  return `<div style="margin-bottom:12px">
+    <div style="display:flex;gap:6px;margin-bottom:8px">
+      <input id="rec-search" type="text" value="${_recordFilter.q.replace(/"/g,'&quot;')}" placeholder="상대팀·날짜·구장 검색..." maxlength="20"
+        oninput="if(!this._composing){_recordFilter.q=this.value;render()}"
+        oncompositionstart="this._composing=true"
+        oncompositionend="this._composing=false;_recordFilter.q=this.value;render()"
+        onclick="event.stopPropagation()" ontouchstart="event.stopPropagation()"
+        style="flex:1;padding:8px 12px;border-radius:10px;font-size:12px;font-family:'Noto Sans KR',sans-serif;outline:none;
+        background:${d.bg};border:1px solid ${d.bgB};color:${d.text};-webkit-user-select:text;user-select:text"/>
+      ${_recordFilter.q ? `<button onclick="_recordFilter.q='';render()" style="padding:8px 10px;border-radius:10px;background:${d.bg};border:1px solid ${d.bgB};font-size:13px;color:${d.sub}">✕</button>` : ''}
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
+      ${btn('전체','result','all',_recordFilter.result)}
+      ${btn('승리','result','win',_recordFilter.result)}
+      ${btn('패배','result','lose',_recordFilter.result)}
+      ${btn('무승부','result','draw',_recordFilter.result)}
+    </div>
+    <div style="display:flex;gap:5px;flex-wrap:wrap">
+      ${btn('전체','watch','all',_recordFilter.watch)}
+      ${btn('⚾ 직관','watch','jikgwan',_recordFilter.watch)}
+      ${btn('📺 집관','watch','jipgwan',_recordFilter.watch)}
+      ${btn('📝 메모 있음','watch','memo',_recordFilter.watch)}
+    </div>
+    ${filtered < total ? `<div style="font-size:11px;color:${d.sub};margin-top:8px">${filtered}경기 표시 중 (전체 ${total}경기)</div>` : ''}
+  </div>`;
+}
+
 
 function _renderGameRecord(d) {
   let kiaGames = SCH.filter(g =>
