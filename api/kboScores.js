@@ -530,6 +530,7 @@ export default async function handler(req, res) {
 
       function parsePitchers(arr) {
         if (!arr?.length) return [];
+        if (arr[0]) console.log('[parsePitchers raw sample]', JSON.stringify(arr[0]));
         return arr.map(p => ({
           seqno: p.seqno || p.orderNum || 0,
           name: p.name || p.playerName || '',
