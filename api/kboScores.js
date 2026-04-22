@@ -200,7 +200,6 @@ export default async function handler(req, res) {
           console.log('[fetchGameRecord] found from:', url.split('games/')[1]);
           // 투수 원본 필드 확인용 로그
           const sampleP = (homeL?.pitcher || homeL?.pitchers || awayL?.pitcher || awayL?.pitchers || [])[0];
-          if (sampleP) console.log('[pitcher raw fields]', JSON.stringify(sampleP));
           return res;
         }
       } catch(e) {}
