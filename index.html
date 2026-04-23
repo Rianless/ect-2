@@ -1302,7 +1302,6 @@ function renderCalSplit(d) {
         ${(g.awayStarter||g.homeStarter)?`<div style="margin-top:8px;padding-top:8px;border-top:1px solid rgba(0,0,0,0.07)">
           <div style="display:flex;justify-content:space-between;align-items:center">
             <div style="font-size:10px;color:${d.sub}">선발 <span style="font-weight:700;color:${lKey==='KIA'?'#ff6b6b':d.text}">${(lKey===g.away?g.awayStarter:g.homeStarter)||'미정'}</span></div>
-            <div id="card-weather-${g.gameId}"></div>
             <div style="font-size:10px;color:${d.sub}"><span style="font-weight:700;color:${rKey==='KIA'?'#ff6b6b':d.text}">${(rKey===g.away?g.awayStarter:g.homeStarter)||'미정'}</span> 선발</div>
           </div>
         </div>`:''}
@@ -3831,7 +3830,7 @@ function renderModal(d) {
                 html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;font-weight:${p.curBb>0?700:400};color:${p.curBb>0?sideColor:d.sub}">${p.curBb||0}</td>`;
                 html2 += `</tr>`;
               } else {
-                html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+                html2 += `<tr style="border-bottom:1px solid ${d.bgB};cursor:pointer;transition:background 0.12s" onclick="openPlayerDetail({type:'batter',name:'${p.name}',ab:${p.ab||0},hit:${p.hit||0},run:${p.run||0},rbi:${p.rbi||0},bb:${p.bb||0},order:${p.n||p.order||0},pos:'${p.p||''}',color:'${sideColor}'})" onmouseenter="this.style.background='rgba(0,0,0,0.04)'" onmouseleave="this.style.background=''">`;
                 html2 += `<td style="padding:7px 12px">`;
                 html2 += `<div style="display:flex;align-items:center;gap:6px">`;
                 html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">${p.n||p.order}</span>`;
@@ -3860,7 +3859,7 @@ function renderModal(d) {
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">실점</th>`;
             html2 += `</tr></thead><tbody>`;
             pitchers.forEach(p => {
-              html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+              html2 += `<tr style="border-bottom:1px solid ${d.bgB};cursor:pointer;transition:background 0.12s" onclick="openPlayerDetail({type:'pitcher',name:'${p.name}',inn:'${p.inn||0}',pc:${p.pc||0},hit:${p.hit||0},kk:${p.kk||0},bb:${p.bb||0},er:${p.er||0},color:'${sideColor}'})" onmouseenter="this.style.background='rgba(0,0,0,0.04)'" onmouseleave="this.style.background=''">`;
               html2 += `<td style="padding:7px 12px">`;
               html2 += `<div style="display:flex;align-items:center;gap:6px">`;
               html2 += `<span style="font-size:9px;font-weight:900;min-width:16px;text-align:center;color:${sideColor};background:${sideColor}22;border-radius:4px;padding:1px 4px">P</span>`;
@@ -6508,5 +6507,228 @@ updateRpStandings();
 setInterval(updateRightPanel, 30000);
 setInterval(updateRpStandings, 60000);
 </script>
+
+<!-- ── 선수 상세 미니 모달 ── -->
+<div id="player-detail-overlay" style="display:none;position:fixed;inset:0;z-index:300;background:rgba(10,14,26,0.45);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);align-items:flex-end;justify-content:center;animation:fadeIn 0.18s ease" onclick="if(event.target===this)closePlayerDetail()">
+  <div id="player-detail-box" style="width:100%;max-width:480px;background:rgba(245,247,252,0.98);border:1px solid rgba(255,255,255,0.85);border-bottom:none;border-radius:20px 20px 0 0;padding:0 0 28px;animation:slideUp 0.3s cubic-bezier(0.34,1.35,0.64,1);box-shadow:0 -12px 44px rgba(0,0,0,0.22)">
+    <!-- 핸들 -->
+    <div style="display:flex;justify-content:center;padding:10px 0 4px">
+      <div style="width:36px;height:4px;background:rgba(0,0,0,0.12);border-radius:2px"></div>
+    </div>
+    <!-- 헤더 -->
+    <div id="pd-header" style="display:flex;align-items:center;gap:12px;padding:12px 20px 14px">
+      <div id="pd-avatar" style="width:48px;height:48px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:900;color:#fff;flex-shrink:0"></div>
+      <div style="flex:1;min-width:0">
+        <div id="pd-name" style="font-size:18px;font-weight:900;color:#141925;letter-spacing:-0.3px"></div>
+        <div id="pd-pos" style="font-size:11px;font-weight:600;color:rgba(20,25,37,0.45);margin-top:2px"></div>
+      </div>
+      <button onclick="closePlayerDetail()" style="width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,0.07);color:#666;font-size:16px;display:flex;align-items:center;justify-content:center;border:none;cursor:pointer">✕</button>
+    </div>
+    <!-- 스탯 카드들 -->
+    <div id="pd-stats" style="display:grid;gap:8px;padding:0 16px"></div>
+  </div>
+</div>
+
+<style>
+  body.dark #player-detail-box {
+    background: rgba(18,24,38,0.97) !important;
+    border-color: rgba(255,255,255,0.08) !important;
+  }
+  body.dark #pd-name { color: #edf1fa !important; }
+  body.dark #pd-pos  { color: rgba(237,241,250,0.4) !important; }
+  .pd-stat-row {
+    background: rgba(0,0,0,0.04);
+    border-radius: 12px;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  body.dark .pd-stat-row { background: rgba(255,255,255,0.06); }
+  .pd-stat-label { font-size: 12px; font-weight: 700; color: rgba(20,25,37,0.5); }
+  body.dark .pd-stat-label { color: rgba(237,241,250,0.45); }
+  .pd-stat-val { font-size: 22px; font-weight: 900; letter-spacing: -0.5px; }
+  .pd-stat-bar-wrap { height: 6px; background: rgba(0,0,0,0.08); border-radius: 3px; margin-top: 6px; overflow:hidden; }
+  body.dark .pd-stat-bar-wrap { background: rgba(255,255,255,0.1); }
+  .pd-stat-bar { height: 100%; border-radius: 3px; transition: width 0.4s cubic-bezier(0.34,1.2,0.64,1); }
+  .pd-grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .pd-grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+  .pd-mini-card { background: rgba(0,0,0,0.04); border-radius: 10px; padding: 10px 12px; text-align:center; }
+  body.dark .pd-mini-card { background: rgba(255,255,255,0.06); }
+  .pd-mini-label { font-size: 10px; font-weight: 700; color: rgba(20,25,37,0.45); margin-bottom:4px; }
+  body.dark .pd-mini-label { color: rgba(237,241,250,0.4); }
+  .pd-mini-val { font-size: 18px; font-weight: 900; }
+</style>
+
+
+<script>
+// ── 선수 상세 미니 모달 ──
+window.openPlayerDetail = function(p) {
+  const isDark = document.body.classList.contains('dark');
+  const color = p.color || '#E31837';
+  const overlay = document.getElementById('player-detail-overlay');
+  const box     = document.getElementById('player-detail-box');
+  const avatar  = document.getElementById('pd-avatar');
+  const nameEl  = document.getElementById('pd-name');
+  const posEl   = document.getElementById('pd-pos');
+  const stats   = document.getElementById('pd-stats');
+
+  // 헤더
+  avatar.style.background = color;
+  avatar.textContent = p.name ? p.name[0] : '?';
+  nameEl.textContent = p.name || '';
+
+  let html = '';
+
+  if (p.type === 'batter') {
+    posEl.textContent = posLabel(p.pos) + (p.order ? '  ' + p.order + '번 타자' : '');
+
+    // 타율 계산
+    const avg = p.ab > 0 ? (p.hit / p.ab) : 0;
+    const avgStr = p.ab > 0 ? avg.toFixed(3).replace('0.', '.') : '-';
+    const avgPct = Math.min(avg / 0.400 * 100, 100); // .400 기준 100%
+
+    // 출루율 (간이: (안타+볼넷) / (타수+볼넷))
+    const obpDenom = p.ab + p.bb;
+    const obp = obpDenom > 0 ? ((p.hit + p.bb) / obpDenom) : 0;
+    const obpStr = obpDenom > 0 ? obp.toFixed(3).replace('0.', '.') : '-';
+
+    html += `<div class="pd-stat-row">
+      <div>
+        <div class="pd-stat-label">타율</div>
+        <div class="pd-stat-val" style="color:${color}">${avgStr}</div>
+        <div class="pd-stat-bar-wrap" style="width:140px;margin-top:6px">
+          <div class="pd-stat-bar" style="width:${avgPct}%;background:${color}"></div>
+        </div>
+      </div>
+      <div style="text-align:right">
+        <div class="pd-stat-label">출루율</div>
+        <div class="pd-stat-val" style="color:${color};font-size:18px">${obpStr}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.3);margin-top:2px">${p.ab}타수 ${p.hit}안타 ${p.bb}볼넷</div>
+      </div>
+    </div>`;
+
+    html += `<div class="pd-grid3">
+      <div class="pd-mini-card">
+        <div class="pd-mini-label">득점</div>
+        <div class="pd-mini-val" style="color:${p.run>0?color:'inherit'}">${p.run||0}</div>
+      </div>
+      <div class="pd-mini-card">
+        <div class="pd-mini-label">타점</div>
+        <div class="pd-mini-val" style="color:${p.rbi>0?color:'inherit'}">${p.rbi||0}</div>
+      </div>
+      <div class="pd-mini-card">
+        <div class="pd-mini-label">볼넷</div>
+        <div class="pd-mini-val" style="color:${p.bb>0?color:'inherit'}">${p.bb||0}</div>
+      </div>
+    </div>`;
+
+    // 간단한 한줄 평
+    const comment = batterComment(p, avg, color);
+    if (comment) html += `<div style="padding:10px 16px;font-size:12px;line-height:1.6;color:${isDark?'rgba(237,241,250,0.6)':'rgba(20,25,37,0.5)'}">${comment}</div>`;
+
+  } else if (p.type === 'pitcher') {
+    posEl.textContent = '투수';
+
+    // ERA 간이 계산 (이닝 파싱)
+    const innNum = parseInn(p.inn);
+    const era = innNum > 0 ? ((p.er * 9) / innNum).toFixed(2) : '-';
+    const eraColor = innNum > 0 ? (p.er === 0 ? '#00C864' : p.er <= 2 ? color : '#FF6B35') : 'inherit';
+
+    html += `<div class="pd-stat-row">
+      <div>
+        <div class="pd-stat-label">이닝 ERA (오늘)</div>
+        <div class="pd-stat-val" style="color:${eraColor}">${era}</div>
+        <div style="font-size:10px;color:rgba(0,0,0,0.3);margin-top:4px">${p.inn}이닝 · ${p.pc}구</div>
+      </div>
+      <div style="text-align:right">
+        <div class="pd-stat-label">피안타</div>
+        <div class="pd-stat-val" style="color:${p.hit>0?'#FF6B35':'inherit'};font-size:18px">${p.hit||0}</div>
+      </div>
+    </div>`;
+
+    html += `<div class="pd-grid3">
+      <div class="pd-mini-card">
+        <div class="pd-mini-label">삼진</div>
+        <div class="pd-mini-val" style="color:${p.kk>0?color:'inherit'}">${p.kk||0}</div>
+      </div>
+      <div class="pd-mini-card">
+        <div class="pd-mini-label">볼넷</div>
+        <div class="pd-mini-val" style="color:${p.bb>0?'#FF6B35':'inherit'}">${p.bb||0}</div>
+      </div>
+      <div class="pd-mini-card">
+        <div class="pd-mini-label">실점</div>
+        <div class="pd-mini-val" style="color:${p.er>0?'#FF6B35':'inherit'}">${p.er||0}</div>
+      </div>
+    </div>`;
+
+    const comment = pitcherComment(p, innNum, era, color);
+    if (comment) html += `<div style="padding:10px 16px;font-size:12px;line-height:1.6;color:${isDark?'rgba(237,241,250,0.6)':'rgba(20,25,37,0.5)'}">${comment}</div>`;
+  }
+
+  stats.innerHTML = html;
+  overlay.style.display = 'flex';
+
+  // 바 애니메이션 (약간 딜레이)
+  requestAnimationFrame(() => {
+    overlay.style.opacity = '1';
+  });
+};
+
+window.closePlayerDetail = function() {
+  const overlay = document.getElementById('player-detail-overlay');
+  overlay.style.display = 'none';
+};
+
+// 이닝 문자열 → 숫자 (예: "5⅓" → 5.33, "3" → 3)
+function parseInn(inn) {
+  if (!inn) return 0;
+  const s = String(inn).trim();
+  const base = parseFloat(s) || 0;
+  if (s.includes('⅓') || s.includes('1/3')) return Math.floor(base) + 1/3;
+  if (s.includes('⅔') || s.includes('2/3')) return Math.floor(base) + 2/3;
+  return base;
+}
+
+// 포지션 레이블
+function posLabel(pos) {
+  const map = {'C':'포수','1B':'1루수','2B':'2루수','3B':'3루수','SS':'유격수','LF':'좌익수','CF':'중견수','RF':'우익수','DH':'지명타자','P':'투수'};
+  return map[pos] || pos || '';
+}
+
+// 타자 한줄 코멘트
+function batterComment(p, avg, color) {
+  if (p.ab === 0) return '이번 경기 출전 기록 없음';
+  const parts = [];
+  if (p.hit >= 3) parts.push(`<b style="color:${color}">${p.hit}안타</b> 맹타!`);
+  else if (p.hit === 2) parts.push(`<b style="color:${color}">2안타</b> 활약`);
+  else if (p.hit === 1) parts.push('1안타');
+  else parts.push(`${p.ab}타수 무안타`);
+  if (p.rbi >= 2) parts.push(`<b style="color:${color}">${p.rbi}타점</b> 포함`);
+  else if (p.rbi === 1) parts.push('1타점');
+  if (p.run >= 1) parts.push(`${p.run}득점`);
+  return parts.join(' · ');
+}
+
+// 투수 한줄 코멘트
+function pitcherComment(p, innNum, era, color) {
+  if (innNum === 0) return '투구 기록 없음';
+  const parts = [];
+  if (innNum >= 6 && p.er === 0) parts.push(`<b style="color:#00C864">퀄리티 스타트</b> 호투`);
+  else if (innNum >= 5) parts.push(`${p.inn}이닝 소화`);
+  else parts.push(`${p.inn}이닝`);
+  if (p.kk >= 7) parts.push(`<b style="color:${color}">${p.kk}K</b> 지배적`);
+  else if (p.kk >= 4) parts.push(`${p.kk}K`);
+  if (p.er === 0) parts.push('무실점');
+  else if (p.er >= 3) parts.push(`<b style="color:#FF6B35">${p.er}실점</b>`);
+  return parts.join(' · ');
+}
+
+// 모달 외부 키보드 닫기
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closePlayerDetail();
+});
+</script>
+
 </body>
 </html>
