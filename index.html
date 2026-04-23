@@ -1962,6 +1962,11 @@ function renderBaseballRecord(d) {
   return html;
 }
 
+// ── 내 기록 탭 렌더러 (renderMemos 래퍼) ──
+function _renderMemoRecord(d) {
+  return renderMemos(d);
+}
+
 window._setRecordTab = function(t) {
   state.recordTab = t;
   state.playerStats = null;
