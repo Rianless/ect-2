@@ -106,50 +106,53 @@ export default async function handler(req, res) {
     return (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
   }
 
-  // ── 핵심 수정: relay 엔드포인트 다양화 + 캐싱 ──
+  // ── 병렬 fetch: 유효한 결과를 가장 빨리 반환한 URL 사용 ──
+  async function fetchOneValid(url, validateFn) {
+    const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    const result = d?.result;
+    if (!result || !validateFn(result)) throw new Error('invalid');
+    return result;
+  }
+
   async function fetchGameDetail(gameId, inning) {
     const inn = Math.max(1, inning || 1);
 
-    // 시도할 URL 목록 (우선순위 순)
     const urls = [
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/text-relay?inning=${inn}&isHighlight=false`,
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=${inn}&isHighlight=false`,
-      // 이닝이 1보다 크면 1이닝도 추가 fallback
       ...(inn > 1 ? [
         `https://api-gw.sports.naver.com/schedule/games/${gameId}/text-relay?inning=1&isHighlight=false`,
         `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=1&isHighlight=false`,
       ] : []),
-      // 이닝 없이 시도
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/text-relay`,
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling`,
     ];
 
-    for (const url of urls) {
-      try {
-        const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
-        if (!r.ok) {
-          console.log('[fetchGameDetail] HTTP', r.status, url.split('games/')[1]);
-          continue;
-        }
-        const d = await r.json();
-        const result = d?.result;
-        if (!result) continue;
+    const validate = r => {
+      const hasRelays = findTextRelaysRecursive(r)?.length > 0;
+      const hasGs = !!(r.currentGameState || r.textRelayData?.currentGameState);
+      return hasRelays || hasGs || !!(r.game || r.inningInfo || r.homeLineup);
+    };
 
-        // textRelays 또는 currentGameState 중 하나라도 있으면 유효한 응답
-        const hasRelays = findTextRelaysRecursive(result)?.length > 0;
-        const hasGs = !!(result.currentGameState || result.textRelayData?.currentGameState);
-        if (hasRelays || hasGs) {
-          console.log('[fetchGameDetail] OK:', url.split('games/')[1], 'relays:', hasRelays, 'gs:', hasGs);
+    // 주요 2개 URL을 병렬로 먼저 시도, 실패 시 나머지 순차 fallback
+    try {
+      const result = await Promise.any(
+        urls.slice(0, 2).map(url => fetchOneValid(url, validate))
+      );
+      console.log('[fetchGameDetail] parallel OK for', gameId);
+      return result;
+    } catch {
+      // 나머지 URL 순차 fallback
+      for (const url of urls.slice(2)) {
+        try {
+          const result = await fetchOneValid(url, validate);
+          console.log('[fetchGameDetail] fallback OK:', url.split('games/')[1]);
           return result;
+        } catch(e) {
+          console.log('[fetchGameDetail] error:', url.split('games/')[1], e.message);
         }
-
-        // textRelays는 없지만 inningInfo 등 게임 데이터가 있는 경우도 반환
-        if (result.game || result.inningInfo || result.homeLineup) {
-          console.log('[fetchGameDetail] partial OK:', url.split('games/')[1]);
-          return result;
-        }
-      } catch(e) {
-        console.log('[fetchGameDetail] error:', url.split('games/')[1], e.message);
       }
     }
     return null;
@@ -163,18 +166,20 @@ export default async function handler(req, res) {
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/lineup`,
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=${inn}&isHighlight=false`,
     ];
-    for (const url of urls) {
+    const validateLineup = r => r && Object.keys(r).length > 0;
+    try {
+      const result = await Promise.any(
+        urls.slice(0, 3).map(url => fetchOneValid(url, validateLineup))
+      );
+      console.log('[fetchLineup] parallel OK for', gameId);
+      return result;
+    } catch {
       try {
-        const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
-        if (!r.ok) continue;
-        const data = await r.json();
-        if (!data?.result) continue;
-        const res = data.result;
-        console.log('[fetchLineup]', url.split('/').slice(-1)[0].split('?')[0], '→ keys:', JSON.stringify(Object.keys(res)).slice(0,200));
-        if (res && Object.keys(res).length > 0) return res;
-      } catch(e) {}
+        const result = await fetchOneValid(urls[3], validateLineup);
+        console.log('[fetchLineup] polling fallback OK for', gameId);
+        return result;
+      } catch { return null; }
     }
-    return null;
   }
 
   // 타자/투수 기록이 포함된 데이터를 game-polling inning=9 에서 가져옴 (FINAL 전용)
@@ -183,28 +188,20 @@ export default async function handler(req, res) {
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=9&isHighlight=false`,
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/text-relay?inning=9&isHighlight=false`,
     ];
-    for (const url of urls) {
-      try {
-        const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
-        if (!r.ok) continue;
-        const data = await r.json();
-        const res = data?.result;
-        if (!res) continue;
-        // 타자 배열 존재 여부 확인
-        const td = res.textRelayData || res;
-        const gd = res.game || {};
-        const homeL = td.homeLineup || res.homeLineup || gd.homeLineup || null;
-        const awayL = td.awayLineup || res.awayLineup || gd.awayLineup || null;
-        const hasBatters = (homeL?.batter?.length || 0) + (awayL?.batter?.length || 0) > 0;
-        if (hasBatters) {
-          console.log('[fetchGameRecord] found from:', url.split('games/')[1]);
-          // 투수 원본 필드 확인용 로그
-          const sampleP = (homeL?.pitcher || homeL?.pitchers || awayL?.pitcher || awayL?.pitchers || [])[0];
-          return res;
-        }
-      } catch(e) {}
-    }
-    return null;
+    const validateRecord = res => {
+      const td = res.textRelayData || res;
+      const gd = res.game || {};
+      const homeL = td.homeLineup || res.homeLineup || gd.homeLineup || null;
+      const awayL = td.awayLineup || res.awayLineup || gd.awayLineup || null;
+      return (homeL?.batter?.length || 0) + (awayL?.batter?.length || 0) > 0;
+    };
+    try {
+      const result = await Promise.any(
+        urls.map(url => fetchOneValid(url, validateRecord))
+      );
+      console.log('[fetchGameRecord] parallel OK for', gameId);
+      return result;
+    } catch { return null; }
   }
 
   function convertGame(g, detail) {
