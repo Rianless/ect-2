@@ -1616,20 +1616,40 @@ function renderCal(d) {
             </tr>
           </thead>
           <tbody>
-            <tr style="background:${_itcRowBg};border-radius:6px">
-              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${_itcKiaName};text-align:left">KIA</td>
-              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${_itcKiaInnVal(kiaInnings[i]>0)}">${iv(kiaInnings,i)}</td>`).join('')}
-              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${_itcKiaR};border-left:1px solid ${_itcDiv}">${hasScore?kiaS:'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcKiaSub}">${tg.kiaHit??'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcKiaSub}">${tg.kiaError??'-'}</td>
-            </tr>
+            ${(()=>{
+              // 원정팀이 위(초), 홈팀이 아래(말) — 야구 관례
+              const awayTeam = isHome ? opp : 'KIA';
+              const homeTeam = isHome ? 'KIA' : opp;
+              const awayInnings = isHome ? oppInnings : kiaInnings;
+              const homeInnings = isHome ? kiaInnings : oppInnings;
+              const awayNameColor = isHome ? _itcOppName : _itcKiaName;
+              const homeNameColor = isHome ? _itcKiaName : _itcOppName;
+              const awayInnVal = (v) => isHome ? _itcOppInnVal(v) : _itcKiaInnVal(v);
+              const homeInnVal = (v) => isHome ? _itcKiaInnVal(v) : _itcOppInnVal(v);
+              const awayR = isHome ? _itcOppR : _itcKiaR;
+              const homeR = isHome ? _itcKiaR : _itcOppR;
+              const awayHit = isHome ? (tg.oppHit??'-') : (tg.kiaHit??'-');
+              const homeHit = isHome ? (tg.kiaHit??'-') : (tg.oppHit??'-');
+              const awayErr = isHome ? (tg.oppError??'-') : (tg.kiaError??'-');
+              const homeErr = isHome ? (tg.kiaError??'-') : (tg.oppError??'-');
+              const awayScore = isHome ? oppS : kiaS;
+              const homeScore = isHome ? kiaS : oppS;
+              return `
             <tr>
-              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${_itcOppName};text-align:left">${opp}</td>
-              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${_itcOppInnVal(oppInnings[i]>0)}">${iv(oppInnings,i)}</td>`).join('')}
-              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${_itcOppR};border-left:1px solid ${_itcDiv}">${hasScore?oppS:'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcOppSub}">${tg.oppHit??'-'}</td>
-              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcOppSub}">${tg.oppError??'-'}</td>
+              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${awayNameColor};text-align:left">${awayTeam}</td>
+              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${awayInnVal(awayInnings[i]>0)}">${iv(awayInnings,i)}</td>`).join('')}
+              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${awayR};border-left:1px solid ${_itcDiv}">${hasScore?awayScore:'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcOppSub}">${awayHit}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcOppSub}">${awayErr}</td>
             </tr>
+            <tr style="background:${_itcRowBg};border-radius:6px">
+              <td style="padding:6px 8px;font-weight:900;font-size:12px;color:${homeNameColor};text-align:left">${homeTeam}</td>
+              ${innNums.map((_,i)=>`<td style="padding:6px 5px;text-align:center;font-weight:600;color:${homeInnVal(homeInnings[i]>0)}">${iv(homeInnings,i)}</td>`).join('')}
+              <td style="padding:6px 8px;text-align:center;font-weight:900;font-size:14px;color:${homeR};border-left:1px solid ${_itcDiv}">${hasScore?homeScore:'-'}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcKiaSub}">${homeHit}</td>
+              <td style="padding:6px 6px;text-align:center;font-weight:600;color:${_itcKiaSub}">${homeErr}</td>
+            </tr>`;
+            })()}
           </tbody>
         </table>
       </div>` : '';
