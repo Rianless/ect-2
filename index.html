@@ -1972,7 +1972,38 @@ window._setRecordTab = function(t) {
   state.playerStats = null;
   state.playerStatsError = null;
   render();
+  // 내 기록 탭 진입 시 이닝/투수 없는 경기 날짜 자동 fetch
+  if (t === 'memo') {
+    _fetchMissingMemoData();
+  }
 };
+
+function _fetchMissingMemoData() {
+  // localStorage 메모에서 날짜 수집
+  const dates = new Set();
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('m_')) {
+      const parts = k.substring(2).split('_');
+      if (parts[0]) dates.add(parts[0]);
+    }
+  }
+  // 이닝 데이터가 없는 날짜만 fetch (최근 30일 이내만)
+  const now = new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
+  const cutoff = new Date(now); cutoff.setDate(cutoff.getDate() - 30);
+  const missing = [...dates].filter(date => {
+    const d = new Date(date+'T12:00:00');
+    if (d > now || d < cutoff) return false;
+    const g = SCH.find(s => s.date === date && (s.away === 'KIA' || s.home === 'KIA'));
+    if (!g || g.status !== 'FINAL') return false;
+    const hasInn = (g.awayInnings||[]).some(x => x >= 0);
+    return !hasInn && !g.winPitcher;
+  });
+  // 최대 5일치만 순차 fetch (과부하 방지)
+  missing.slice(0, 5).reduce((p, date) => {
+    return p.then(() => fetchTodayScores(date).then(() => { render(); }).catch(() => {}));
+  }, Promise.resolve());
+}
 // ── 기록 탭 검색/필터 상태 ──
 let _recordFilter = { q: '', result: 'all', watch: 'all' };
 
@@ -2415,27 +2446,99 @@ function renderMemos(d) {
   let html = '<div style="font-size:12px;font-weight:700;color:'+d.sub+';margin-bottom:12px">총 '+memos.length+'개의 메모</div>';
   memos.forEach(m => {
     const isKia = m.away==='KIA'||m.home==='KIA';
-    html += '<div class="card'+(isKia?' kia':'')+'" onclick="openGameByKey(this)" data-date="'+m.date+'" data-away="'+m.away+'" data-home="'+m.home+'">';
-    html += '<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">';
-    html += logo(m.away,20);
-    const _mLeft = (m.home==='KIA') ? m.home : m.away;
-    const _mRight = (m.home==='KIA') ? m.away : m.home;
-    html += '<span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+_mLeft+' vs '+_mRight+'</span>';
-    html += logo(m.home,20);
-    html += '<span style="font-size:10px;color:'+d.sub+';margin-left:auto">'+m.date+'</span>';
+    const g = SCH.find(s => s.date===m.date && s.away===m.away && s.home===m.home) || {};
+    const isHome = g.home === 'KIA';
+    const kiaScore = isHome ? g.homeScore : g.awayScore;
+    const oppScore = isHome ? g.awayScore : g.homeScore;
+    const hasScore = kiaScore != null && oppScore != null;
+    const isWin = kiaScore > oppScore, isDraw = kiaScore === oppScore;
+    const resultKr = isWin ? '승리' : isDraw ? '무승부' : '패배';
+    const resultColor = isWin ? '#E31837' : isDraw ? '#FF9500' : '#3B9EF5';
+    const opp = isHome ? m.away : m.home;
+    const oppName = T[opp] ? T[opp].name : opp;
+    const [yr,mo,da] = m.date.split('-');
+    const dw = ['일','월','화','수','목','금','토'][new Date(m.date+'T12:00:00').getDay()];
+    const awayInn = g.awayInnings || [];
+    const homeInn = g.homeInnings || [];
+    const hasInn = awayInn.some(x=>x>=0) || homeInn.some(x=>x>=0);
+    const winP = g.winPitcher, loseP = g.losePitcher;
+
+    html += '<div class="card'+(isKia?' kia':'')+'" onclick="openGameByKey(this)" data-date="'+m.date+'" data-away="'+m.away+'" data-home="'+m.home+'" style="padding:0;overflow:hidden">';
+
+    // ── 상단: 날짜·구장 + 팀명 + 스코어 ──
+    html += '<div style="padding:12px 14px 10px">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
+    html += '<div style="font-size:10px;color:'+d.sub+'">'+yr+'.'+mo+'.'+da+' ('+dw+') · '+(g.stad||'')+'</div>';
+    if(m.watch) html += '<span style="font-size:10px;font-weight:700;background:'+(m.watch==='직관'?'rgba(227,24,55,0.1)':'rgba(0,120,255,0.1)')+';color:'+(m.watch==='직관'?'#E31837':'#0078ff')+';border-radius:5px;padding:2px 7px">'+(m.watch==='직관'?'⚾ 직관':'📺 집관')+'</span>';
     html += '</div>';
-    if(m.watch) html += '<span style="font-size:10px;font-weight:700;background:'+(m.watch==='직관'?'rgba(227,24,55,0.1)':'rgba(0,120,255,0.1)')+';color:'+(m.watch==='직관'?'#E31837':'#0078ff')+';border-radius:5px;padding:2px 7px;margin-bottom:6px;display:inline-block">'+(m.watch==='직관'?'⚾ 직관':'📺 집관')+'</span>';
-    if(m.memo) html += '<div style="font-size:13px;color:'+d.text+';line-height:1.6;white-space:pre-wrap;margin-top:4px">'+m.memo+'</div>';
+
+    // 팀명 + 스코어 행
+    html += '<div style="display:flex;align-items:center;gap:10px">';
+    html += logo(m.away,22);
+    html += '<span style="font-size:12px;font-weight:700;color:'+(m.away==='KIA'?'#E31837':d.text)+'">'+m.away+'</span>';
+    if(hasScore) {
+      html += '<div style="flex:1;text-align:center">';
+      html += '<div style="font-size:22px;font-weight:900;color:'+d.text+';letter-spacing:-1px">'+g.awayScore+' : '+g.homeScore+'</div>';
+      html += '<div style="font-size:10px;font-weight:800;color:'+resultColor+'">'+resultKr+'</div>';
+      html += '</div>';
+    } else {
+      html += '<div style="flex:1;text-align:center;font-size:14px;font-weight:700;color:'+d.sub+'">vs</div>';
+    }
+    html += '<span style="font-size:12px;font-weight:700;color:'+(m.home==='KIA'?'#E31837':d.text)+'">'+m.home+'</span>';
+    html += logo(m.home,22);
+    html += '</div>';
+    html += '</div>'; // 상단 끝
+
+    // ── 이닝 스코어 테이블 ──
+    if(hasInn) {
+      const totalInnings = Math.max(9, awayInn.length, homeInn.length);
+      const iv = (arr,i) => { const v=arr[i]; return (v==null||v<0)?'·':String(v); };
+      html += '<div style="border-top:1px solid '+(d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)')+';padding:8px 14px;overflow-x:auto">';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:10.5px;font-variant-numeric:tabular-nums;min-width:260px">';
+      html += '<thead><tr>';
+      html += '<td style="padding:3px 5px;text-align:left;font-size:9.5px;font-weight:700;color:'+d.sub+';min-width:36px"></td>';
+      for(let i=1;i<=totalInnings;i++) html += '<td style="text-align:center;font-size:9.5px;font-weight:700;color:'+d.sub+';padding:3px 2px;min-width:18px">'+i+'</td>';
+      html += '<td style="text-align:center;font-size:9.5px;font-weight:800;color:'+d.sub+';border-left:1px solid '+(d.dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)')+';padding:3px 5px">R</td>';
+      html += '</tr></thead><tbody>';
+      // away row
+      html += '<tr>';
+      html += '<td style="padding:4px 5px;font-weight:800;font-size:11px;color:'+(m.away==='KIA'?'#E31837':d.text)+'">'+m.away+'</td>';
+      for(let i=0;i<totalInnings;i++){const v=awayInn[i];const hi=v>0;html+='<td style="text-align:center;padding:4px 2px;color:'+(hi?'#E31837':d.text)+';font-weight:'+(hi?900:400)+'">'+iv(awayInn,i)+'</td>';}
+      html += '<td style="text-align:center;font-weight:900;font-size:13px;color:'+(m.away==='KIA'?'#E31837':d.text)+';border-left:1px solid '+(d.dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)')+';padding:4px 5px">'+(g.awayScore??'-')+'</td>';
+      html += '</tr>';
+      // home row
+      html += '<tr>';
+      html += '<td style="padding:4px 5px;font-weight:800;font-size:11px;color:'+(m.home==='KIA'?'#E31837':d.text)+'">'+m.home+'</td>';
+      for(let i=0;i<totalInnings;i++){const v=homeInn[i];const hi=v>0;html+='<td style="text-align:center;padding:4px 2px;color:'+(hi?'#E31837':d.text)+';font-weight:'+(hi?900:400)+'">'+iv(homeInn,i)+'</td>';}
+      html += '<td style="text-align:center;font-weight:900;font-size:13px;color:'+(m.home==='KIA'?'#E31837':d.text)+';border-left:1px solid '+(d.dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)')+';padding:4px 5px">'+(g.homeScore??'-')+'</td>';
+      html += '</tr>';
+      html += '</tbody></table></div>';
+    }
+
+    // ── 승리/패전 투수 ──
+    if(winP || loseP) {
+      html += '<div style="border-top:1px solid '+(d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)')+';padding:8px 14px;display:flex;gap:8px">';
+      if(winP) html += '<div style="flex:1;display:flex;align-items:center;gap:5px"><span style="font-size:9.5px;font-weight:700;color:#00C864;background:rgba(0,200,100,0.1);border-radius:4px;padding:1px 6px">승리</span><span style="font-size:12px;font-weight:800;color:'+d.text+'">'+winP+'</span></div>';
+      if(loseP) html += '<div style="flex:1;display:flex;align-items:center;gap:5px"><span style="font-size:9.5px;font-weight:700;color:#E31837;background:rgba(227,24,55,0.08);border-radius:4px;padding:1px 6px">패전</span><span style="font-size:12px;font-weight:800;color:'+d.text+'">'+loseP+'</span></div>';
+      html += '</div>';
+    }
+
+    // ── 메모 ──
+    if(m.memo) {
+      html += '<div style="border-top:1px solid '+(d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)')+';padding:8px 14px;font-size:13px;color:'+d.text+';line-height:1.6;white-space:pre-wrap">'+m.memo+'</div>';
+    }
+
     if(m.photos&&m.photos.length){
       const pj=JSON.stringify(m.photos).replace(/"/g,'&quot;');
-      html+='<div onclick="event.stopPropagation()" style="margin-top:8px;position:relative;border-radius:10px;overflow:hidden;background:#111">';
+      html+='<div onclick="event.stopPropagation()" style="position:relative;border-radius:0 0 14px 14px;overflow:hidden;background:#111">';
       html+='<img src="'+m.photos[0]+'" onclick="openPhotoViewer(JSON.parse(this.dataset.photos||&quot;[]&quot;),0)" '
-        +'data-photos="'+pj+'" style="width:100%;max-height:200px;object-fit:cover;display:block;cursor:zoom-in"/>';
+        +'data-photos="'+pj+'" style="width:100%;max-height:180px;object-fit:cover;display:block;cursor:zoom-in"/>';
       if(m.photos.length>1){
         html+='<div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px">+'+(m.photos.length-1)+'장 더</div>';
       }
       html+='</div>';
     }
+
     html += '</div>';
   });
   return html;
@@ -6050,7 +6153,9 @@ async function _initApp() {
   initGameCache();           // localStorage 캐시 SCH에 반영
   try { await initServerSync(); } catch(e) {}  // 서버 sync (실패해도 진행)
   render();                  // 첫 화면
-  fetchTodayScores().then(() => render()).catch(() => {}); // 스코어 갱신 후 재렌더
+  fetchTodayScores().then(() => render()).catch(() => {});
+  // 내 기록 탭 데이터 보완 (이닝/투수 없는 경기)
+  setTimeout(() => _fetchMissingMemoData(), 1500);
 }
 _initApp();
 </script>
