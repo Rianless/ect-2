@@ -2492,12 +2492,14 @@ function renderMemos(d) {
     html += '<div style="font-size:10px;color:'+subC+';letter-spacing:.1em;margin-bottom:2px">'+yr+'.'+mo+'.'+da+' ('+dw+')</div>';
     html += '<div style="font-size:11px;color:'+subC+';margin-bottom:6px">'+(g.stad||'')+'</div>';
 
-    // 홈/원정
+    // 원정(위) → 홈(아래) — 야구 관례
+    const awayFullName = T[m.away] ? T[m.away].name : m.away;
+    const homeFullName = T[m.home] ? T[m.home].name : m.home;
     html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:'+subC+';margin-bottom:2px">';
-    html += '<span>홈</span><span style="color:'+textC+';font-weight:700">'+(isHome?kiaName:(T[opp]?T[opp].name:opp))+'</span>';
+    html += '<span>원정</span><span style="color:'+textC+';font-weight:700">'+awayFullName+'</span>';
     html += '</div>';
     html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:'+subC+'">';
-    html += '<span>원정</span><span style="color:'+textC+';font-weight:700">'+(!isHome?kiaName:(T[opp]?T[opp].name:opp))+'</span>';
+    html += '<span>홈</span><span style="color:'+textC+';font-weight:700">'+homeFullName+'</span>';
     html += '</div>';
     html += '</div>';
 
@@ -2505,7 +2507,7 @@ function renderMemos(d) {
     if(hasScore) {
       html += '<div style="padding:12px 16px;text-align:center;border-bottom:1px dashed '+borderC+'">';
       html += '<div style="font-size:10px;color:'+subC+';letter-spacing:.12em;margin-bottom:6px">FINAL SCORE</div>';
-      html += '<div style="font-size:36px;font-weight:900;color:'+textC+';letter-spacing:-1px;line-height:1">'+kiaScore+' : '+oppScore+'</div>';
+      html += '<div style="font-size:36px;font-weight:900;color:'+textC+';letter-spacing:-1px;line-height:1">'+g.awayScore+' : '+g.homeScore+'</div>';
       html += '<div style="font-size:12px;font-weight:800;color:'+resultColor+';margin-top:6px">'+resultKr+'</div>';
       html += '</div>';
     }
