@@ -4405,16 +4405,16 @@ function _parseBatters(src) {
       return (+b.ab||0) - (+a.ab||0);
     });
 
-    // cin/cout 플래그로 최종 선수 결정 (더 신뢰할 수 있음)
+    // cin/cout + sorted로 최종 선수 결정
     let chain, cur;
-    const cinP   = ps.find(p => p.cin  === 'true' || p.cin  === true);
-    const coutPs = ps.filter(p => p.cout === 'true' || p.cout === true);
+    const cinP = ps.find(p => p.cin === 'true' || p.cin === true);
     if (cinP) {
-      // cin 있는 사람이 최종, cout들이 나간 선수 → seqno로 정렬
-      const outsSorted = [...coutPs].sort((a,b) => (+a.seqno||0) - (+b.seqno||0));
-      chain = [...outsSorted, cinP];
+      // cin 있는 사람이 최종 선수. chain 순서는 sorted 기준으로 cinP를 마지막으로
+      const withoutCin = sorted.filter(p => p !== cinP);
+      chain = [...withoutCin, cinP];
       cur = cinP;
     } else {
+      // cin 없으면 sorted 마지막이 최종
       chain = sorted;
       cur = sorted[sorted.length - 1];
     }
