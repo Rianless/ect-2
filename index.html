@@ -1373,11 +1373,12 @@ function renderCalSplit(d) {
   }
 
   // 시즌 카드 - 배너와 같은 패딩/라운드/높이로 맞춤
-  const { wins, losses, draws, pct, streak, streakType, lastNonDrawType } = getKiaSeasonStats();
+  const { wins, losses, draws, pct, streak, streakType, lastNonDrawType, lastNonDrawStreak } = getKiaSeasonStats();
   const hasRecord = wins + losses + draws > 0;
   const _effA = streakType === 'D' ? lastNonDrawType : streakType;
-  const streakLabel = _effA === 'W' ? `${streak}연승 🔥`
-    : _effA === 'L' ? `${streak}연패 💧`
+  const _effAn = streakType === 'D' ? lastNonDrawStreak : streak;
+  const streakLabel = _effA === 'W' ? `${_effAn}연승 🔥`
+    : _effA === 'L' ? `${_effAn}연패 💧`
     : streakType === 'D' ? `${streak}연속무` : '';
   const streakColor = _effA === 'W' ? '#E31837' : _effA === 'L' ? '#3B9EF5' : '#FF9500';
 
@@ -1460,6 +1461,7 @@ function getKiaSeasonStats() {
   let wins = 0, losses = 0, draws = 0;
   let streak = 0, streakType = null; // 'W' | 'L' | 'D'
   let lastNonDrawType = null; // 무승부 연속 시 직전 W/L 결과 추적
+  let lastNonDrawStreak = 0; // 직전 W/L streak 개수 보존
 
   kiaGames.forEach(g => {
     const isHome = g.home === 'KIA';
@@ -1472,22 +1474,23 @@ function getKiaSeasonStats() {
     else { draws++; res = 'D'; }
     if (res === streakType) streak++;
     else { streakType = res; streak = 1; }
-    if (res !== 'D') lastNonDrawType = res;
+    if (res !== 'D') { lastNonDrawType = res; lastNonDrawStreak = streak; }
   });
 
   const total = wins + losses + draws;
   const pct = total > 0 ? (wins / (total - draws)).toFixed(3).replace(/^0/, '') : '—';
-  return { wins, losses, draws, total, pct, streak, streakType, lastNonDrawType };
+  return { wins, losses, draws, total, pct, streak, streakType, lastNonDrawType, lastNonDrawStreak };
 }
 
 function renderSeasonCard(d) {
   if (!SCH.length) return '';
-  const { wins, losses, draws, pct, streak, streakType, lastNonDrawType } = getKiaSeasonStats();
+  const { wins, losses, draws, pct, streak, streakType, lastNonDrawType, lastNonDrawStreak } = getKiaSeasonStats();
   if (wins + losses + draws === 0) return '';
 
   const _effB = streakType === 'D' ? lastNonDrawType : streakType;
-  const streakLabel = _effB === 'W' ? `${streak}연승 🔥`
-    : _effB === 'L' ? `${streak}연패 💧`
+  const _effBn = streakType === 'D' ? lastNonDrawStreak : streak;
+  const streakLabel = _effB === 'W' ? `${_effBn}연승 🔥`
+    : _effB === 'L' ? `${_effBn}연패 💧`
     : streakType === 'D' ? `${streak}연속무` : '';
   const streakColor = _effB === 'W' ? '#E31837' : _effB === 'L' ? '#3B9EF5' : '#FF9500';
 
@@ -1564,9 +1567,10 @@ function renderCal(d) {
   // ── PC 전용: 시즌 성적 히어로 배너 ──
   const pcHeroBanner = (() => {
     if (!isPC) return '';
-    const { wins, losses, draws, pct, streak, streakType, lastNonDrawType } = getKiaSeasonStats();
+    const { wins, losses, draws, pct, streak, streakType, lastNonDrawType, lastNonDrawStreak } = getKiaSeasonStats();
     const _effC = streakType === 'D' ? lastNonDrawType : streakType;
-    const streakLabel = _effC==='W'?`${streak}연승 🔥`:_effC==='L'?`${streak}연패 💧`:streakType==='D'?`${streak}연속무`:null;
+    const _effCn = streakType === 'D' ? lastNonDrawStreak : streak;
+    const streakLabel = _effC==='W'?`${_effCn}연승 🔥`:_effC==='L'?`${_effCn}연패 💧`:streakType==='D'?`${streak}연속무`:null;
     const streakColor = _effC==='W'?'#ff3b5c':_effC==='L'?'#4FC3F7':'#FF9500';
 
     // 오늘 KIA 경기
