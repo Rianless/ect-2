@@ -4386,6 +4386,8 @@ function _parseBatters(src) {
     om[key].push(p);
   });
   return Object.entries(om).sort(([a],[b])=>+a-+b).map(([o,ps]) => {
+    // 디버그: 타순별 원본 데이터 출력
+    if (ps.length > 1) console.log(`[DEBUG] 타순 ${o}:`, ps.map(p=>({name:p.name||p.playerName,seqno:p.seqno,cin:p.cin,cout:p.cout,ab:p.ab})));
     // seqno 기준 정렬: 낮을수록 선발(먼저 출전)
     const sorted = [...ps].sort((a,b) => (+a.seqno||0) - (+b.seqno||0));
 
