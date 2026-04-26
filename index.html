@@ -2203,23 +2203,39 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor) {
     html += '<th style="padding:7px 5px;text-align:center;font-size:10px;font-weight:700;color:'+d.sub+';white-space:nowrap">타점</th>';
     html += '<th style="padding:7px 5px;text-align:center;font-size:10px;font-weight:700;color:'+d.sub+';white-space:nowrap">볼넷</th>';
     html += '</tr></thead><tbody>';
-    batters.filter(p => p.p !== 'P' || p.sub).sort((a,b) => (a.n||99)-(b.n||99)).slice(0,9).forEach(p => {
-      const bg = 'transparent';
-      if (p.sub) {
-        html += '<tr style="border-bottom:1px solid '+(d.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)')+'"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.sub+'</span></div></td>';
+    batters.filter(p => p.p !== 'P' || p.sub || p.chain).sort((a,b) => (a.n||99)-(b.n||99)).slice(0,9).forEach(p => {
+      const _rowSep = 'border-bottom:1px solid '+(d.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)');
+      if (p.chain && p.chain.length) {
+        p.chain.forEach((s, si) => {
+          const isFirst = si === 0;
+          html += '<tr style="'+_rowSep+'"><td style="padding:'+(isFirst?'6px':'3px')+' 10px '+(isFirst?'3px':'3px')+'"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+(isFirst?sideColor:'transparent')+'">'+(isFirst?(p.n||p.order):'')+'</span><span style="font-size:11px;font-weight:700;color:'+(isFirst?d.text:d.sub)+'">'+s.name+'</span></div></td>';
+          html += '<td style="padding:3px 5px;text-align:center;color:'+d.sub+'">'+(s.ab||0)+'</td>';
+          html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.hit>0?700:400)+';color:'+(s.hit>0?sideColor:d.sub)+'">'+(s.hit||0)+'</td>';
+          html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.run>0?700:400)+';color:'+(s.run>0?sideColor:d.sub)+'">'+(s.run||0)+'</td>';
+          html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.rbi>0?700:400)+';color:'+(s.rbi>0?sideColor:d.sub)+'">'+(s.rbi||0)+'</td>';
+          html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.bb>0?700:400)+';color:'+(s.bb>0?sideColor:d.sub)+'">'+(s.bb||0)+'</td></tr>';
+        });
+        html += '<tr style="'+_rowSep+'"><td style="padding:3px 10px 6px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+d.muted+'">▼</span><span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+p.name+'</span></div></td>';
+        html += '<td style="padding:3px 5px 6px;text-align:center;color:'+d.sub+'">'+(p.curAb||0)+'</td>';
+        html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curHit>0?700:400)+';color:'+(p.curHit>0?sideColor:d.sub)+'">'+(p.curHit||0)+'</td>';
+        html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curRun>0?700:400)+';color:'+(p.curRun>0?sideColor:d.sub)+'">'+(p.curRun||0)+'</td>';
+        html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curRbi>0?700:400)+';color:'+(p.curRbi>0?sideColor:d.sub)+'">'+(p.curRbi||0)+'</td>';
+        html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curBb>0?700:400)+';color:'+(p.curBb>0?sideColor:d.sub)+'">'+(p.curBb||0)+'</td></tr>';
+      } else if (p.sub) {
+        html += '<tr style="'+_rowSep+'"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.sub+'</span></div></td>';
         html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.subAb||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subHit>0?700:400)+';color:'+(p.subHit>0?sideColor:d.sub)+'">'+(p.subHit||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subRun>0?700:400)+';color:'+(p.subRun>0?sideColor:d.sub)+'">'+(p.subRun||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subRbi>0?700:400)+';color:'+(p.subRbi>0?sideColor:d.sub)+'">'+(p.subRbi||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subBb>0?700:400)+';color:'+(p.subBb>0?sideColor:d.sub)+'">'+(p.subBb||0)+'</td></tr>';
-        html += '<tr style="border-bottom:1px solid '+(d.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)')+'"><td style="padding:4px 10px 6px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+d.muted+'">▼</span><span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+p.name+'</span></div></td>';
+        html += '<tr style="'+_rowSep+'"><td style="padding:4px 10px 6px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+d.muted+'">▼</span><span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+p.name+'</span></div></td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;color:'+d.sub+'">'+(p.curAb||0)+'</td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curHit>0?700:400)+';color:'+(p.curHit>0?sideColor:d.sub)+'">'+(p.curHit||0)+'</td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curRun>0?700:400)+';color:'+(p.curRun>0?sideColor:d.sub)+'">'+(p.curRun||0)+'</td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curRbi>0?700:400)+';color:'+(p.curRbi>0?sideColor:d.sub)+'">'+(p.curRbi||0)+'</td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curBb>0?700:400)+';color:'+(p.curBb>0?sideColor:d.sub)+'">'+(p.curBb||0)+'</td></tr>';
       } else {
-        html += '<tr style="border-bottom:1px solid '+(d.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)')+'"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.name+'</span></div></td>';
+        html += '<tr style="'+_rowSep+'"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.name+'</span></div></td>';
         html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.ab||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.hit>0?700:400)+';color:'+(p.hit>0?sideColor:d.sub)+'">'+(p.hit||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.run>0?700:400)+';color:'+(p.run>0?sideColor:d.sub)+'">'+(p.run||0)+'</td>';
@@ -4078,9 +4094,36 @@ function renderModal(d) {
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">타점</th>`;
             html2 += `<th style="padding:8px 6px;text-align:center;font-size:10px;font-weight:700;color:${d.sub};white-space:nowrap;min-width:36px">볼넷</th>`;
             html2 += `</tr></thead><tbody>`;
-            batters.filter(p => p.p!=='P' || p.sub).sort((a,b)=>(a.n||99)-(b.n||99)).slice(0,9).forEach(p => {
-              if (p.sub) {
-                // 교체 전 선수 (sub) 행
+            batters.filter(p => p.p!=='P' || p.sub || p.chain).sort((a,b)=>(a.n||99)-(b.n||99)).slice(0,9).forEach(p => {
+              if (p.chain && p.chain.length) {
+                p.chain.forEach((s, si) => {
+                  const isFirst2 = si === 0;
+                  html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+                  html2 += `<td style="padding:${isFirst2?'7px':'4px'} 12px ${isFirst2?'4px':'4px'}">`;
+                  html2 += `<div style="display:flex;align-items:center;gap:6px">`;
+                  html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${isFirst2?sideColor:'transparent'}">${isFirst2?(p.n||p.order):''}</span>`;
+                  html2 += `<span style="font-size:12px;font-weight:700;color:${isFirst2?d.text:d.sub}">${s.name}</span>`;
+                  html2 += `</div></td>`;
+                  html2 += `<td style="padding:4px 6px;text-align:center;font-size:12px;color:${d.sub}">${s.ab||0}</td>`;
+                  html2 += `<td style="padding:4px 6px;text-align:center;font-size:12px;font-weight:${s.hit>0?700:400};color:${s.hit>0?sideColor:d.sub}">${s.hit||0}</td>`;
+                  html2 += `<td style="padding:4px 6px;text-align:center;font-size:12px;font-weight:${s.run>0?700:400};color:${s.run>0?sideColor:d.sub}">${s.run||0}</td>`;
+                  html2 += `<td style="padding:4px 6px;text-align:center;font-size:12px;font-weight:${s.rbi>0?700:400};color:${s.rbi>0?sideColor:d.sub}">${s.rbi||0}</td>`;
+                  html2 += `<td style="padding:4px 6px;text-align:center;font-size:12px;font-weight:${s.bb>0?700:400};color:${s.bb>0?sideColor:d.sub}">${s.bb||0}</td>`;
+                  html2 += `</tr>`;
+                });
+                html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
+                html2 += `<td style="padding:4px 12px 7px">`;
+                html2 += `<div style="display:flex;align-items:center;gap:6px">`;
+                html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${d.muted}">▼</span>`;
+                html2 += `<span style="font-size:12px;font-weight:700;color:${d.sub}">${p.name}</span>`;
+                html2 += `</div></td>`;
+                html2 += `<td style="padding:4px 6px 7px;text-align:center;font-size:12px;color:${d.sub}">${p.curAb||0}</td>`;
+                html2 += `<td style="padding:4px 6px 7px;text-align:center;font-size:12px;font-weight:${p.curHit>0?700:400};color:${p.curHit>0?sideColor:d.sub}">${p.curHit||0}</td>`;
+                html2 += `<td style="padding:4px 6px 7px;text-align:center;font-size:12px;font-weight:${p.curRun>0?700:400};color:${p.curRun>0?sideColor:d.sub}">${p.curRun||0}</td>`;
+                html2 += `<td style="padding:4px 6px 7px;text-align:center;font-size:12px;font-weight:${p.curRbi>0?700:400};color:${p.curRbi>0?sideColor:d.sub}">${p.curRbi||0}</td>`;
+                html2 += `<td style="padding:4px 6px 7px;text-align:center;font-size:12px;font-weight:${p.curBb>0?700:400};color:${p.curBb>0?sideColor:d.sub}">${p.curBb||0}</td>`;
+                html2 += `</tr>`;
+              } else if (p.sub) {
                 html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
                 html2 += `<td style="padding:7px 12px">`;
                 html2 += `<div style="display:flex;align-items:center;gap:6px">`;
@@ -4093,11 +4136,10 @@ function renderModal(d) {
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subRbi>0?700:400};color:${p.subRbi>0?sideColor:d.sub}">${p.subRbi||0}</td>`;
                 html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.subBb>0?700:400};color:${p.subBb>0?sideColor:d.sub}">${p.subBb||0}</td>`;
                 html2 += `</tr>`;
-                // 교체 후 선수 (cur) 행
                 html2 += `<tr style="border-bottom:1px solid ${d.bgB}">`;
                 html2 += `<td style="padding:5px 12px 7px 12px">`;
                 html2 += `<div style="display:flex;align-items:center;gap:6px">`;
-                html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${sideColor}">▼</span>`;
+                html2 += `<span style="font-size:10px;font-weight:900;min-width:16px;color:${d.muted}">▼</span>`;
                 html2 += `<span style="font-size:12px;font-weight:700;color:${d.sub}">${p.name}</span>`;
                 html2 += `</div></td>`;
                 html2 += `<td style="padding:5px 6px 7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.curAb||0}</td>`;
@@ -4346,37 +4388,36 @@ function _parseBatters(src) {
   return Object.entries(om).sort(([a],[b])=>+a-+b).map(([o,ps]) => {
     // seqno 기준 정렬: 낮을수록 선발(먼저 출전)
     const sorted = [...ps].sort((a,b) => (+a.seqno||0) - (+b.seqno||0));
-    let cur, replaced;
-    if (ps.length === 1) {
-      cur = ps[0]; replaced = null;
-    } else {
-      const cinP  = ps.find(p => p.cin==='true' || p.cin===true);
-      const coutP = ps.find(p => p.cout==='true' || p.cout===true);
-      if (cinP && coutP && cinP !== coutP) {
-        cur = cinP; replaced = coutP;
-      } else if (coutP) {
-        cur = ps.find(p => p !== coutP) || ps[ps.length-1];
-        replaced = coutP;
-      } else {
-        // cout/cin 없으면 seqno 높은 쪽이 현재 선수
-        cur      = sorted[sorted.length - 1];
-        replaced = sorted[0] !== cur ? sorted[0] : null;
-      }
-    }
-    const starter = replaced || cur;
+
+    // 3명 이상 교체 체인 처리: chain = [선발, 대타1, 대타2, ...]
+    const chain = sorted; // seqno순 = 출전 순서
+    const cur = chain[chain.length - 1]; // 최종 선수
+    const starters = chain.slice(0, -1);  // 선발+중간 교체들 (마지막 제외)
+
     return {
       n:+o, order:+o,
       name: cur.name || cur.playerName || '',
       p: normalizePositionLabel(cur.posName || cur.position || ''),
       pos: normalizePositionLabel(cur.posName || cur.position || ''),
-      sub: replaced ? (replaced.name || replaced.playerName) : null,
-      starterName: starter.name || cur.name || '',
-      starterPos: normalizePositionLabel(starter.posName || starter.position || cur.posName || ''),
-      subHit: replaced ? Number(replaced.hit||0) : 0,
-      subAb:  replaced ? Number(replaced.ab||0)  : 0,
-      subRbi: replaced ? Number(replaced.rbi||0) : 0,
-      subBb:  replaced ? Number(replaced.bb||replaced.walk||replaced.walks||0) : 0,
-      subRun: replaced ? Number(replaced.run||replaced.r||0) : 0,
+      // chain: 선발부터 최종 직전까지 전체 (렌더링용)
+      chain: starters.length ? starters.map(s => ({
+        name: s.name || s.playerName || '',
+        hit: Number(s.hit||0),
+        ab:  Number(s.ab||0),
+        rbi: Number(s.rbi||0),
+        bb:  Number(s.bb||s.walk||s.walks||0),
+        run: Number(s.run||s.r||0),
+        isStarter: s === chain[0],
+      })) : null,
+      // 하위 호환: sub = 직전 선수(선발 or 마지막 교체 이전)
+      sub: starters.length ? (starters[0].name || starters[0].playerName) : null,
+      starterName: chain[0].name || cur.name || '',
+      starterPos: normalizePositionLabel(chain[0].posName || chain[0].position || cur.posName || ''),
+      subHit: starters.length ? Number(starters[0].hit||0) : 0,
+      subAb:  starters.length ? Number(starters[0].ab||0)  : 0,
+      subRbi: starters.length ? Number(starters[0].rbi||0) : 0,
+      subBb:  starters.length ? Number(starters[0].bb||starters[0].walk||starters[0].walks||0) : 0,
+      subRun: starters.length ? Number(starters[0].run||starters[0].r||0) : 0,
       curHit: Number(cur.hit||0),
       curAb:  Number(cur.ab||0),
       curRbi: Number(cur.rbi||0),
