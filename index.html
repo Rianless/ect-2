@@ -2085,6 +2085,12 @@ function _renderGameRecord(d) {
     // ── 펼침 영역 (기본 숨김) ──
     html += '<div id="'+cardId+'" style="display:none;border-top:1px solid '+(d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)')+'">';
 
+    // 이닝 스코어 + 승패 투수 섹션
+    html += '<div style="padding:10px 14px 0">';
+    html += '<div id="'+cardId+'-pitcher">'+_renderRecPitcherRow(d, g)+'</div>';
+    html += '<div id="'+cardId+'-inning">'+_renderRecInnTable(d, g)+'</div>';
+    html += '</div>';
+
     if (g.lineup) {
       const kiaKey = g.home === 'KIA' ? 'home' : 'away';
       const oppKey = g.home === 'KIA' ? 'away' : 'home';
@@ -2202,6 +2208,31 @@ window.toggleGameRecord = function(cardId, el) {
   b.style.display = open ? 'block' : 'none';
   var arrow = el.querySelector('.grec-arrow');
   if (arrow) arrow.textContent = open ? '▼' : '▶';
+
+  // 카드 열 때 이닝/투수 데이터 없으면 해당 날짜 API fetch
+  if (open) {
+    var parts = cardId.replace('grec-', '').split('-');
+    // cardId = grec-YYYY-MM-DD-AWAY-HOME
+    var date = parts[0]+'-'+parts[1]+'-'+parts[2];
+    var away = parts[3], home = parts[4];
+    var idx = SCH.findIndex(function(s){ return s.date===date&&s.away===away&&s.home===home; });
+    if (idx === -1) return;
+    var g = SCH[idx];
+    var hasInn = g.awayInnings && g.awayInnings.some(function(x){ return x>=0; });
+    var hasPitcher = g.winPitcher || g.losePitcher;
+    if (!hasInn && !hasPitcher && g.status === 'FINAL') {
+      var innEl = document.getElementById(cardId+'-inning');
+      if (innEl) innEl.innerHTML = '<div style="text-align:center;padding:8px;font-size:11px;color:var(--c-sub)">불러오는 중...</div>';
+      fetchTodayScores(date).then(function() {
+        var g2 = SCH[idx];
+        var d2 = D();
+        var innEl2 = document.getElementById(cardId+'-inning');
+        var pitEl2 = document.getElementById(cardId+'-pitcher');
+        if (innEl2) innEl2.innerHTML = _renderRecInnTable(d2, g2);
+        if (pitEl2) pitEl2.innerHTML = _renderRecPitcherRow(d2, g2);
+      }).catch(function(){});
+    }
+  }
 };
 
 window.recSwitchTab = function(cardId, tab, sideKey) {
@@ -2218,6 +2249,58 @@ window.recSwitchTab = function(cardId, tab, sideKey) {
 };
 
 // _renderGameRecord 끝 (renderBaseballRecord에서 호출됨)
+
+function _renderRecInnTable(d, g) {
+  const awayInn = g.awayInnings || [];
+  const homeInn = g.homeInnings || [];
+  const hasInn = awayInn.some(x=>x>=0) || homeInn.some(x=>x>=0);
+  if (!hasInn) return '';
+  const totalInnings = Math.max(9, awayInn.length, homeInn.length);
+  const iv = (arr, i) => { const v = arr[i]; return (v==null||v<0) ? '·' : String(v); };
+  const cell = (arr, i) => {
+    const v = arr[i]; const hi = v > 0;
+    return '<td style="text-align:center;padding:5px 3px;color:'+(hi?'#E31837':d.text)+';font-weight:'+(hi?900:400)+'">'+iv(arr,i)+'</td>';
+  };
+  let h = '<div style="overflow-x:auto;margin-bottom:8px">';
+  h += '<table style="width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums">';
+  h += '<thead><tr>';
+  h += '<td style="padding:4px 6px;text-align:left;font-size:10px;font-weight:700;color:'+d.sub+';min-width:42px">팀</td>';
+  for (let i=1;i<=totalInnings;i++) h += '<td style="text-align:center;font-size:10px;font-weight:700;color:'+d.sub+';min-width:20px;padding:4px 2px">'+i+'</td>';
+  h += '<td style="text-align:center;font-size:10px;font-weight:800;color:'+d.sub+';border-left:1px solid '+d.bgB+';min-width:26px;padding:4px 5px">R</td>';
+  h += '<td style="text-align:center;font-size:10px;font-weight:700;color:'+d.sub+';min-width:22px;padding:4px 4px">H</td>';
+  h += '<td style="text-align:center;font-size:10px;font-weight:700;color:'+d.sub+';min-width:22px;padding:4px 4px">E</td>';
+  h += '</tr></thead><tbody>';
+  // away row
+  const awayIsKia = g.away === 'KIA';
+  h += '<tr style="background:'+(d.dark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.02)')+'">';
+  h += '<td style="padding:5px 6px;font-weight:800;font-size:11px;color:'+(awayIsKia?'#E31837':d.text)+';text-align:left">'+g.away+'</td>';
+  for (let i=0;i<totalInnings;i++) h += cell(awayInn, i);
+  h += '<td style="text-align:center;font-weight:900;font-size:13px;color:'+(awayIsKia?'#E31837':d.text)+';border-left:1px solid '+d.bgB+';padding:5px 5px">'+(g.awayScore??'-')+'</td>';
+  h += '<td style="text-align:center;font-size:11px;color:'+d.sub+';padding:5px 4px">'+(g.awayHit??'-')+'</td>';
+  h += '<td style="text-align:center;font-size:11px;color:'+((g.awayError>0)?'#E31837':d.sub)+';padding:5px 4px">'+(g.awayError??'-')+'</td>';
+  h += '</tr>';
+  // home row
+  const homeIsKia = g.home === 'KIA';
+  h += '<tr>';
+  h += '<td style="padding:5px 6px;font-weight:800;font-size:11px;color:'+(homeIsKia?'#E31837':d.text)+';text-align:left">'+g.home+'</td>';
+  for (let i=0;i<totalInnings;i++) h += cell(homeInn, i);
+  h += '<td style="text-align:center;font-weight:900;font-size:13px;color:'+(homeIsKia?'#E31837':d.text)+';border-left:1px solid '+d.bgB+';padding:5px 5px">'+(g.homeScore??'-')+'</td>';
+  h += '<td style="text-align:center;font-size:11px;color:'+d.sub+';padding:5px 4px">'+(g.homeHit??'-')+'</td>';
+  h += '<td style="text-align:center;font-size:11px;color:'+((g.homeError>0)?'#E31837':d.sub)+';padding:5px 4px">'+(g.homeError??'-')+'</td>';
+  h += '</tr>';
+  h += '</tbody></table></div>';
+  return h;
+}
+
+function _renderRecPitcherRow(d, g) {
+  const win = g.winPitcher, lose = g.losePitcher;
+  if (!win && !lose) return '';
+  let h = '<div style="display:flex;gap:8px;margin-bottom:8px">';
+  if (win) h += '<div style="flex:1;background:rgba(0,200,100,0.08);border:1px solid rgba(0,200,100,0.25);border-radius:8px;padding:7px 10px"><div style="font-size:9px;font-weight:700;color:#00C864;margin-bottom:2px">승리투수</div><div style="font-size:13px;font-weight:900;color:'+d.text+'">'+win+'</div></div>';
+  if (lose) h += '<div style="flex:1;background:rgba(227,24,55,0.06);border:1px solid rgba(227,24,55,0.2);border-radius:8px;padding:7px 10px"><div style="font-size:9px;font-weight:700;color:#E31837;margin-bottom:2px">패전투수</div><div style="font-size:13px;font-weight:900;color:'+d.text+'">'+lose+'</div></div>';
+  h += '</div>';
+  return h;
+}
 
 window.recUpdatePrintDisplay = function(el) {
   const memoId = el.id;
