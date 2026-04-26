@@ -2417,33 +2417,42 @@ function _recRenderPhotos(container, photos, date, away, home) {
 }
 
 function renderMemos(d) {
-  const memos = [];
+  // KIA 완료 경기 전체 기반 (메모 없어도 표시)
+  const kiaFinal = SCH.filter(g => g.status === 'FINAL' && (g.away === 'KIA' || g.home === 'KIA'))
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  // localStorage 메모 맵
+  const memoMap = {};
   for(let i=0;i<localStorage.length;i++) {
     const k=localStorage.key(i);
     if(k&&k.startsWith('m_')) {
       const raw=localStorage.getItem(k);
       if(raw&&raw.trim()) {
         const parts=k.substring(2).split('_');
-        const date=parts[0], away=parts[1], home=parts[2];
-        let memoData={};
-        try{ memoData=JSON.parse(raw); if(typeof memoData==='string') memoData={text:raw}; }catch(e){ memoData={text:raw}; }
-        const photos = [];
-        if(memoData.text||photos.length||memoData.watch)
-          memos.push({date,away,home,memo:memoData.text||'',watch:memoData.watch||'',photos});
+        const key=parts[0]+'_'+parts[1]+'_'+parts[2];
+        let md={};
+        try{ md=JSON.parse(raw); if(typeof md==='string') md={text:raw}; }catch(e){ md={text:raw}; }
+        memoMap[key] = md;
       }
     }
   }
-  memos.sort((a,b)=>b.date.localeCompare(a.date));
+
+  const memos = kiaFinal.map(g => {
+    const key = g.date+'_'+g.away+'_'+g.home;
+    const md = memoMap[key] || {};
+    const photos = md.photos || (md.photo ? [md.photo] : []);
+    return {date:g.date, away:g.away, home:g.home, memo:md.text||'', watch:md.watch||'', photos};
+  });
 
   if(!memos.length) {
     return '<div style="text-align:center;padding:60px 20px">'
-      + '<div style="font-size:40px;margin-bottom:12px">📝</div>'
-      + '<div style="font-size:15px;font-weight:700;color:'+d.text+'">메모가 없어요</div>'
-      + '<div style="font-size:12px;color:'+d.sub+';margin-top:6px">경기 팝업에서 메모를 남겨보세요</div>'
+      + '<div style="font-size:40px;margin-bottom:12px">⚾</div>'
+      + '<div style="font-size:15px;font-weight:700;color:'+d.text+'">아직 경기 기록이 없어요</div>'
+      + '<div style="font-size:12px;color:'+d.sub+';margin-top:6px">개막 후 경기가 끝나면 여기에 쌓여요!</div>'
       + '</div>';
   }
 
-  let html = '<div style="font-size:12px;font-weight:700;color:'+d.sub+';margin-bottom:12px">총 '+memos.length+'개의 메모</div>';
+  let html = '<div style="font-size:12px;font-weight:700;color:'+d.sub+';margin-bottom:12px">총 '+memos.length+'경기</div>';
   memos.forEach(m => {
     const isKia = m.away==='KIA'||m.home==='KIA';
     const g = SCH.find(s => s.date===m.date && s.away===m.away && s.home===m.home) || {};
