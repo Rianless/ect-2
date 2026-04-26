@@ -104,9 +104,9 @@
     .rec-print-display::after{content:'';position:absolute;inset:0;border-radius:8px;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.018) 2px,rgba(0,0,0,0.018) 3px)}
     .rec-print-display.empty-hint::before{content:attr(data-placeholder);color:rgba(0,0,0,0.28);font-family:'Courier New',Courier,monospace;font-size:11.5px}
     body.dark .rec-print-display.empty-hint::before{color:rgba(255,255,255,0.25)}
-    .rec-print-textarea{position:absolute;inset:0;width:100%;height:100%;opacity:0;resize:none;font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.75;border:none;background:transparent;z-index:2;cursor:text;-webkit-user-select:text;user-select:text}
-    .rec-print-wrap.editing .rec-print-display{opacity:0;pointer-events:none}
-    .rec-print-wrap.editing .rec-print-textarea{opacity:1}
+    .rec-print-textarea{width:100%;min-height:80px;opacity:0;resize:none;font-family:'Courier New',Courier,monospace;font-size:11.5px;line-height:1.75;border:none;background:transparent;z-index:2;cursor:text;-webkit-user-select:text;user-select:text;display:none;box-sizing:border-box;padding:8px}
+    .rec-print-wrap.editing .rec-print-display{display:none}
+    .rec-print-wrap.editing .rec-print-textarea{opacity:1;display:block}
     .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
     .cal-sticky{position:sticky;top:0;z-index:10;background:inherit;backdrop-filter:blur(10px)}
     .cal-week-only .cal-grid#cal-grid-body .cal-cell:not(.current-week){display:none}
@@ -2379,6 +2379,16 @@ function _renderRecPitcherRow(d, g) {
   return h;
 }
 
+window.activateRecMemo = function(displayEl) {
+  const wrap = displayEl.closest('.rec-print-wrap');
+  if (!wrap) return;
+  wrap.classList.add('editing');
+  const ta = wrap.querySelector('textarea');
+  if (ta) {
+    setTimeout(() => { ta.focus(); ta.setSelectionRange(ta.value.length, ta.value.length); }, 50);
+  }
+};
+
 window.recUpdatePrintDisplay = function(el) {
   const memoId = el.id;
   const display = document.getElementById('recdisplay-'+memoId);
@@ -2611,7 +2621,7 @@ function renderMemos(d) {
     html += '<div id="recdisplay-'+memoId+'" class="rec-print-display'+(m.memo?'':' empty-hint')+'" '
       + 'data-placeholder="이 경기 후기를 남겨보세요 ✍️" '
       + 'style="background:'+(dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.03)')+';margin-top:10px;color:'+textC+'" '
-      + 'onclick="var w=this.closest(\'.rec-print-wrap\');w.classList.add(\'editing\');w.querySelector(\'textarea\').focus()">'
+      + 'onclick="activateRecMemo(this)" ontouchend="activateRecMemo(this);event.preventDefault()">'
       + recMemoDisp + '</div>';
     html += '<textarea id="'+memoId+'" class="rec-print-textarea" '
       + 'data-date="'+m.date+'" data-away="'+m.away+'" data-home="'+m.home+'" '
