@@ -2452,6 +2452,9 @@ function renderMemos(d) {
       + '</div>';
   }
 
+  // 영수증 스타일 렌더
+  const SEP = (dark) => '<div style="border-top:1px dashed '+(dark?'rgba(255,255,255,0.15)':'rgba(0,0,0,0.12)')+';margin:8px 0"></div>';
+
   let html = '<div style="font-size:12px;font-weight:700;color:'+d.sub+';margin-bottom:12px">총 '+memos.length+'경기</div>';
   memos.forEach(m => {
     const isKia = m.away==='KIA'||m.home==='KIA';
@@ -2461,90 +2464,99 @@ function renderMemos(d) {
     const oppScore = isHome ? g.awayScore : g.homeScore;
     const hasScore = kiaScore != null && oppScore != null;
     const isWin = kiaScore > oppScore, isDraw = kiaScore === oppScore;
-    const resultKr = isWin ? '승리' : isDraw ? '무승부' : '패배';
+    const resultKr = isWin ? 'WIN · 승리' : isDraw ? 'DRAW · 무승부' : 'LOSE · 패배';
     const resultColor = isWin ? '#E31837' : isDraw ? '#FF9500' : '#3B9EF5';
-    const opp = isHome ? m.away : m.home;
-    const oppName = T[opp] ? T[opp].name : opp;
     const [yr,mo,da] = m.date.split('-');
     const dw = ['일','월','화','수','목','금','토'][new Date(m.date+'T12:00:00').getDay()];
     const awayInn = g.awayInnings || [];
     const homeInn = g.homeInnings || [];
     const hasInn = awayInn.some(x=>x>=0) || homeInn.some(x=>x>=0);
     const winP = g.winPitcher, loseP = g.losePitcher;
+    const opp = isHome ? m.away : m.home;
+    const oppName = (T[opp] ? T[opp].name : opp) + ' 라이온즈'.replace(/.+/,'') || opp; // fallback
+    const kiaName = 'KIA 타이거즈';
+    const dark = d.dark;
 
-    html += '<div class="card'+(isKia?' kia':'')+'" onclick="openGameByKey(this)" data-date="'+m.date+'" data-away="'+m.away+'" data-home="'+m.home+'" style="padding:0;overflow:hidden">';
+    // 카드 전체: 영수증 느낌 (흰 배경, 점선 구분선, monospace)
+    const cardBg = dark ? '#151c2b' : '#ffffff';
+    const borderC = dark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)';
+    const textC = dark ? '#edf1fa' : '#1a1a2e';
+    const subC = dark ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.45)';
 
-    // ── 상단: 날짜·구장 + 팀명 + 스코어 ──
-    html += '<div style="padding:12px 14px 10px">';
-    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">';
-    html += '<div style="font-size:10px;color:'+d.sub+'">'+yr+'.'+mo+'.'+da+' ('+dw+') · '+(g.stad||'')+'</div>';
-    if(m.watch) html += '<span style="font-size:10px;font-weight:700;background:'+(m.watch==='직관'?'rgba(227,24,55,0.1)':'rgba(0,120,255,0.1)')+';color:'+(m.watch==='직관'?'#E31837':'#0078ff')+';border-radius:5px;padding:2px 7px">'+(m.watch==='직관'?'⚾ 직관':'📺 집관')+'</span>';
+    html += '<div class="card'+(isKia?' kia':'')+'" onclick="openGameByKey(this)" '
+      + 'data-date="'+m.date+'" data-away="'+m.away+'" data-home="'+m.home+'" '
+      + 'style="padding:0;overflow:hidden;background:'+cardBg+';border:1px solid '+borderC+';font-family:\'Courier New\',Courier,monospace">';
+
+    // ── 상단 헤더 ──
+    html += '<div style="padding:14px 16px 10px;text-align:center;border-bottom:1px dashed '+borderC+'">';
+    html += '<div style="font-size:10px;color:'+subC+';letter-spacing:.1em;margin-bottom:2px">'+yr+'.'+mo+'.'+da+' ('+dw+')</div>';
+    html += '<div style="font-size:11px;color:'+subC+';margin-bottom:6px">'+(g.stad||'')+'</div>';
+
+    // 홈/원정
+    html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:'+subC+';margin-bottom:2px">';
+    html += '<span>홈</span><span style="color:'+textC+';font-weight:700">'+(isHome?kiaName:(T[opp]?T[opp].name:opp))+'</span>';
+    html += '</div>';
+    html += '<div style="display:flex;justify-content:space-between;font-size:11px;color:'+subC+'">';
+    html += '<span>원정</span><span style="color:'+textC+';font-weight:700">'+(!isHome?kiaName:(T[opp]?T[opp].name:opp))+'</span>';
+    html += '</div>';
     html += '</div>';
 
-    // 팀명 + 스코어 행
-    html += '<div style="display:flex;align-items:center;gap:10px">';
-    html += logo(m.away,22);
-    html += '<span style="font-size:12px;font-weight:700;color:'+(m.away==='KIA'?'#E31837':d.text)+'">'+m.away+'</span>';
+    // ── 스코어 ──
     if(hasScore) {
-      html += '<div style="flex:1;text-align:center">';
-      html += '<div style="font-size:22px;font-weight:900;color:'+d.text+';letter-spacing:-1px">'+g.awayScore+' : '+g.homeScore+'</div>';
-      html += '<div style="font-size:10px;font-weight:800;color:'+resultColor+'">'+resultKr+'</div>';
+      html += '<div style="padding:12px 16px;text-align:center;border-bottom:1px dashed '+borderC+'">';
+      html += '<div style="font-size:10px;color:'+subC+';letter-spacing:.12em;margin-bottom:6px">FINAL SCORE</div>';
+      html += '<div style="font-size:36px;font-weight:900;color:'+textC+';letter-spacing:-1px;line-height:1">'+kiaScore+' : '+oppScore+'</div>';
+      html += '<div style="font-size:12px;font-weight:800;color:'+resultColor+';margin-top:6px">'+resultKr+'</div>';
       html += '</div>';
-    } else {
-      html += '<div style="flex:1;text-align:center;font-size:14px;font-weight:700;color:'+d.sub+'">vs</div>';
     }
-    html += '<span style="font-size:12px;font-weight:700;color:'+(m.home==='KIA'?'#E31837':d.text)+'">'+m.home+'</span>';
-    html += logo(m.home,22);
-    html += '</div>';
-    html += '</div>'; // 상단 끝
 
-    // ── 이닝 스코어 테이블 ──
+    // ── 이닝 스코어 ──
     if(hasInn) {
       const totalInnings = Math.max(9, awayInn.length, homeInn.length);
-      const iv = (arr,i) => { const v=arr[i]; return (v==null||v<0)?'·':String(v); };
-      html += '<div style="border-top:1px solid '+(d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)')+';padding:8px 14px;overflow-x:auto">';
-      html += '<table style="width:100%;border-collapse:collapse;font-size:10.5px;font-variant-numeric:tabular-nums;min-width:260px">';
-      html += '<thead><tr>';
-      html += '<td style="padding:3px 5px;text-align:left;font-size:9.5px;font-weight:700;color:'+d.sub+';min-width:36px"></td>';
-      for(let i=1;i<=totalInnings;i++) html += '<td style="text-align:center;font-size:9.5px;font-weight:700;color:'+d.sub+';padding:3px 2px;min-width:18px">'+i+'</td>';
-      html += '<td style="text-align:center;font-size:9.5px;font-weight:800;color:'+d.sub+';border-left:1px solid '+(d.dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)')+';padding:3px 5px">R</td>';
-      html += '</tr></thead><tbody>';
-      // away row
-      html += '<tr>';
-      html += '<td style="padding:4px 5px;font-weight:800;font-size:11px;color:'+(m.away==='KIA'?'#E31837':d.text)+'">'+m.away+'</td>';
-      for(let i=0;i<totalInnings;i++){const v=awayInn[i];const hi=v>0;html+='<td style="text-align:center;padding:4px 2px;color:'+(hi?'#E31837':d.text)+';font-weight:'+(hi?900:400)+'">'+iv(awayInn,i)+'</td>';}
-      html += '<td style="text-align:center;font-weight:900;font-size:13px;color:'+(m.away==='KIA'?'#E31837':d.text)+';border-left:1px solid '+(d.dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)')+';padding:4px 5px">'+(g.awayScore??'-')+'</td>';
-      html += '</tr>';
-      // home row
-      html += '<tr>';
-      html += '<td style="padding:4px 5px;font-weight:800;font-size:11px;color:'+(m.home==='KIA'?'#E31837':d.text)+'">'+m.home+'</td>';
-      for(let i=0;i<totalInnings;i++){const v=homeInn[i];const hi=v>0;html+='<td style="text-align:center;padding:4px 2px;color:'+(hi?'#E31837':d.text)+';font-weight:'+(hi?900:400)+'">'+iv(homeInn,i)+'</td>';}
-      html += '<td style="text-align:center;font-weight:900;font-size:13px;color:'+(m.home==='KIA'?'#E31837':d.text)+';border-left:1px solid '+(d.dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)')+';padding:4px 5px">'+(g.homeScore??'-')+'</td>';
-      html += '</tr>';
-      html += '</tbody></table></div>';
+      const iv = (arr,i) => { const v=arr[i]; return (v==null||v<0)?'-':String(v); };
+      html += '<div style="padding:10px 16px;border-bottom:1px dashed '+borderC+';overflow-x:auto">';
+      html += '<div style="font-size:10px;color:'+subC+';letter-spacing:.12em;text-align:center;margin-bottom:8px">INNING SCORE</div>';
+      html += '<table style="width:100%;border-collapse:collapse;font-size:11px;font-variant-numeric:tabular-nums">';
+      // header row
+      html += '<tr><td style="padding:2px 4px;color:'+subC+'"> </td>';
+      for(let i=1;i<=totalInnings;i++) html += '<td style="text-align:center;padding:2px 3px;color:'+subC+'">'+i+'</td>';
+      html += '<td style="text-align:center;padding:2px 6px;color:'+subC+';border-left:1px solid '+borderC+'">R</td></tr>';
+      // away
+      const awayC = m.away==='KIA' ? resultColor : textC;
+      html += '<tr><td style="padding:3px 4px;font-weight:700;color:'+awayC+'">'+m.away+'</td>';
+      for(let i=0;i<totalInnings;i++){const v=awayInn[i];html+='<td style="text-align:center;padding:3px 3px;color:'+(v>0?resultColor:textC)+';font-weight:'+(v>0?700:400)+'">'+iv(awayInn,i)+'</td>';}
+      html += '<td style="text-align:center;padding:3px 6px;font-weight:900;color:'+awayC+';border-left:1px solid '+borderC+'">'+(g.awayScore??'-')+'</td></tr>';
+      // home
+      const homeC = m.home==='KIA' ? resultColor : textC;
+      html += '<tr><td style="padding:3px 4px;font-weight:700;color:'+homeC+'">'+m.home+'</td>';
+      for(let i=0;i<totalInnings;i++){const v=homeInn[i];html+='<td style="text-align:center;padding:3px 3px;color:'+(v>0?resultColor:textC)+';font-weight:'+(v>0?700:400)+'">'+iv(homeInn,i)+'</td>';}
+      html += '<td style="text-align:center;padding:3px 6px;font-weight:900;color:'+homeC+';border-left:1px solid '+borderC+'">'+(g.homeScore??'-')+'</td></tr>';
+      html += '</table></div>';
     }
 
-    // ── 승리/패전 투수 ──
+    // ── 승패 투수 ──
     if(winP || loseP) {
-      html += '<div style="border-top:1px solid '+(d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)')+';padding:8px 14px;display:flex;gap:8px">';
-      if(winP) html += '<div style="flex:1;display:flex;align-items:center;gap:5px"><span style="font-size:9.5px;font-weight:700;color:#00C864;background:rgba(0,200,100,0.1);border-radius:4px;padding:1px 6px">승리</span><span style="font-size:12px;font-weight:800;color:'+d.text+'">'+winP+'</span></div>';
-      if(loseP) html += '<div style="flex:1;display:flex;align-items:center;gap:5px"><span style="font-size:9.5px;font-weight:700;color:#E31837;background:rgba(227,24,55,0.08);border-radius:4px;padding:1px 6px">패전</span><span style="font-size:12px;font-weight:800;color:'+d.text+'">'+loseP+'</span></div>';
+      html += '<div style="padding:8px 16px;border-bottom:1px dashed '+borderC+'">';
+      if(winP) html += '<div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px"><span style="color:'+subC+'">승리투수</span><span style="color:'+textC+';font-weight:700">'+winP+'</span></div>';
+      if(loseP) html += '<div style="display:flex;justify-content:space-between;font-size:11px"><span style="color:'+subC+'">패전투수</span><span style="color:'+textC+';font-weight:700">'+loseP+'</span></div>';
       html += '</div>';
     }
 
-    // ── 메모 ──
-    if(m.memo) {
-      html += '<div style="border-top:1px solid '+(d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)')+';padding:8px 14px;font-size:13px;color:'+d.text+';line-height:1.6;white-space:pre-wrap">'+m.memo+'</div>';
+    // ── 직관/집관 + 메모 ──
+    if(m.watch || m.memo) {
+      html += '<div style="padding:8px 16px;'+(m.photos&&m.photos.length?'':'border-bottom:1px dashed '+borderC)+'">';
+      if(m.watch) html += '<div style="font-size:10px;font-weight:700;color:'+(m.watch==='직관'?'#E31837':'#0078ff')+';margin-bottom:'+(m.memo?'5px':'0')+'">'+(m.watch==='직관'?'⚾ 직관':'📺 집관')+'</div>';
+      if(m.memo) html += '<div style="font-size:12px;color:'+textC+';line-height:1.7;white-space:pre-wrap">'+m.memo+'</div>';
+      html += '</div>';
     }
 
+    // ── 사진 ──
     if(m.photos&&m.photos.length){
       const pj=JSON.stringify(m.photos).replace(/"/g,'&quot;');
-      html+='<div onclick="event.stopPropagation()" style="position:relative;border-radius:0 0 14px 14px;overflow:hidden;background:#111">';
+      html+='<div onclick="event.stopPropagation()" style="position:relative;overflow:hidden">';
       html+='<img src="'+m.photos[0]+'" onclick="openPhotoViewer(JSON.parse(this.dataset.photos||&quot;[]&quot;),0)" '
         +'data-photos="'+pj+'" style="width:100%;max-height:180px;object-fit:cover;display:block;cursor:zoom-in"/>';
-      if(m.photos.length>1){
-        html+='<div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px">+'+(m.photos.length-1)+'장 더</div>';
-      }
+      if(m.photos.length>1) html+='<div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px">+'+(m.photos.length-1)+'장 더</div>';
       html+='</div>';
     }
 
