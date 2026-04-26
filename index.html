@@ -4387,9 +4387,23 @@ function _parseBatters(src) {
   });
   return Object.entries(om).sort(([a],[b])=>+a-+b).map(([o,ps]) => {
     // 디버그: 타순별 원본 데이터 출력
-    if (ps.length > 1) console.log(`[DEBUG] 타순 ${o}:`, ps.map(p=>({name:p.name||p.playerName,seqno:p.seqno,cin:p.cin,cout:p.cout,ab:p.ab})));
+    if (ps.length > 1) console.log(`[DEBUG] 타순 ${o}:`, ps.map(p=>({name:p.name||p.playerName,seqno:p.seqno,cin:p.cin,cout:p.cout,ab:p.ab,posName:p.posName})));
+    // 비필드 포지션(대타/대주자) 여부 판별
+    const _subPos = new Set(['대주자','대타','주자','대주자/대타','대타/대주자']);
+    const _isSub = p => _subPos.has(p.posName || p.position || '');
+
     // seqno 기준 정렬: 낮을수록 선발(먼저 출전)
-    const sorted = [...ps].sort((a,b) => (+a.seqno||0) - (+b.seqno||0));
+    const sorted = [...ps].sort((a,b) => {
+      // 대타/대주자 포지션은 나중 순서
+      const aIsSub = _isSub(a) ? 1 : 0;
+      const bIsSub = _isSub(b) ? 1 : 0;
+      if (aIsSub !== bIsSub) return aIsSub - bIsSub;
+      // seqno 오름차순
+      const sd = (+a.seqno||0) - (+b.seqno||0);
+      if (sd !== 0) return sd;
+      // 타수 내림차순 (선발이 보통 많음)
+      return (+b.ab||0) - (+a.ab||0);
+    });
 
     // cin/cout 플래그로 최종 선수 결정 (더 신뢰할 수 있음)
     let chain, cur;
@@ -4819,6 +4833,8 @@ function normalizeApiTeam(code, name) {
 
 function parseBrowserBatters(batters) {
   if (!batters?.length) return [];
+  const _subPos = new Set(['대주자','대타','주자','대주자/대타','대타/대주자']);
+  const _isSub = p => _subPos.has(p.posName || p.position || '');
   const orderMap = {};
   batters.forEach(p => {
     const order = p.batOrder;
@@ -4828,33 +4844,49 @@ function parseBrowserBatters(batters) {
   return Object.entries(orderMap)
     .sort(([a], [b]) => Number(a) - Number(b))
     .map(([order, players]) => {
-      const current = players.find(p => p.cin === 'true') || players.find(p => !p.cout) || players[players.length - 1];
-      const replaced = players.find(p => p.cout === 'true' && p !== current);
-      const starterForPos = replaced || current;
+      // 정렬: 대타/대주자 포지션 → 나중, seqno 오름차순, 타수 내림차순
+      const sorted = [...players].sort((a, b) => {
+        const aS = _isSub(a) ? 1 : 0;
+        const bS = _isSub(b) ? 1 : 0;
+        if (aS !== bS) return aS - bS;
+        const sd = (+a.seqno||0) - (+b.seqno||0);
+        if (sd !== 0) return sd;
+        return (+b.ab||0) - (+a.ab||0);
+      });
+      const cur = sorted[sorted.length - 1];
+      const starters = sorted.slice(0, -1);
       return {
         n: Number(order),
         order: Number(order),
-        name: current?.name || '',
-        p: current?.posName || '',
-        pos: current?.posName || '',
-        sub: replaced?.name || null,
-        starterName: starterForPos?.name || current?.name || '',
-        starterPos: starterForPos?.posName || current?.posName || '',
-        // 교체 전 선수(sub) 기록
-        subHit: replaced ? Number(replaced.hit||0) : 0,
-        subAb:  replaced ? Number(replaced.ab||0)  : 0,
-        subRbi: replaced ? Number(replaced.rbi||0) : 0,
-        subBb:  replaced ? Number(replaced.bb||replaced.walk||0) : 0,
-        // 현재 선수(cur) 기록
-        curHit: Number(current?.hit||0),
-        curAb:  Number(current?.ab||0),
-        curRbi: Number(current?.rbi||0),
-        curBb:  Number(current?.bb||current?.walk||0),
-        // 단일 선수일 때 통합 기록
-        hit: Number(current?.hit||0),
-        ab:  Number(current?.ab||0),
-        rbi: Number(current?.rbi||0),
-        bb:  Number(current?.bb||current?.walk||0),
+        name: cur?.name || '',
+        p: cur?.posName || '',
+        pos: cur?.posName || '',
+        chain: starters.length ? starters.map(s => ({
+          name: s.name || '',
+          hit: Number(s.hit||0),
+          ab:  Number(s.ab||0),
+          rbi: Number(s.rbi||0),
+          bb:  Number(s.bb||s.walk||0),
+          run: Number(s.run||s.r||0),
+        })) : null,
+        sub: starters.length ? (starters[0].name || null) : null,
+        starterName: sorted[0]?.name || cur?.name || '',
+        starterPos: sorted[0]?.posName || cur?.posName || '',
+        subHit: starters.length ? Number(starters[0].hit||0) : 0,
+        subAb:  starters.length ? Number(starters[0].ab||0)  : 0,
+        subRbi: starters.length ? Number(starters[0].rbi||0) : 0,
+        subBb:  starters.length ? Number(starters[0].bb||starters[0].walk||0) : 0,
+        subRun: starters.length ? Number(starters[0].run||starters[0].r||0) : 0,
+        curHit: Number(cur?.hit||0),
+        curAb:  Number(cur?.ab||0),
+        curRbi: Number(cur?.rbi||0),
+        curBb:  Number(cur?.bb||cur?.walk||0),
+        curRun: Number(cur?.run||cur?.r||0),
+        hit: Number(cur?.hit||0),
+        ab:  Number(cur?.ab||0),
+        rbi: Number(cur?.rbi||0),
+        bb:  Number(cur?.bb||cur?.walk||0),
+        run: Number(cur?.run||cur?.r||0),
       };
     });
 }
