@@ -2544,23 +2544,56 @@ function renderMemos(d) {
       html += '</div>';
     }
 
-    // ── 직관/집관 + 메모 ──
-    if(m.watch || m.memo) {
-      html += '<div style="padding:8px 16px;'+(m.photos&&m.photos.length?'':'border-bottom:1px dashed '+borderC)+'">';
-      if(m.watch) html += '<div style="font-size:10px;font-weight:700;color:'+(m.watch==='직관'?'#E31837':'#0078ff')+';margin-bottom:'+(m.memo?'5px':'0')+'">'+(m.watch==='직관'?'⚾ 직관':'📺 집관')+'</div>';
-      if(m.memo) html += '<div style="font-size:12px;color:'+textC+';line-height:1.7;white-space:pre-wrap">'+m.memo+'</div>';
-      html += '</div>';
-    }
+    // ── 직관/집관/미시청 버튼 ──
+    const memoId = 'rec-memo-'+m.date+'-'+m.away+'-'+m.home;
+    html += '<div onclick="event.stopPropagation()" style="padding:10px 14px;border-top:1px dashed '+borderC+';display:flex;gap:6px">';
+    ['직관','집관','미시청'].forEach(function(lv) {
+      const sel = m.watch === lv;
+      const vc = lv==='직관'?'#E31837':lv==='집관'?'#0078ff':'rgba(100,100,100,0.6)';
+      html += '<button id="recwatch-'+memoId+'-'+lv+'" '
+        + 'onclick="recSetWatch(\''+m.date+'\',\''+m.away+'\',\''+m.home+'\',\''+lv+'\')" '
+        + 'style="flex:1;padding:6px 0;background:'+(sel?vc:'transparent')+';border:1.5px solid '+vc+';color:'+(sel?'#fff':vc)+';border-radius:8px;font-size:11px;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;cursor:pointer">'
+        + (lv==='직관'?'⚾ 직관':lv==='집관'?'📺 집관':'— 미시청')
+        + '</button>';
+    });
+    html += '</div>';
+
+    // ── 메모 입력창 ──
+    const memoKey = 'm_'+m.date+'_'+m.away+'_'+m.home;
+    const recMemoDisp = m.memo ? m.memo.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>') : '';
+    html += '<div onclick="event.stopPropagation()" class="rec-print-wrap" id="wrap-'+memoId+'" style="padding:0 14px 10px;border-top:1px dashed '+borderC+'">';
+    html += '<div id="recdisplay-'+memoId+'" class="rec-print-display'+(m.memo?'':' empty-hint')+'" '
+      + 'data-placeholder="이 경기 후기를 남겨보세요 ✍️" '
+      + 'style="background:'+(dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.03)')+';margin-top:10px;color:'+textC+'" '
+      + 'onclick="var w=this.closest(\'.rec-print-wrap\');w.classList.add(\'editing\');w.querySelector(\'textarea\').focus()">'
+      + recMemoDisp + '</div>';
+    html += '<textarea id="'+memoId+'" class="rec-print-textarea" '
+      + 'data-date="'+m.date+'" data-away="'+m.away+'" data-home="'+m.home+'" '
+      + 'placeholder="이 경기 후기를 남겨보세요 ✍️" '
+      + 'oninput="recUpdatePrintDisplay(this)" '
+      + 'onblur="recBlurPrintDisplay(this);saveRecordMemoEl(this)">'
+      + (m.memo||'') + '</textarea>';
+    html += '</div>';
 
     // ── 사진 ──
     if(m.photos&&m.photos.length){
       const pj=JSON.stringify(m.photos).replace(/"/g,'&quot;');
-      html+='<div onclick="event.stopPropagation()" style="position:relative;overflow:hidden">';
+      html+='<div onclick="event.stopPropagation()" style="position:relative;overflow:hidden;border-top:1px dashed '+borderC+'">';
       html+='<img src="'+m.photos[0]+'" onclick="openPhotoViewer(JSON.parse(this.dataset.photos||&quot;[]&quot;),0)" '
         +'data-photos="'+pj+'" style="width:100%;max-height:180px;object-fit:cover;display:block;cursor:zoom-in"/>';
       if(m.photos.length>1) html+='<div style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.6);color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:3px 8px">+'+(m.photos.length-1)+'장 더</div>';
       html+='</div>';
     }
+
+    // ── 사진 추가 버튼 ──
+    html += '<div onclick="event.stopPropagation()" style="padding:8px 14px 12px;border-top:1px dashed '+borderC+';display:flex;align-items:center;gap:8px">';
+    html += '<span style="font-size:13px">📷</span>';
+    html += '<span style="font-size:11px;color:'+subC+';flex:1">사진 추가</span>';
+    html += '<input type="file" accept="image/*" id="recphoto-'+memoId+'" style="display:none" multiple '
+      + 'onchange="recUploadPhoto(this,\''+m.date+'\',\''+m.away+'\',\''+m.home+'\')">';
+    html += '<button onclick="document.getElementById(\'recphoto-'+memoId+'\').click()" '
+      + 'style="font-size:11px;color:#E31837;font-weight:700;font-family:\'Noto Sans KR\',sans-serif;background:none;border:1.5px solid #E31837;border-radius:6px;cursor:pointer;padding:3px 10px">선택</button>';
+    html += '</div>';
 
     html += '</div>';
   });
