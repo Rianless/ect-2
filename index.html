@@ -4389,10 +4389,20 @@ function _parseBatters(src) {
     // seqno 기준 정렬: 낮을수록 선발(먼저 출전)
     const sorted = [...ps].sort((a,b) => (+a.seqno||0) - (+b.seqno||0));
 
-    // 3명 이상 교체 체인 처리: chain = [선발, 대타1, 대타2, ...]
-    const chain = sorted; // seqno순 = 출전 순서
-    const cur = chain[chain.length - 1]; // 최종 선수
-    const starters = chain.slice(0, -1);  // 선발+중간 교체들 (마지막 제외)
+    // cin/cout 플래그로 최종 선수 결정 (더 신뢰할 수 있음)
+    let chain, cur;
+    const cinP   = ps.find(p => p.cin  === 'true' || p.cin  === true);
+    const coutPs = ps.filter(p => p.cout === 'true' || p.cout === true);
+    if (cinP) {
+      // cin 있는 사람이 최종, cout들이 나간 선수 → seqno로 정렬
+      const outsSorted = [...coutPs].sort((a,b) => (+a.seqno||0) - (+b.seqno||0));
+      chain = [...outsSorted, cinP];
+      cur = cinP;
+    } else {
+      chain = sorted;
+      cur = sorted[sorted.length - 1];
+    }
+    const starters = chain.slice(0, -1);
 
     return {
       n:+o, order:+o,
