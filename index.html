@@ -827,6 +827,52 @@
 </div>
 
 <script>
+// ── 승리 확률 계산 (WPA 기반, KBO 9이닝 모델) ──
+// 이닝/초말/점수차 → KIA 승리 확률(%)
+function calcWinProb(kiaScore, oppScore, inning, inningInfo, kiaIsHome) {
+  if (kiaScore == null || oppScore == null) return null;
+  const diff = kiaScore - oppScore; // 양수=KIA 리드
+  const info = String(inningInfo || '');
+  const isBottom = /말/.test(info);
+  // 실제 이닝 파싱 (ex: "7회초", "9회말")
+  const innMatch = info.match(/(\d+)/);
+  const inn = innMatch ? parseInt(innMatch[1]) : Math.max(1, parseInt(inning) || 1);
+
+  // 남은 아웃카운트 (9이닝 × 3아웃 × 2팀 = 54)
+  // 초: 공격팀=원정(또는kia), 남은 아웃 = (9-inn)*6 + 3 + (isBottom?3:0)
+  // 말: 공격팀=홈(또는kia), 남은 아웃 = (9-inn)*6 + (isBottom?3:0)
+  let outsRemaining;
+  if (!isBottom) {
+    outsRemaining = (9 - inn) * 6 + 6;
+  } else {
+    outsRemaining = (9 - inn) * 6 + 3;
+  }
+  outsRemaining = Math.max(0, outsRemaining);
+
+  // diff 기준 승리 확률 룩업 (KBO 통계 근사치, diff 관점은 항상 리드팀 기준)
+  // outsRemaining이 클수록 점수차 영향 적음
+  const logit = (d, o) => {
+    // 점수차 d, 남은아웃 o
+    if (o <= 0) return d > 0 ? 1 : d < 0 ? 0 : 0.5;
+    const base = 0.5;
+    // 이닝 가중치: 남은 아웃이 적을수록 점수차 영향 ↑
+    const k = 1.8 / Math.sqrt(Math.max(1, o));
+    const raw = base + d * k * 0.12;
+    return Math.min(0.97, Math.max(0.03, raw));
+  };
+
+  // KIA 시점: diff>0이면 KIA 리드
+  let kiaWinProb = logit(diff, outsRemaining);
+
+  // 말 공격 시 홈팀 어드밴티지 미세 보정 (끝내기 가능)
+  if (isBottom) {
+    if (kiaIsHome) kiaWinProb = Math.min(0.97, kiaWinProb + 0.02);
+    else kiaWinProb = Math.max(0.03, kiaWinProb - 0.02);
+  }
+
+  return Math.round(kiaWinProb * 100);
+}
+
 const T = {
   KIA:{name:"KIA 타이거즈",color:"#E31837"},
   삼성:{name:"삼성 라이온즈",color:"#1E4489"},
@@ -4355,6 +4401,11 @@ function setTab(t){
   if(t !== 'my') state.myTab = null; // 마이페이지 벗어나면 카드 모두 닫기
   state.tab=t;
   render();
+  // PC 사이드바 active 클래스 업데이트
+  ['cal','stand','my'].forEach(id => {
+    const btn = document.getElementById('pc-btn-'+id);
+    if (btn) btn.classList.toggle('active', id === t);
+  });
   // PC: content-wrapper 스크롤, 모바일: window 스크롤
   var cw = document.getElementById('content-wrapper');
   if (cw && window.innerWidth >= 900) { cw.scrollTop = 0; }
@@ -4751,6 +4802,140 @@ window.addEventListener('popstate', e => {
   if (state.modalGame) closeModal();
 });
 
+// ── PC 우측 패널 + 사이드바 시계 업데이트 ──
+function renderPcPanels() {
+  if (window.innerWidth < 900) return;
+  const now = state.clock || new Date();
+
+  // 1) 사이드바 시계 + 날짜
+  const timeEl = document.getElementById('pc-clock-time');
+  const dateEl = document.getElementById('pc-clock-date');
+  if (timeEl) timeEl.textContent = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  if (dateEl) dateEl.textContent = now.toLocaleDateString('ko-KR',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+
+  // 2) 오늘의 KIA
+  const todayEl = document.getElementById('rp-today-game');
+  const ddayEl  = document.getElementById('rp-dday-val');
+  if (todayEl) {
+    const todayStr = now.toISOString().slice(0,10);
+    const kiaGame  = SCH.find(g => g.date === todayStr && (g.away==='KIA'||g.home==='KIA'));
+    const nextGame = !kiaGame ? SCH.find(g => g.date > todayStr && (g.away==='KIA'||g.home==='KIA')) : null;
+    const game = kiaGame || nextGame;
+    if (game) {
+      const isToday = game.date === todayStr;
+      const opp = game.away==='KIA' ? game.home : game.away;
+      const isHome = game.home==='KIA';
+      const oppColor = (T[opp]||{}).color||'#888';
+      const [gy,gm,gd] = game.date.split('-').map(Number);
+      const dw = ['일','월','화','수','목','금','토'][new Date(game.date+'T12:00:00').getDay()];
+      // D-day 계산
+      const diffMs = new Date(game.date+'T'+game.time+':00').getTime() - now.getTime();
+      const diffD  = Math.ceil(diffMs / 86400000);
+      const dDayTxt = isToday ? (game.status==='FINAL'?'종료':'진행' ) : (diffD===0?'D-Day':`D-${diffD}`);
+      if (ddayEl) ddayEl.textContent = dDayTxt;
+
+      const isLiveOrFinal = game.status==='LIVE'||game.status==='FINAL';
+      const kiaIsHome2 = game.home==='KIA';
+      const kiaS2 = kiaIsHome2 ? game.homeScore : game.awayScore;
+      const oppS2 = kiaIsHome2 ? game.awayScore : game.homeScore;
+
+      // 승리 확률 계산
+      let wpHtml = '';
+      if (isLiveOrFinal && kiaS2 != null && oppS2 != null) {
+        let kiaWp;
+        if (game.status==='FINAL') {
+          kiaWp = kiaS2 > oppS2 ? 100 : kiaS2 < oppS2 ? 0 : 50;
+        } else {
+          kiaWp = calcWinProb(kiaS2, oppS2, game.inning||1, game.inningInfo, kiaIsHome2);
+        }
+        if (kiaWp != null) {
+          const oppWp = 100 - kiaWp;
+          const wpLabel = kiaWp>70?'우세':kiaWp>55?'유리':kiaWp>45?'박빙':kiaWp>30?'불리':'열세';
+          const wpColor = kiaWp>=55?'#E31837':kiaWp>=45?'#FF9500':'#3B9EF5';
+          const gamePhase = game.status==='FINAL'?'최종':(game.inningInfo||'진행중');
+          wpHtml = `<div style="margin-top:8px">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+              <div style="font-size:9px;font-weight:800;color:var(--c-muted);letter-spacing:.08em">승리 확률 · ${gamePhase}</div>
+              <div style="font-size:9px;font-weight:900;color:${wpColor};border:1px solid ${wpColor}40;border-radius:4px;padding:1px 6px">${wpLabel}</div>
+            </div>
+            <div style="display:flex;height:18px;border-radius:9px;overflow:hidden;background:rgba(0,0,0,0.08)">
+              <div style="width:${kiaWp}%;background:linear-gradient(90deg,#c8102e,#E31837);display:flex;align-items:center;justify-content:flex-end;padding-right:5px;transition:width .8s">
+                ${kiaWp>18?`<span style="font-size:9px;font-weight:900;color:#fff">${kiaWp}%</span>`:''}
+              </div>
+              <div style="flex:1;background:rgba(59,158,245,0.22);display:flex;align-items:center;padding-left:5px">
+                ${oppWp>18?`<span style="font-size:9px;font-weight:900;color:var(--c-sub)">${oppWp}%</span>`:''}
+              </div>
+            </div>
+            <div style="display:flex;justify-content:space-between;margin-top:2px">
+              <span style="font-size:9px;color:var(--c-muted);font-weight:700">KIA</span>
+              <span style="font-size:9px;color:var(--c-muted);font-weight:700">${opp}</span>
+            </div>
+          </div>`;
+        }
+      }
+
+      const scoreHtml = isLiveOrFinal && game.awayScore !== undefined
+        ? `<div style="font-size:20px;font-weight:900;letter-spacing:1px;margin:4px 0">${game.awayScore} : ${game.homeScore}</div>`
+        : `<div style="font-size:12px;color:var(--c-sub);margin:4px 0">${game.time} 시작</div>`;
+
+      todayEl.innerHTML = `
+        <div onclick="selDate('${game.date}')" style="cursor:pointer;background:linear-gradient(135deg,rgba(227,24,55,0.08),transparent);border:1px solid rgba(227,24,55,0.18);border-radius:12px;padding:10px 12px;margin-top:6px">
+          <div style="font-size:10px;font-weight:700;color:var(--c-sub);margin-bottom:4px">${gm}/${gd}(${dw}) ${game.time}${isToday?'  🔴 오늘':''}</div>
+          <div style="display:flex;align-items:center;justify-content:space-between">
+            <div style="font-size:11px;font-weight:800;color:#E31837">KIA</div>
+            <div style="font-size:10px;color:var(--c-muted)">${isHome?'홈':'원정'}</div>
+            <div style="font-size:11px;font-weight:800;color:${oppColor}">${opp}</div>
+          </div>
+          ${scoreHtml}
+          ${wpHtml}
+          <div style="font-size:9.5px;color:var(--c-muted);margin-top:2px">📍 ${game.stad}</div>
+        </div>`;
+    } else {
+      if (ddayEl) ddayEl.textContent = '--';
+      todayEl.innerHTML = `<div style="font-size:11px;color:var(--c-muted);text-align:center;padding:10px">경기 일정 없음</div>`;
+    }
+  }
+
+  // 3) 순위 스냅샷 (SCH 데이터 기반 승률 계산)
+  const standEl = document.getElementById('rp-standings');
+  if (standEl) {
+    const todayStr2 = now.toISOString().slice(0,10);
+    const teams = Object.keys(T);
+    const stats = {};
+    teams.forEach(t => { stats[t] = {w:0,l:0,d:0}; });
+    SCH.forEach(g => {
+      if (g.date >= todayStr2) return;
+      if (g.status !== 'FINAL' || g.awayScore === undefined) return;
+      const aw = Number(g.awayScore), hw = Number(g.homeScore);
+      if (aw === hw) { if(stats[g.away]) stats[g.away].d++; if(stats[g.home]) stats[g.home].d++; }
+      else if (aw > hw) { if(stats[g.away]) stats[g.away].w++; if(stats[g.home]) stats[g.home].l++; }
+      else { if(stats[g.home]) stats[g.home].w++; if(stats[g.away]) stats[g.away].l++; }
+    });
+    const sorted = teams.map(t => {
+      const s = stats[t]; const gp = s.w+s.l+s.d;
+      const pct = gp ? s.w/gp : 0;
+      return {t, w:s.w, l:s.l, d:s.d, pct};
+    }).sort((a,b) => b.pct-a.pct || b.w-a.w);
+
+    const rows = sorted.map((s,i) => {
+      const isKia = s.t==='KIA';
+      const color = isKia ? '#E31837' : 'var(--c-text)';
+      const bg    = isKia ? 'background:rgba(227,24,55,0.07);' : '';
+      return `<div style="${bg}display:flex;align-items:center;padding:4px 8px;border-radius:6px;gap:4px">
+        <span style="font-size:10px;font-weight:700;color:var(--c-muted);width:14px;text-align:center">${i+1}</span>
+        <span style="font-size:11px;font-weight:${isKia?900:700};color:${color};flex:1">${s.t}</span>
+        <span style="font-size:10px;color:var(--c-sub)">${s.w}승 ${s.l}패</span>
+        <span style="font-size:10px;font-weight:700;color:${color};width:38px;text-align:right">.${s.pct?Math.round(s.pct*1000).toString().padStart(3,'0'):'---'}</span>
+      </div>`;
+    }).join('');
+    standEl.innerHTML = rows || `<div style="text-align:center;padding:10px;font-size:11px;color:var(--c-muted)">경기 데이터 로딩 중...</div>`;
+  }
+
+  // 4) 마지막 갱신 시간
+  const upEl = document.getElementById('rp-last-update');
+  if (upEl) upEl.textContent = now.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit'});
+}
+
 setInterval(()=>{
   state.clock=new Date();
   const focused = document.activeElement;
@@ -4761,8 +4946,10 @@ setInterval(()=>{
       const clockEl = document.querySelector('#content [data-clock]');
       if (clockEl) clockEl.textContent = state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     }
+    renderPcPanels();
   } else {
     render();
+    renderPcPanels();
   }
 },1000);
 
@@ -6336,7 +6523,8 @@ async function _initApp() {
   initGameCache();           // localStorage 캐시 SCH에 반영
   try { await initServerSync(); } catch(e) {}  // 서버 sync (실패해도 진행)
   render();                  // 첫 화면
-  fetchTodayScores().then(() => render()).catch(() => {});
+  renderPcPanels();          // PC 우측 패널 초기 렌더
+  fetchTodayScores().then(() => { render(); renderPcPanels(); }).catch(() => {});
   // 내 기록 탭 데이터 보완 (이닝/투수 없는 경기)
   setTimeout(() => _fetchMissingMemoData(), 1500);
 }
