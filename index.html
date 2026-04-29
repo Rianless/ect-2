@@ -5587,6 +5587,20 @@ function renderRelayText(relays, away, home) {
           const stuffColor = stuff==='직구'||stuff==='투심'?'#E31837': stuff==='슬라이더'||stuff==='커터'?'#0078ff': stuff==='커브'||stuff==='너클커브'?'#9C27B0': stuff==='포크'||stuff==='체인지업'?'#FF6600': '#555';
           return ` <span style="font-size:11px;font-weight:700;color:${stuffColor};background:${stuffColor}18;border:1px solid ${stuffColor}44;border-radius:4px;padding:1px 5px;margin-left:4px">${pitchNum}${stuff}${speed?' '+speed:''}</span>`;
         })()}</div>
+        ${(()=>{
+          // 홈인/생환/득점 관련 textOptions 표시 (두 번째 사진처럼)
+          const scoringLines = opts
+            .filter(o => {
+              const t = o.text || o.title || '';
+              return /홈인|생환|홈런|득점|\d+루주자/.test(t) && t !== title;
+            })
+            .map(o => o.text || o.title || '')
+            .filter((t,i,a) => t && a.indexOf(t)===i); // 중복제거
+          if (!scoringLines.length) return '';
+          return `<div style="margin-top:6px;padding:6px 10px;background:${dark?'rgba(227,24,55,0.08)':'rgba(227,24,55,0.06)'};border-radius:6px;border-left:2px solid #E31837">` +
+            scoringLines.map(t => `<div style="font-size:12px;color:#E31837;font-weight:600;line-height:1.7">${t}</div>`).join('') +
+            `</div>`;
+        })()}
         ${scoreDisp?`<div style="margin-top:3px">${scoreDisp}</div>`:''}
       </div>
     </div>`;
