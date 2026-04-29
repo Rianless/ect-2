@@ -5737,6 +5737,14 @@ function updateRelayUI() {
     tabs.style.borderColor = dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.07)';
     let maxInn = 9;
     if (game.inning && parseInt(game.inning) > 9) maxInn = parseInt(game.inning);
+    const innArrMax = Math.max(game.awayInnings?.length||0, game.homeInnings?.length||0);
+    if (innArrMax > maxInn) maxInn = innArrMax;
+    if (game.textRelays?.length) {
+      for (const r of game.textRelays) {
+        const m = (r.title||r.text||'').match(/^(\d+)회(초|말)/);
+        if (m && parseInt(m[1]) > maxInn) maxInn = parseInt(m[1]);
+      }
+    }
 
     // 득점 탭 (맨 앞)
     const scoreSel = _relayTab === 'score';
