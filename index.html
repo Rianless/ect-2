@@ -4898,36 +4898,27 @@ function renderPcPanels() {
   // 3) 순위 스냅샷 (SCH 데이터 기반 승률 계산)
   const standEl = document.getElementById('rp-standings');
   if (standEl) {
-    const todayStr2 = new Date(now.getTime()+9*3600000).toISOString().slice(0,10);
-    const teams = Object.keys(T);
-    const stats = {};
-    teams.forEach(t => { stats[t] = {w:0,l:0,d:0}; });
-    SCH.forEach(g => {
-      if (g.date > todayStr2) return;  // 오늘 종료 경기도 반영
-      if (g.status !== 'FINAL' || g.awayScore === undefined) return;
-      const aw = Number(g.awayScore), hw = Number(g.homeScore);
-      if (aw === hw) { if(stats[g.away]) stats[g.away].d++; if(stats[g.home]) stats[g.home].d++; }
-      else if (aw > hw) { if(stats[g.away]) stats[g.away].w++; if(stats[g.home]) stats[g.home].l++; }
-      else { if(stats[g.home]) stats[g.home].w++; if(stats[g.away]) stats[g.away].l++; }
-    });
-    const sorted = teams.map(t => {
-      const s = stats[t]; const gp = s.w+s.l+s.d;
-      const pct = gp ? s.w/gp : 0;
-      return {t, w:s.w, l:s.l, d:s.d, pct};
-    }).sort((a,b) => b.pct-a.pct || b.w-a.w);
-
-    const rows = sorted.map((s,i) => {
-      const isKia = s.t==='KIA';
-      const color = isKia ? '#E31837' : 'var(--c-text)';
-      const bg    = isKia ? 'background:rgba(227,24,55,0.07);' : '';
-      return `<div style="${bg}display:flex;align-items:center;padding:4px 8px;border-radius:6px;gap:4px">
-        <span style="font-size:10px;font-weight:700;color:var(--c-muted);width:14px;text-align:center">${i+1}</span>
-        <span style="font-size:11px;font-weight:${isKia?900:700};color:${color};flex:1">${s.t}</span>
-        <span style="font-size:10px;color:var(--c-sub)">${s.w}승 ${s.l}패</span>
-        <span style="font-size:10px;font-weight:700;color:${color};width:38px;text-align:right">.${s.pct?Math.round(s.pct*1000).toString().padStart(3,'0'):'---'}</span>
-      </div>`;
-    }).join('');
-    standEl.innerHTML = rows || `<div style="text-align:center;padding:10px;font-size:11px;color:var(--c-muted)">경기 데이터 로딩 중...</div>`;
+    // API에서 실시간 순위 fetch
+    fetch('/api/kboScores?action=standings')
+      .then(r => r.json())
+      .then(data => {
+        const list = data.standings || [];
+        if (!list.length) { standEl.innerHTML = `<div style="text-align:center;padding:10px;font-size:11px;color:var(--c-muted)">순위 데이터 없음</div>`; return; }
+        const sorted = [...list].sort((a,b) => a.rank - b.rank || b.wins - a.wins);
+        standEl.innerHTML = sorted.map((s,i) => {
+          const isKia = s.team === 'KIA';
+          const color = isKia ? '#E31837' : 'var(--c-text)';
+          const bg = isKia ? 'background:rgba(227,24,55,0.07);' : '';
+          const pctStr = s.pct != null ? String(Number(s.pct).toFixed(3)).replace(/^0/,'') : '---';
+          return `<div style="${bg}display:flex;align-items:center;padding:4px 8px;border-radius:6px;gap:4px">
+            <span style="font-size:10px;font-weight:700;color:var(--c-muted);width:14px;text-align:center">${s.rank||i+1}</span>
+            <span style="font-size:11px;font-weight:${isKia?900:700};color:${color};flex:1">${s.team}</span>
+            <span style="font-size:10px;color:var(--c-sub)">${s.wins}승 ${s.losses}패</span>
+            <span style="font-size:10px;font-weight:700;color:${color};width:38px;text-align:right">${pctStr}</span>
+          </div>`;
+        }).join('');
+      })
+      .catch(() => { standEl.innerHTML = `<div style="text-align:center;padding:10px;font-size:11px;color:var(--c-muted)">순위 로딩 실패</div>`; });
   }
 
   // 4) 마지막 갱신 시간
