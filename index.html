@@ -1370,8 +1370,8 @@ function renderCalSplit(d) {
     const isToday2 = bannerGame.date === todayStr2;
     const isLiveNow = bannerGame.status==='LIVE';
     const isFinalNow = bannerGame.status==='FINAL';
-    const kScore2 = isHome2?(bannerGame.homeScore??0):(bannerGame.awayScore??0);
-    const oScore2 = isHome2?(bannerGame.awayScore??0):(bannerGame.homeScore??0);
+    const kScore2 = isHome2?(bannerGame.homeScore??null):(bannerGame.awayScore??null);
+    const oScore2 = isHome2?(bannerGame.awayScore??null):(bannerGame.homeScore??null);
     const isWin2 = kScore2 > oScore2;
     const isDraw2 = kScore2 === oScore2;
 
@@ -1408,7 +1408,7 @@ function renderCalSplit(d) {
         ${logo('KIA',36)}
         <div style="flex-shrink:0;text-align:center">
           ${rightContent
-            ? `<div style="font-size:20px;font-weight:900;color:#fff;white-space:nowrap;line-height:1">${kScore2}<span style="font-size:11px;opacity:0.65;margin:0 3px">:</span>${oScore2}</div>`
+            ? `<div style="font-size:20px;font-weight:900;color:#fff;white-space:nowrap;line-height:1">${kScore2??0}<span style="font-size:11px;opacity:0.65;margin:0 3px">:</span>${oScore2??0}</div>`
             : `<div style="font-size:12px;font-weight:900;color:rgba(255,255,255,0.85);white-space:nowrap">VS</div>`
           }
         </div>
@@ -3637,14 +3637,13 @@ function renderModal(d) {
   const kiaHome=g.home==='KIA';
   const lTeam=kiaHome?g.home:g.away, rTeam=kiaHome?g.away:g.home;
   const lLabel=kiaHome?'HOME':'AWAY', rLabel=kiaHome?'AWAY':'HOME';
-  const lScore=kiaHome?(g.homeScore??0):(g.awayScore??0);
-  const rScore=kiaHome?(g.awayScore??0):(g.homeScore??0);
+  const isLive=g.status==='LIVE', isFinal=g.status==='FINAL';
+  const lScore=isSch?'-':(kiaHome?(g.homeScore??0):(g.awayScore??0));
+  const rScore=isSch?'-':(kiaHome?(g.awayScore??0):(g.homeScore??0));
   const lName=splitTeamName(lTeam), rName=splitTeamName(rTeam);
   const memoRaw=localStorage.getItem(`m_${g.date}_${g.away}_${g.home}`)||'{}';
   let memoData={};
   try{ memoData=JSON.parse(memoRaw); if(typeof memoData==='string') memoData={text:memoRaw}; }catch(e){ memoData={text:memoRaw}; }
-
-  const isLive=g.status==='LIVE', isFinal=g.status==='FINAL';
 
   // 이닝 스코어 테이블
   const lInn = (lTeam===g.away ? g.awayInnings : g.homeInnings) || [];
@@ -4817,7 +4816,7 @@ function renderPcPanels() {
   const todayEl = document.getElementById('rp-today-game');
   const ddayEl  = document.getElementById('rp-dday-val');
   if (todayEl) {
-    const todayStr = now.toISOString().slice(0,10);
+    const todayStr = new Date(now.getTime()+9*3600000).toISOString().slice(0,10);
     const kiaGame  = SCH.find(g => g.date === todayStr && (g.away==='KIA'||g.home==='KIA'));
     const nextGame = !kiaGame ? SCH.find(g => g.date > todayStr && (g.away==='KIA'||g.home==='KIA')) : null;
     const game = kiaGame || nextGame;
@@ -4899,12 +4898,12 @@ function renderPcPanels() {
   // 3) 순위 스냅샷 (SCH 데이터 기반 승률 계산)
   const standEl = document.getElementById('rp-standings');
   if (standEl) {
-    const todayStr2 = now.toISOString().slice(0,10);
+    const todayStr2 = new Date(now.getTime()+9*3600000).toISOString().slice(0,10);
     const teams = Object.keys(T);
     const stats = {};
     teams.forEach(t => { stats[t] = {w:0,l:0,d:0}; });
     SCH.forEach(g => {
-      if (g.date >= todayStr2) return;
+      if (g.date > todayStr2) return;  // 오늘 종료 경기도 반영
       if (g.status !== 'FINAL' || g.awayScore === undefined) return;
       const aw = Number(g.awayScore), hw = Number(g.homeScore);
       if (aw === hw) { if(stats[g.away]) stats[g.away].d++; if(stats[g.home]) stats[g.home].d++; }
