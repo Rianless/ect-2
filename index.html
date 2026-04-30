@@ -6680,4 +6680,29 @@ function _checkKiaHitNotify(relayData, away, home) {
       const isHR   = /홈런/.test(title);
       const isHit  = !isHR && /(1루타|안타|2루타|3루타)/.test(title);
       const isBB   = !isHR && !isHit && /(볼넷|사구|고의사구)/.test(title);
-      if (!isHR && !isH
+      if (!isHR && !isHit && !isBB) return;
+
+      // KIA 타자인지 확인
+      const kiaAtBat = kiaIsHome
+        ? /^[1-9]번타자/.test(title) && !/(NC|KT|LG|SSG|두산|롯데|삼성|한화|키움)/.test(title)
+        : /^[1-9]번타자/.test(title);
+
+      if (!kiaAtBat) return;
+
+      const key = it.title || it.text || '';
+      if (_notifiedRelayKeys.has(key)) return;
+      _notifiedRelayKeys.add(key);
+
+      const emoji = isHR ? '🏠💥' : isHit ? '⚾' : '🟡';
+      const type  = isHR ? '홈런!' : isHit ? '안타!' : '볼넷';
+      new Notification(`KIA ${type} ${emoji}`, {
+        body: title,
+        icon: '/icon-192.png',
+        tag: key,
+      });
+    });
+  });
+}
+</script>
+</body>
+</html>
