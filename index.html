@@ -4898,20 +4898,18 @@ function renderPcPanels() {
   // 3) 순위 스냅샷 (SCH 데이터 기반 승률 계산)
   const standEl = document.getElementById('rp-standings');
   if (standEl) {
-    // API에서 실시간 순위 fetch
     fetch('/api/kboScores?action=standings')
       .then(r => r.json())
       .then(data => {
         const list = data.standings || [];
         if (!list.length) { standEl.innerHTML = `<div style="text-align:center;padding:10px;font-size:11px;color:var(--c-muted)">순위 데이터 없음</div>`; return; }
-        const sorted = [...list].sort((a,b) => a.rank - b.rank || b.wins - a.wins);
-        standEl.innerHTML = sorted.map((s,i) => {
+        standEl.innerHTML = list.map((s,i) => {
           const isKia = s.team === 'KIA';
           const color = isKia ? '#E31837' : 'var(--c-text)';
           const bg = isKia ? 'background:rgba(227,24,55,0.07);' : '';
-          const pctStr = s.pct != null ? String(Number(s.pct).toFixed(3)).replace(/^0/,'') : '---';
+          const pctStr = s.pct ? String(s.pct).replace(/^0/,'') : '---';
           return `<div style="${bg}display:flex;align-items:center;padding:4px 8px;border-radius:6px;gap:4px">
-            <span style="font-size:10px;font-weight:700;color:var(--c-muted);width:14px;text-align:center">${s.rank||i+1}</span>
+            <span style="font-size:10px;font-weight:700;color:var(--c-muted);width:14px;text-align:center">${s.rank}</span>
             <span style="font-size:11px;font-weight:${isKia?900:700};color:${color};flex:1">${s.team}</span>
             <span style="font-size:10px;color:var(--c-sub)">${s.wins}승 ${s.losses}패</span>
             <span style="font-size:10px;font-weight:700;color:${color};width:38px;text-align:right">${pctStr}</span>
