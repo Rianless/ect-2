@@ -486,6 +486,38 @@ export default async function handler(req, res) {
     }
 
     // ── action=lineup: 라인업 + currentGameState ──
+    // ── 순위 액션 ──
+    if (action === 'standings') {
+      const standUrls = [
+        `https://api-gw.sports.naver.com/schedule/standings?upperCategoryId=kbaseball&categoryId=kbo&seasonYear=${kst.getUTCFullYear()}`,
+        `https://api-gw.sports.naver.com/schedule/games/standings?upperCategoryId=kbaseball&categoryId=kbo`,
+      ];
+      for (const url of standUrls) {
+        try {
+          const r = await fetchWithTimeout(url, { headers: HEADERS }, 5000);
+          if (!r.ok) continue;
+          const data = await r.json();
+          const result = data?.result || data;
+          const raw = result?.teamStandings || result?.standings || result?.list
+            || result?.teams || result?.rankList || (Array.isArray(result) ? result : null);
+          if (!raw?.length) { console.log('[standings] empty from', url, 'keys:', Object.keys(result||{}).slice(0,10)); continue; }
+          const rows = raw.map(t => ({
+            team: mapTeam(t.teamCode || t.code || t.team || '') || t.teamName || t.name || '',
+            rank: Number(t.rank || t.rankNo || t.rankNum || 0),
+            wins: Number(t.win || t.wins || t.w || 0),
+            losses: Number(t.lose || t.loss || t.losses || t.l || 0),
+            draws: Number(t.drawn || t.draw || t.draws || t.d || 0),
+            pct: t.wra || t.winRate || t.pct || null,
+          })).filter(t => t.team);
+          console.log('[standings] OK rows:', rows.length);
+          return res.status(200).json({ standings: rows });
+        } catch(e) {
+          console.log('[standings] error', e.message);
+        }
+      }
+      return res.status(500).json({ error: 'standings fetch failed' });
+    }
+
     if (gameId && action === 'lineup') {
       const inn = inning || 1;
 
