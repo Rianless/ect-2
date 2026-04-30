@@ -2311,7 +2311,7 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor) {
       html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.hit>0?700:400)+';color:'+(p.hit>0?sideColor:d.sub)+'">'+(p.hit||0)+'</td>';
       html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.kk||0)+'</td>';
       html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.bb>0?700:400)+';color:'+(p.bb>0?'#E31837':d.sub)+'">'+(p.bb||0)+'</td>';
-      html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.er>0?700:400)+';color:'+(p.er>0?'#E31837':d.sub)+'">'+(p.er||0)+'</td></tr>';
+      html += '<td style="padding:6px 5px;text-align:center;font-weight:'+((p.r||p.er)>0?700:400)+';color:'+((p.r||p.er)>0?'#E31837':d.sub)+'">'+(p.r||p.er||0)+'</td></tr>';
     });
     html += '</tbody></table></div>';
   }
@@ -4245,7 +4245,7 @@ function renderModal(d) {
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.hit>0?700:400};color:${p.hit>0?sideColor:d.sub}">${p.hit||0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;color:${d.sub}">${p.kk||0}</td>`;
               html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.bb>0?700:400};color:${p.bb>0?'#E31837':d.sub}">${p.bb||0}</td>`;
-              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${p.er>0?700:400};color:${p.er>0?'#E31837':d.sub}">${p.er||0}</td>`;
+              html2 += `<td style="padding:7px 6px;text-align:center;font-size:12px;font-weight:${(p.r||p.er)>0?700:400};color:${(p.r||p.er)>0?'#E31837':d.sub}">${p.r||p.er||0}</td>`;
               html2 += `</tr>`;
             });
             html2 += `</tbody></table></div>`;
@@ -4518,7 +4518,7 @@ function _parseBatters(src) {
 }
 function _parsePitchers(src) {
   const arr = Array.isArray(src) ? src : (src?.pitcher || []);
-  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:Number(p.er||p.r||p.run||p.ra||p.earnedRun||p.runs||0), kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.ballCount||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0), sp:Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0) }));
+  return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:Number(p.er||p.earnedRun||0), r:Number(p.r||p.run||p.ra||p.runs||p.er||p.earnedRun||0), kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.ballCount||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0), sp:Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0) }));
 }
 
 async function fetchLineupDirect(gameId, inning) {
@@ -5093,7 +5093,8 @@ function parseBrowserPitchers(pitchers) {
     seqno: p.seqno,
     name: p.name,
     inn: p.inn || '0',
-    er: Number(p.er||p.r||p.run||p.ra||p.earnedRun||p.runs||0),
+    er: Number(p.er||p.earnedRun||0),
+    r: Number(p.r||p.run||p.ra||p.runs||p.er||p.earnedRun||0),
     kk: p.kk || 0,
     bb: p.bb || 0,
     hit: Number(p.hit||p.ha||p.allowedHit||0),
