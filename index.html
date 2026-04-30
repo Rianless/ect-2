@@ -5093,7 +5093,7 @@ function parseBrowserPitchers(pitchers) {
     seqno: p.seqno,
     name: p.name,
     inn: p.inn || '0',
-    er: p.er || 0,
+    er: Number(p.er||p.r||p.run||p.ra||p.earnedRun||p.runs||0),
     kk: p.kk || 0,
     bb: p.bb || 0,
     hit: Number(p.hit||p.ha||p.allowedHit||0),
