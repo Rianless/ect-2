@@ -490,8 +490,9 @@ export default async function handler(req, res) {
     if (action === 'standings') {
       const year = kst.getUTCFullYear();
       const months = [];
+      const seasonStart = `${year}-03-28`;
       for (let m = 3; m <= kst.getUTCMonth() + 1; m++) {
-        const from = `${year}-${String(m).padStart(2,'0')}-01`;
+        const from = m === 3 ? seasonStart : `${year}-${String(m).padStart(2,'0')}-01`;
         const lastDay = new Date(year, m, 0).getDate();
         const to = m === kst.getUTCMonth() + 1
           ? todayDash
@@ -529,7 +530,7 @@ export default async function handler(req, res) {
         return { team: t, wins: s.w, losses: s.l, draws: s.d, pct };
       }).sort((a,b) => Number(b.pct||0) - Number(a.pct||0) || b.wins - a.wins)
         .map((r,i) => ({ ...r, rank: i+1 }));
-      console.log('[standings] computed from schedule, total games:', allGames.length);
+      console.log('[standings] computed from schedule, total games:', allGames.length, 'KIA:', JSON.stringify(stats['KIA']));
       return res.status(200).json({ standings: rows });
     }
 
@@ -585,6 +586,7 @@ export default async function handler(req, res) {
           kk:  Number(p.kk  ?? p.so    ?? p.strikeout ?? 0),
           bb:  Number(p.bb  ?? p.walk  ?? p.walks     ?? 0),
           er:  Number(p.er  ?? p.earnedRun ?? p.earnedRuns ?? 0),
+          r:   Number(p.r   ?? p.run   ?? p.runs  ?? p.ra ?? p.er ?? p.earnedRun ?? 0),
           hit: Number(p.hit ?? p.hits  ?? 0),
           pc:  Number(p.pc  ?? p.ballCount ?? p.pitchCount ?? p.numPitch ?? p.pitches ?? p.np ?? p.numberOfPitches ?? p.pitchThrown ?? p.totalPitches ?? 0),
           sp:  Number(p.sp  ?? p.strikeCount ?? p.strikes ?? p.numStrike ?? p.numberOfStrikes ?? 0),
@@ -671,6 +673,8 @@ export default async function handler(req, res) {
         };
       }
 
+      const sampleP = [...(homePitcherArr||[]),...(awayPitcherArr||[])][0];
+      if (sampleP) console.log('[pitcher sample keys]', Object.keys(sampleP).slice(0,20), 'r:', sampleP.r, 'er:', sampleP.er, 'run:', sampleP.run);
       console.log('[action=lineup] homeB:', homeBatterArr.length, 'awayB:', awayBatterArr.length,
         'homeP:', homePitcherArr.length, 'awayP:', awayPitcherArr.length,
         'gs:', !!gs, 'pitcher:', gs?.pitcherName, 'batter:', gs?.batterName);
