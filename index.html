@@ -5535,8 +5535,10 @@ function renderRelayText(relays, away, home) {
       badge='내야안타'; bdColor='#FF6600'; bdBg='rgba(255,102,0,0.1)';
     } else if (fullText.match(/삼진|스트라이크 아웃/)) {
       badge='삼진'; bdColor='#666'; bdBg='rgba(0,0,0,0.07)';
-    } else if (fullText.match(/볼넷|사구|고의사구/)) {
+    } else if (fullText.match(/볼넷|고의사구/)) {
       badge='볼넷'; bdColor='#0078ff'; bdBg='rgba(0,120,255,0.09)';
+    } else if (fullText.match(/사구|몸에 맞는 볼|몸맞는볼|데드볼|HBP/)) {
+      badge='사구'; bdColor='#FF6600'; bdBg='rgba(255,102,0,0.09)';
     } else if (fullText.match(/땅볼 아웃|플라이 아웃|라인드라이브 아웃|파울 플라이|병살/)) {
       badge='아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
     } else if (fullText.match(/아웃|출루/)) {
