@@ -5833,7 +5833,7 @@ function renderScoringPlays(plays, dark) {
   }
 
   return plays.map(p => {
-    const isHR = /홈런/.test(p.title);
+    const isHR = /홈런/.test(p.title) && !/비디오 판독|판독.*번복|2루타→|1루타→|3루타→/.test(p.title);
     // 득점팀 색상
     const teamColor = p.scoringTeam === 'away' ? awayColor
                     : p.scoringTeam === 'home' ? homeColor
@@ -5887,7 +5887,7 @@ async function fetchAllScoringPlays(gameId, maxInn) {
           const awayS = Number(gs?.awayScore ?? -1);
           const homeS = Number(gs?.homeScore ?? -1);
           const scored = (awayS > prevAwayScore) || (homeS > prevHomeScore);
-          const isKeyword = /홈런|타점|득점|희생플라이|밀어내기|끝내기/.test(title);
+          const isKeyword = /타점|득점|희생플라이|밀어내기|끝내기/.test(title);
           if (!scored && !isKeyword) return;
           const key = title.trim();
           if (seen.has(key)) return;
@@ -5901,7 +5901,7 @@ async function fetchAllScoringPlays(gameId, maxInn) {
             title, inning: i+'회',
             awayScore: awayS >= 0 ? awayS : '',
             homeScore: homeS >= 0 ? homeS : '',
-            isHR: /홈런/.test(title),
+            isHR: /홈런/.test(title) && !/→[^홈]*$|비디오 판독|판독.*번복|2루타→|1루타→|3루타→/.test(title),
             scoringTeam,
           });
         });
