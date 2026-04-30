@@ -5920,6 +5920,27 @@ async function fetchAllScoringPlays(gameId, maxInn) {
 window.switchRelayTab = async function(tab) {
   _relayTab = tab;
   updateRelayUI();
+  // 득점 탭: 삼성 스크롤 캡처 지원 — relay-box를 height:auto, relay-panel을 스크롤 컨테이너로
+  const relayBox  = document.getElementById('relay-box');
+  const relayBody = document.getElementById('relay-body');
+  const relayPanel = document.getElementById('relay-panel');
+  if (window.innerWidth < 1080) {
+    if (tab === 'score') {
+      if (relayBox)   relayBox.style.height  = 'auto';
+      if (relayBox)   relayBox.style.minHeight = '95vh';
+      if (relayBody)  relayBody.style.overflow = 'visible';
+      if (relayBody)  relayBody.style.maxHeight = 'none';
+      if (relayPanel) relayPanel.style.overflowY = 'auto';
+      if (relayPanel) relayPanel.style.alignItems = 'flex-start';
+    } else {
+      if (relayBox)   relayBox.style.height  = '95vh';
+      if (relayBox)   relayBox.style.minHeight = '';
+      if (relayBody)  relayBody.style.overflow = 'auto';
+      if (relayBody)  relayBody.style.maxHeight = '';
+      if (relayPanel) relayPanel.style.overflowY = '';
+      if (relayPanel) relayPanel.style.alignItems = '';
+    }
+  }
   if (tab === 'score') {
     // 캐시 없으면 fetch
     if (!_scoringCache || _scoringCache.gameId !== _relayGameId) {
