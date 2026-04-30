@@ -486,36 +486,51 @@ export default async function handler(req, res) {
     }
 
     // ── action=lineup: 라인업 + currentGameState ──
-    // ── 순위 액션 ──
+    // ── 순위 액션: 시즌 전체 일정 기반 계산 ──
     if (action === 'standings') {
-      const standUrls = [
-        `https://api-gw.sports.naver.com/schedule/standings?upperCategoryId=kbaseball&categoryId=kbo&seasonYear=${kst.getUTCFullYear()}`,
-        `https://api-gw.sports.naver.com/schedule/games/standings?upperCategoryId=kbaseball&categoryId=kbo`,
-      ];
-      for (const url of standUrls) {
-        try {
-          const r = await fetchWithTimeout(url, { headers: HEADERS }, 5000);
-          if (!r.ok) continue;
-          const data = await r.json();
-          const result = data?.result || data;
-          const raw = result?.teamStandings || result?.standings || result?.list
-            || result?.teams || result?.rankList || (Array.isArray(result) ? result : null);
-          if (!raw?.length) { console.log('[standings] empty from', url, 'keys:', Object.keys(result||{}).slice(0,10)); continue; }
-          const rows = raw.map(t => ({
-            team: mapTeam(t.teamCode || t.code || t.team || '') || t.teamName || t.name || '',
-            rank: Number(t.rank || t.rankNo || t.rankNum || 0),
-            wins: Number(t.win || t.wins || t.w || 0),
-            losses: Number(t.lose || t.loss || t.losses || t.l || 0),
-            draws: Number(t.drawn || t.draw || t.draws || t.d || 0),
-            pct: t.wra || t.winRate || t.pct || null,
-          })).filter(t => t.team);
-          console.log('[standings] OK rows:', rows.length);
-          return res.status(200).json({ standings: rows });
-        } catch(e) {
-          console.log('[standings] error', e.message);
-        }
+      const year = kst.getUTCFullYear();
+      const months = [];
+      for (let m = 3; m <= kst.getUTCMonth() + 1; m++) {
+        const from = `${year}-${String(m).padStart(2,'0')}-01`;
+        const lastDay = new Date(year, m, 0).getDate();
+        const to = m === kst.getUTCMonth() + 1
+          ? todayDash
+          : `${year}-${String(m).padStart(2,'0')}-${lastDay}`;
+        months.push({ from, to });
       }
-      return res.status(500).json({ error: 'standings fetch failed' });
+      const allResults = await Promise.all(months.map(async ({ from, to }) => {
+        try {
+          const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule&upperCategoryId=kbaseball&fromDate=${from}&toDate=${to}&size=500`;
+          const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
+          if (!r.ok) return [];
+          const data = await r.json();
+          return (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
+        } catch { return []; }
+      }));
+      const allGames = allResults.flat();
+      const TEAMS = ['KIA','KT','LG','SSG','NC','두산','롯데','삼성','한화','키움'];
+      const stats = {};
+      TEAMS.forEach(t => { stats[t] = {w:0,l:0,d:0}; });
+      allGames.forEach(g => {
+        const sc = g.statusCode || '';
+        if (sc !== 'RESULT' && sc !== 'FINAL') return;
+        const away = mapTeam(g.awayTeamCode);
+        const home = mapTeam(g.homeTeamCode);
+        const aw = Number(g.awayTeamScore), hw = Number(g.homeTeamScore);
+        if (isNaN(aw) || isNaN(hw) || (aw===0 && hw===0)) return;
+        if (aw > hw) { if(stats[away]) stats[away].w++; if(stats[home]) stats[home].l++; }
+        else if (hw > aw) { if(stats[home]) stats[home].w++; if(stats[away]) stats[away].l++; }
+        else { if(stats[away]) stats[away].d++; if(stats[home]) stats[home].d++; }
+      });
+      const rows = TEAMS.map(t => {
+        const s = stats[t];
+        const dec = s.w + s.l;
+        const pct = dec > 0 ? (s.w / dec).toFixed(3) : null;
+        return { team: t, wins: s.w, losses: s.l, draws: s.d, pct };
+      }).sort((a,b) => Number(b.pct||0) - Number(a.pct||0) || b.wins - a.wins)
+        .map((r,i) => ({ ...r, rank: i+1 }));
+      console.log('[standings] computed from schedule, total games:', allGames.length);
+      return res.status(200).json({ standings: rows });
     }
 
     if (gameId && action === 'lineup') {
