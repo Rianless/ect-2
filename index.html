@@ -6147,46 +6147,53 @@ function renderScoringPlays(plays, dark) {
   const homeColor = (T[_relayHome]||{}).color||'#888';
   const sub = dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
   const border = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const textColor = dark ? '#fff' : '#0A0E1A';
 
   if (!plays || !plays.length) {
     return `<div style="text-align:center;padding:60px 20px">
       <div style="font-size:36px;margin-bottom:12px">🤐</div>
-      <div style="font-size:14px;font-weight:700;color:${dark?'#fff':'#0A0E1A'}">득점 장면이 없어요</div>
+      <div style="font-size:14px;font-weight:700;color:${textColor}">득점 장면이 없어요</div>
       <div style="font-size:12px;color:${sub};margin-top:6px">무득점 경기이거나 데이터가 없습니다</div>
     </div>`;
   }
 
   return plays.map(p => {
-    const isHR = /홈런/.test(p.title) && !/비디오 판독|판독.*번복|2루타→|1루타→|3루타→/.test(p.title);
-    // 득점팀 색상
     const teamColor = p.scoringTeam === 'away' ? awayColor
                     : p.scoringTeam === 'home' ? homeColor
-                    : (isHR ? '#E31837' : '#FF9500');
-    const teamName  = p.scoringTeam === 'away' ? _relayAway
-                    : p.scoringTeam === 'home' ? _relayHome : '';
-    const badge = isHR ? '홈런 🔴' : '득점';
+                    : (p.isHR ? '#E31837' : '#FF9500');
+    const teamName = p.scoringTeam === 'away' ? _relayAway
+                   : p.scoringTeam === 'home' ? _relayHome : '';
 
-    // 이닝 + 팀 태그
-    const tags = `
-      ${p.inning ? `<span style="font-size:10px;color:${sub}">${p.inning}</span>` : ''}
-      ${teamName ? `<span style="font-size:10px;font-weight:700;color:${teamColor};background:${teamColor}18;border:1px solid ${teamColor}44;border-radius:4px;padding:1px 6px">${teamName}</span>` : ''}
-    `;
+    // 배지: 홈런/안타타입 + 득점수
+    const hitEmoji = p.isHR ? '💣 홈런' : p.hitType === '3루타' ? '③ 3루타' : p.hitType === '2루타' ? '② 2루타' : p.hitType === '안타' ? '🟡 안타' : p.hitType === '희생플라이' ? '희생플라이' : '득점';
+    const scoreDiffBadge = p.scoreDiff > 1 ? ` +${p.scoreDiff}점` : '';
+    const badge = hitEmoji + scoreDiffBadge;
 
-    // 스코어: 득점팀 숫자 크게
-    const scoreDisp = (p.awayScore!==''&&p.homeScore!=='') ? `
-      <div style="margin-top:4px;display:flex;align-items:baseline;gap:4px;font-size:11px">
-        <span style="font-weight:${p.scoringTeam==='away'?900:400};font-size:${p.scoringTeam==='away'?'14px':'11px'};color:${awayColor}">${p.awayScore}</span>
+    const tags = [
+      p.inning ? `<span style="font-size:10px;color:${sub}">${p.inning}</span>` : '',
+      teamName ? `<span style="font-size:10px;font-weight:700;color:${teamColor};background:${teamColor}18;border:1px solid ${teamColor}44;border-radius:4px;padding:1px 6px">${teamName}</span>` : '',
+    ].filter(Boolean).join('');
+
+    // 서브라인 (주자 홈인 정보) - 홈런이면 스킵 (홈런 자체가 전부 설명)
+    const subHtml = (!p.isHR && p.subLines && p.subLines.length)
+      ? p.subLines.map(t => `<div style="font-size:11px;color:${teamColor};font-weight:600;margin-top:2px">↳ ${t}</div>`).join('')
+      : '';
+
+    const scoreDisp = (p.awayScore !== '' && p.homeScore !== '') ? `
+      <div style="margin-top:5px;display:flex;align-items:baseline;gap:4px;font-size:11px">
+        <span style="font-weight:${p.scoringTeam==='away'?900:400};font-size:${p.scoringTeam==='away'?'15px':'11px'};color:${awayColor}">${p.awayScore}</span>
         <span style="color:${sub}">:</span>
-        <span style="font-weight:${p.scoringTeam==='home'?900:400};font-size:${p.scoringTeam==='home'?'14px':'11px'};color:${homeColor}">${p.homeScore}</span>
+        <span style="font-weight:${p.scoringTeam==='home'?900:400};font-size:${p.scoringTeam==='home'?'15px':'11px'};color:${homeColor}">${p.homeScore}</span>
         <span style="color:${sub};margin-left:2px;font-size:10px">${_relayAway} vs ${_relayHome}</span>
       </div>` : '';
 
     return `<div style="padding:12px 16px;border-bottom:1px solid ${border};border-left:3px solid ${teamColor}">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
-        <span style="font-size:10px;font-weight:700;color:${teamColor};background:${teamColor}15;border:1px solid ${teamColor}44;border-radius:5px;padding:2px 7px;white-space:nowrap">${badge}</span>
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        <span style="font-size:10px;font-weight:700;color:${teamColor};background:${teamColor}15;border:1px solid ${teamColor}44;border-radius:5px;padding:2px 8px;white-space:nowrap">${badge}</span>
         ${tags}
       </div>
-      <div style="font-size:13px;color:${dark?'#fff':'#0A0E1A'};line-height:1.5;font-weight:500">${p.title}</div>
+      <div style="font-size:13px;color:${textColor};line-height:1.5;font-weight:600">${p.title}</div>
+      ${subHtml}
       ${scoreDisp}
     </div>`;
   }).join('');
@@ -6195,41 +6202,71 @@ function renderScoringPlays(plays, dark) {
 // 전 이닝 득점 장면 수집
 async function fetchAllScoringPlays(gameId, maxInn) {
   const plays = [];
-  const seen = new Set();
   let prevAwayScore = 0, prevHomeScore = 0;
+
   for (let i = 1; i <= maxInn; i++) {
     try {
       const data = await fetchRelayData(gameId, i);
       if (!data) continue;
       const relays = [...(data.textRelays || [])].reverse();
+
       relays.forEach(item => {
-        const allItems = [item, ...(item.textOptions||[])];
-        allItems.forEach(it => {
-          const title = it.title || it.text || '';
-          if (!title || title.startsWith('=')) return;
-          const gs = it.currentGameState || item.currentGameState;
-          const awayS = Number(gs?.awayScore ?? -1);
-          const homeS = Number(gs?.homeScore ?? -1);
-          const scored = (awayS > prevAwayScore) || (homeS > prevHomeScore);
-          const isKeyword = /타점|득점|희생플라이|밀어내기|끝내기/.test(title);
-          if (!scored && !isKeyword) return;
-          const key = title.trim();
-          if (seen.has(key)) return;
-          seen.add(key);
-          // 득점한 팀 판별 (스코어 업데이트 전에 비교)
-          const scoringTeam = awayS > prevAwayScore ? 'away'
-                            : homeS > prevHomeScore ? 'home' : null;
-          if (awayS >= 0) prevAwayScore = awayS;
-          if (homeS >= 0) prevHomeScore = homeS;
-          plays.push({
-            title, inning: i+'회',
-            awayScore: awayS >= 0 ? awayS : '',
-            homeScore: homeS >= 0 ? homeS : '',
-            isHR: /홈런/.test(title) && !/→[^홈]*$|비디오 판독|판독.*번복|2루타→|1루타→|3루타→/.test(title),
-            scoringTeam,
-          });
+        const mainTitle = item.title || item.text || '';
+        if (!mainTitle || mainTitle.startsWith('=')) return;
+
+        // 이닝 헤더는 스킵
+        if (mainTitle.match(/^\d+회(초|말)/)) return;
+
+        // item 전체(주 item + textOptions) 에서 스코어 추출
+        const allItems = [item, ...(item.textOptions || [])];
+        let bestGs = null;
+        for (const it of allItems) {
+          const gs = it.currentGameState;
+          if (gs?.awayScore != null) { bestGs = gs; break; }
+        }
+        const awayS = Number(bestGs?.awayScore ?? -1);
+        const homeS = Number(bestGs?.homeScore ?? -1);
+
+        // 득점 발생 여부
+        const scored = (awayS > prevAwayScore) || (homeS > prevHomeScore);
+        const scoreDiff = Math.max(awayS - prevAwayScore, 0) + Math.max(homeS - prevHomeScore, 0);
+        const isKeyword = /타점|희생플라이|밀어내기|끝내기/.test(mainTitle);
+        if (!scored && !isKeyword) return;
+
+        const scoringTeam = awayS > prevAwayScore ? 'away'
+                          : homeS > prevHomeScore ? 'home' : null;
+        if (awayS >= 0) prevAwayScore = awayS;
+        if (homeS >= 0) prevHomeScore = homeS;
+
+        // 홈런/안타 타입 판별
+        const fullText = allItems.map(it => it.title || it.text || '').join(' ');
+        const isHR = /홈런/.test(fullText);
+        const hitType = isHR ? '홈런'
+          : /3루타/.test(fullText) ? '3루타'
+          : /2루타/.test(fullText) ? '2루타'
+          : /안타/.test(fullText) ? '안타'
+          : /희생플라이|희플/.test(fullText) ? '희생플라이'
+          : /희생번트|희타/.test(fullText) ? '희생번트'
+          : '';
+
+        // 홈인/득점 관련 서브 텍스트 수집 (주자 홈인 정보)
+        const subLines = (item.textOptions || [])
+          .map(o => o.title || o.text || '')
+          .filter(t => t && t !== mainTitle && /홈인|생환|홈으로|득점/.test(t));
+
+        plays.push({
+          title: mainTitle,
+          subLines,
+          hitType,
+          scoreDiff,
+          inning: i + '회',
+          awayScore: awayS >= 0 ? awayS : '',
+          homeScore: homeS >= 0 ? homeS : '',
+          isHR,
+          scoringTeam,
         });
       });
+
       if (_relayTab === 'score') {
         const body = document.getElementById('relay-body');
         const pct = Math.round((i / maxInn) * 100);
