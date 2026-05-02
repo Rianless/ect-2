@@ -1,6 +1,5 @@
-// KBO 대시보드 Service Worker v6
-const CACHE_NAME = 'kbo-v6';
-// index.html은 캐시 안 함 - 항상 네트워크에서 받아야 SCH 데이터 최신 유지
+// KBO 대시보드 Service Worker v7
+const CACHE_NAME = 'kbo-v7';
 const STATIC_ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', e => {
@@ -14,27 +13,13 @@ self.addEventListener('install', e => {
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
-      Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
+      Promise.all(keys.map(k => caches.delete(k)))
     ).then(() => self.clients.claim())
-    .then(() => {
-      // 모든 열린 탭에 새로고침 요청
-      return self.clients.matchAll({ type: 'window' }).then(clients => {
-        clients.forEach(client => client.navigate(client.url));
-      });
-    })
   );
-});
-
-// SKIP_WAITING 메시지 수신 시 즉시 활성화
-self.addEventListener('message', e => {
-  if (e.data === 'SKIP_WAITING' || e.data?.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
 });
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  // index.html / 루트 / JS·HTML 파일 → 항상 네트워크 우선 (캐시 저장 안 함)
   const noCache = url.pathname === '/' ||
     url.pathname.startsWith('/api/') ||
     url.pathname.endsWith('.html') ||
@@ -43,13 +28,11 @@ self.addEventListener('fetch', e => {
     e.respondWith(fetch(e.request).catch(() => caches.match(e.request)));
     return;
   }
-  // 나머지 (manifest 등) → 캐시 우선
   e.respondWith(
     caches.match(e.request).then(cached => cached || fetch(e.request))
   );
 });
 
-// 로컬 알림
 self.addEventListener('push', e => {
   let data = {};
   try { data = e.data ? e.data.json() : {}; } catch(err) {}
@@ -73,12 +56,13 @@ self.addEventListener('notificationclick', e => {
   );
 });
 
+// message 핸들러 (SKIP_WAITING + LOCAL_NOTIFY 통합)
 self.addEventListener('message', e => {
   if (e.data === 'SKIP_WAITING' || e.data?.type === 'SKIP_WAITING') {
     self.skipWaiting();
     return;
   }
-  if (e.data && e.data.type === 'LOCAL_NOTIFY') {
+  if (e.data?.type === 'LOCAL_NOTIFY') {
     const { title = '🐯 KIA', body = '', tag = 'kia' } = e.data;
     self.registration.showNotification(title, {
       body, icon: '/icon-192.png', tag,
