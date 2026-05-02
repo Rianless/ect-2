@@ -4921,66 +4921,66 @@ window.toggleBatterDetail = async function(el, gameId, batterName, cardId) {
     return;
   }
 
-  // ── state에 열림 기록 ──
+  // ── state에 열림 기록 (fetch 전에 먼저 설정) ──
   state.batterOpen[stateKey] = true;
 
-  // ── 캐시에 이미 있으면 바로 표시 ──
-  const cacheKey = String(gameId);
-  if (window._batterPlaysCache[cacheKey]) {
-    const myPlays = window._batterPlaysCache[cacheKey].filter(p => p.batterName === batterName);
-    let row = document.getElementById(detailId);
-    if (!row) {
-      row = document.createElement('tr');
-      row.id = detailId;
-      row.style.background = D().dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
-      el.parentNode.insertBefore(row, el.nextElementSibling);
-    }
-    row.dataset.open = '1';
-    row.style.display = '';
-    row.innerHTML = _buildBatterDetailHtml(myPlays, D());
-    const arr = el.querySelector('.batter-arrow');
-    if (arr) arr.textContent = '▴';
-    return;
-  }
-
-  // ── 최초: 로딩 row 삽입 ──
+  // ── row 먼저 생성/표시 (로딩 상태) ──
   const d = D();
-  let loadRow = document.getElementById(detailId);
-  if (!loadRow) {
-    loadRow = document.createElement('tr');
-    loadRow.id = detailId;
-    loadRow.style.background = d.dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
-    el.parentNode.insertBefore(loadRow, el.nextElementSibling);
+  let row = document.getElementById(detailId);
+  if (!row) {
+    row = document.createElement('tr');
+    row.id = detailId;
+    row.style.background = d.dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
+    el.parentNode.insertBefore(row, el.nextElementSibling);
   }
-  loadRow.dataset.open = '1';
-  loadRow.style.display = '';
-  loadRow.innerHTML = `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">⏳ 불러오는 중...</td>`;
+  row.dataset.open = '1';
+  row.style.display = '';
+  row.innerHTML = '<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:' + d.sub + '">⏳ 불러오는 중...</td>';
   const arr = el.querySelector('.batter-arrow');
   if (arr) arr.textContent = '▴';
+
+  // ── 캐시 있으면 바로 표시 ──
+  const cacheKey = String(gameId);
+  if (window._batterPlaysCache[cacheKey]) {
+    const myPlays = window._batterPlaysCache[cacheKey].filter(function(p) { return p.batterName === batterName; });
+    const targetRow = document.getElementById(detailId);
+    if (targetRow && targetRow.dataset.open === '1') {
+      targetRow.innerHTML = _buildBatterDetailHtml(myPlays, D());
+    }
+    return;
+  }
 
   // ── 이닝별 순차 fetch ──
   const allPlays = [];
   for (let i = 1; i <= 9; i++) {
+    // fetch 중에 사용자가 닫았으면 중단
+    if (!state.batterOpen[stateKey]) return;
     try {
       const data = await fetchRelayData(gameId, i);
       if (!data) continue;
       const plays = extractBatterPlays(data, i);
-      plays.forEach(p => {
-        const dup = allPlays.some(x => x.batterName===p.batterName && x.inn===p.inn && x.half===p.half);
+      plays.forEach(function(p) {
+        const dup = allPlays.some(function(x) { return x.batterName===p.batterName && x.inn===p.inn && x.half===p.half; });
         if (!dup) allPlays.push(p);
       });
     } catch(e) {}
   }
-  allPlays.sort((a, b) => a.inn !== b.inn ? a.inn - b.inn : (a.half === '초' ? -1 : 1));
+  allPlays.sort(function(a, b) { return a.inn !== b.inn ? a.inn - b.inn : (a.half === '초' ? -1 : 1); });
   window._batterPlaysCache[cacheKey] = allPlays;
 
-  // ── fetch 완료 후 state가 아직 열림인지 확인 ──
+  // ── fetch 완료 후 state 확인 후 표시 ──
   if (!state.batterOpen[stateKey]) return;
 
-  // ── DOM row 다시 찾기 (render()가 중간에 호출됐을 수 있음) ──
+  // render()로 DOM이 재생성됐을 수 있으므로 row 다시 찾기
   let targetRow = document.getElementById(detailId);
   if (!targetRow) {
-    const elRow = document.querySelector(`tr[onclick*="'${batterName}'"][onclick*="'${cardId}'"]`);
+    // row가 사라졌으면 새로 삽입할 기준 행 찾기
+    const allTrs = document.querySelectorAll('tr[onclick]');
+    let elRow = null;
+    allTrs.forEach(function(tr) {
+      const oc = tr.getAttribute('onclick') || '';
+      if (oc.includes(batterName) && oc.includes(cardId)) elRow = tr;
+    });
     if (!elRow) return;
     targetRow = document.createElement('tr');
     targetRow.id = detailId;
@@ -4989,7 +4989,7 @@ window.toggleBatterDetail = async function(el, gameId, batterName, cardId) {
   }
   targetRow.dataset.open = '1';
   targetRow.style.display = '';
-  const myPlays = allPlays.filter(p => p.batterName === batterName);
+  const myPlays = allPlays.filter(function(p) { return p.batterName === batterName; });
   targetRow.innerHTML = _buildBatterDetailHtml(myPlays, D());
 };
 
