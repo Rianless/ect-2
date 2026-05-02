@@ -5154,8 +5154,15 @@ setInterval(()=>{
     }
     renderPcPanels();
   } else {
-    render();
-    renderPcPanels();
+    // 타자 타석 detail 열려있으면 기록탭 DOM 재생성 스킵
+    const _hasBatterOpen2 = state.batterOpen && Object.values(state.batterOpen).some(v => v);
+    const _isStandTab2 = state.tab === 'stand';
+    if (_hasBatterOpen2 && _isStandTab2) {
+      renderPcPanels();
+    } else {
+      render();
+      renderPcPanels();
+    }
   }
 },1000);
 
@@ -5566,7 +5573,14 @@ async function fetchTodayScores(targetDate='') {
     });
 
     if (updated) {
-      render();
+      // 타자 타석 detail 열려있으면 기록탭 DOM 재생성 스킵 (접힘 방지)
+      const _hasBatterOpen = state.batterOpen && Object.values(state.batterOpen).some(v => v);
+      const _isStandTab = state.tab === 'stand';
+      if (_hasBatterOpen && _isStandTab) {
+        // 스코어만 업데이트, DOM 재생성 안 함
+      } else {
+        render();
+      }
       if (state.modalGame) {
         const mg = SCH.find(s => s.date===state.modalGame.date && s.away===state.modalGame.away && s.home===state.modalGame.home);
         if (mg) { state.modalGame = mg; renderModal(D()); }
