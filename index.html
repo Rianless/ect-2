@@ -3664,7 +3664,9 @@ function renderModal(d) {
   const rBall = rTeam===g.away ? (g.awayBallFour??'-'): (g.homeBallFour??'-');
 
   const cellSt = (s,i,inn) => {
-    const cur = g.inning===i+1 && isLive;
+    const gsInning = g.currentGameState?.inning || g.currentGameState?.currentInning || null;
+    const effectiveInning = gsInning || g.inning;
+    const cur = effectiveInning===i+1 && isLive;
     const hi  = s>0;
     return `<td style="color:${hi?'#E31837':d.text};font-weight:${hi||cur?900:400};background:${cur?'rgba(227,24,55,0.07)':'transparent'}">${s>=0?s:'·'}</td>`;
   };
@@ -5542,8 +5544,16 @@ function renderRelayText(relays, away, home) {
       badge='볼넷'; bdColor='#0078ff'; bdBg='rgba(0,120,255,0.09)';
     } else if (fullText.match(/사구|몸에 맞는 볼|몸맞는볼|데드볼|HBP/)) {
       badge='사구'; bdColor='#FF6600'; bdBg='rgba(255,102,0,0.09)';
-    } else if (fullText.match(/땅볼 아웃|플라이 아웃|라인드라이브 아웃|파울 플라이|병살/)) {
-      badge='아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
+    } else if (fullText.match(/병살/)) {
+      badge='병살'; bdColor='#333'; bdBg='rgba(0,0,0,0.10)';
+    } else if (fullText.match(/땅볼 아웃|땅볼로 아웃|내야 땅볼/)) {
+      badge='땅볼아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
+    } else if (fullText.match(/플라이 아웃|외야 플라이|뜬공 아웃|뜬공으로 아웃/)) {
+      badge='뜬공아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
+    } else if (fullText.match(/파울 플라이/)) {
+      badge='파울플라이'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
+    } else if (fullText.match(/라인드라이브 아웃/)) {
+      badge='라드아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
     } else if (fullText.match(/아웃|출루/)) {
       badge='아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
     } else if (fullText.match(/투수.*:.*교체|투수 교체/)) {
@@ -5566,7 +5576,10 @@ function renderRelayText(relays, away, home) {
       else if (title.match(/\d+구 홈런/)) { badge='홈런 🔴'; bdColor='#E31837'; bdBg='rgba(227,24,55,0.12)'; }
       else if (title.match(/\d+구 삼진/)) { badge='삼진'; bdColor='#666'; bdBg='rgba(0,0,0,0.07)'; }
       else if (title.match(/\d+구 볼넷/)) { badge='볼넷'; bdColor='#0078ff'; bdBg='rgba(0,120,255,0.09)'; }
-      else if (title.match(/\d+구 (플라이|땅볼|파울|아웃)/)) { badge='아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)'; }
+      else if (title.match(/\d+구 (플라이|뜬공)/)) { badge='뜬공아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)'; }
+      else if (title.match(/\d+구 땅볼/)) { badge='땅볼아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)'; }
+      else if (title.match(/\d+구 병살/)) { badge='병살'; bdColor='#333'; bdBg='rgba(0,0,0,0.10)'; }
+      else if (title.match(/\d+구 (파울|아웃)/)) { badge='아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)'; }
     }
 
     const scoreDisp = (awayS!==''&&homeS!=='') ?
@@ -5575,6 +5588,23 @@ function renderRelayText(relays, away, home) {
         <span style="margin:0 3px">:</span>
         <b style="color:${homeColor}">${homeS}</b> ${home}
       </span>` : '';
+
+    // 투수교체 시 새 투수 이름 추출
+    const pitcherChangeLine = (() => {
+      if (badge !== '투수교체') return '';
+      const allTexts = [title, ...opts.map(o => o.text || o.title || '')].filter(Boolean);
+      for (const t of allTexts) {
+        let m = t.match(/→\s*([가-힣A-Za-z·\.]{2,10})/);
+        if (m) return m[1];
+        m = t.match(/교체\s*[:：]\s*([가-힣A-Za-z·\.]{2,10})/);
+        if (m) return m[1];
+        m = t.match(/([가-힣A-Za-z·\.]{2,10})(으로|로)\s*교체/);
+        if (m) return m[1];
+        m = t.match(/([가-힣A-Za-z·\.]{2,10})\s*등판/);
+        if (m) return m[1];
+      }
+      return '';
+    })();
 
     return `<div style="padding:11px 16px;border-bottom:1px solid ${dark?'rgba(255,255,255,0.055)':'rgba(0,0,0,0.055)'};display:flex;align-items:flex-start;gap:10px">
       <span style="flex-shrink:0;font-size:10px;font-weight:700;color:${bdColor};background:${bdBg};border:1px solid ${bdColor}33;border-radius:5px;padding:2px 7px;margin-top:2px;white-space:nowrap">${badge||'　'}</span>
@@ -5605,6 +5635,7 @@ function renderRelayText(relays, away, home) {
               return `<div style="font-size:12px;color:${isScore?'#E31837':'#999'};font-weight:${isScore?600:400};line-height:1.7;margin-top:2px;padding-left:2px">${t}</div>`;
             }).join('');
         })()}
+        ${pitcherChangeLine ? `<div style="font-size:12px;font-weight:700;color:#9C27B0;margin-top:3px;padding-left:2px">⚾ 새 투수: ${pitcherChangeLine}</div>` : ''}
         ${scoreDisp?`<div style="margin-top:3px">${scoreDisp}</div>`:''}
       </div>
     </div>`;
