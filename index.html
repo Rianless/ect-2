@@ -4837,17 +4837,21 @@ function extractBatterPlays(relayData, innNum) {
       if (gsMatch[2]) curHalf = gsMatch[2];
     }
 
-    // item 자체 title에서 타자명 추출
+    // item 자체 title 또는 textOptions에서 타자명 추출
     const mainTitle = item.title || item.text || '';
-    const batterMatch = mainTitle.match(/(\d+)번타자\s+([가-힣A-Za-z·]{2,8})/);
-    if (!batterMatch) return;
-    const batterName = batterMatch[2];
-
-    // 결과는 item 자체 title + textOptions 텍스트 합산으로 파싱
-    // (타자 타석 item의 opts에 결과가 담김)
     const opts = item.textOptions || [];
-    const optsText = opts.map(o => o.title || o.text || '').join(' ');
-    const fullText = mainTitle + ' ' + optsText;
+    const allTexts = [mainTitle, ...opts.map(o => o.title || o.text || '')];
+    const combinedText = allTexts.join(' ');
+
+    // "N번타자 이름" 패턴 탐색 (title 또는 opts 어디서든)
+    let batterName = '';
+    for (const t of allTexts) {
+      const m = t.match(/(\d+)번타자\s*([가-힣A-Za-z·]{2,8})/);
+      if (m) { batterName = m[2]; break; }
+    }
+    if (!batterName) return;
+
+    const fullText = combinedText;
 
     let result = '';
     if (/홈런/.test(fullText)) result = '홈런';
@@ -4867,7 +4871,7 @@ function extractBatterPlays(relayData, innNum) {
     else if (/아웃/.test(fullText)) result = '아웃';
     else return; // 결과 불명확하면 스킵
 
-    // 같은 타자+이닝+half+result 완전 중복만 제거
+    // 완전 동일한 항목만 중복 제거
     const isDup = plays.some(p =>
       p.batterName === batterName && p.inn === curInn &&
       p.half === curHalf && p.result === result
@@ -6146,7 +6150,8 @@ function renderScoringPlays(plays, dark) {
   const awayColor = (T[_relayAway]||{}).color||'#888';
   const homeColor = (T[_relayHome]||{}).color||'#888';
   const sub = dark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)';
-  const border = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
+  const border = dark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
+  const cardBg = dark ? 'rgba(255,255,255,0.04)' : '#fff';
   const textColor = dark ? '#fff' : '#0A0E1A';
 
   if (!plays || !plays.length) {
@@ -6157,6 +6162,9 @@ function renderScoringPlays(plays, dark) {
     </div>`;
   }
 
+  // 이닝별 그룹 헤더 추적
+  let lastInning = '';
+
   return plays.map(p => {
     const teamColor = p.scoringTeam === 'away' ? awayColor
                     : p.scoringTeam === 'home' ? homeColor
@@ -6164,37 +6172,58 @@ function renderScoringPlays(plays, dark) {
     const teamName = p.scoringTeam === 'away' ? _relayAway
                    : p.scoringTeam === 'home' ? _relayHome : '';
 
-    // 배지: 홈런/안타타입 + 득점수
-    const hitEmoji = p.isHR ? '💣 홈런' : p.hitType === '3루타' ? '③ 3루타' : p.hitType === '2루타' ? '② 2루타' : p.hitType === '안타' ? '🟡 안타' : p.hitType === '희생플라이' ? '희생플라이' : '득점';
-    const scoreDiffBadge = p.scoreDiff > 1 ? ` +${p.scoreDiff}점` : '';
-    const badge = hitEmoji + scoreDiffBadge;
+    // 이닝 구분선
+    let inningHeader = '';
+    const innLabel = p.inning + (teamName ? ' ' + teamName + ' 공격' : '');
+    if (p.inning !== lastInning) {
+      lastInning = p.inning;
+      inningHeader = `<div style="padding:8px 16px 4px;font-size:11px;font-weight:800;color:${sub};background:${dark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.03)'};border-bottom:1px solid ${border}">${innLabel}</div>`;
+    }
 
-    const tags = [
-      p.inning ? `<span style="font-size:10px;color:${sub}">${p.inning}</span>` : '',
-      teamName ? `<span style="font-size:10px;font-weight:700;color:${teamColor};background:${teamColor}18;border:1px solid ${teamColor}44;border-radius:4px;padding:1px 6px">${teamName}</span>` : '',
-    ].filter(Boolean).join('');
+    // 타격 결과 배지
+    const hitBadge = p.isHR ? '홈런'
+      : p.hitType === '3루타' ? '3루타'
+      : p.hitType === '2루타' ? '2루타'
+      : p.hitType === '안타' ? '안타'
+      : p.hitType === '희생플라이' ? '희생플라이'
+      : p.hitType === '희생번트' ? '희생번트'
+      : '득점';
+    const hitColor = p.isHR ? '#E31837'
+      : /루타|안타/.test(hitBadge) ? '#FF9500'
+      : sub;
 
-    // 서브라인 (주자 홈인 정보) - 홈런이면 스킵 (홈런 자체가 전부 설명)
-    const subHtml = (!p.isHR && p.subLines && p.subLines.length)
-      ? p.subLines.map(t => `<div style="font-size:11px;color:${teamColor};font-weight:600;margin-top:2px">↳ ${t}</div>`).join('')
-      : '';
-
-    const scoreDisp = (p.awayScore !== '' && p.homeScore !== '') ? `
-      <div style="margin-top:5px;display:flex;align-items:baseline;gap:4px;font-size:11px">
-        <span style="font-weight:${p.scoringTeam==='away'?900:400};font-size:${p.scoringTeam==='away'?'15px':'11px'};color:${awayColor}">${p.awayScore}</span>
-        <span style="color:${sub}">:</span>
-        <span style="font-weight:${p.scoringTeam==='home'?900:400};font-size:${p.scoringTeam==='home'?'15px':'11px'};color:${homeColor}">${p.homeScore}</span>
-        <span style="color:${sub};margin-left:2px;font-size:10px">${_relayAway} vs ${_relayHome}</span>
+    // 스코어 (득점팀 강조)
+    const scoreHtml = (p.awayScore !== '' && p.homeScore !== '') ? `
+      <div style="display:flex;align-items:center;gap:6px;margin-left:auto">
+        <span style="font-size:11px;color:${sub};font-weight:600">${_relayAway}</span>
+        <span style="font-size:${p.scoringTeam==='away'?'18px':'14px'};font-weight:900;color:${p.scoringTeam==='away'?awayColor:sub}">${p.awayScore}</span>
+        <span style="font-size:13px;color:${sub}">:</span>
+        <span style="font-size:${p.scoringTeam==='home'?'18px':'14px'};font-weight:900;color:${p.scoringTeam==='home'?homeColor:sub}">${p.homeScore}</span>
+        <span style="font-size:11px;color:${sub};font-weight:600">${_relayHome}</span>
       </div>` : '';
 
-    return `<div style="padding:12px 16px;border-bottom:1px solid ${border};border-left:3px solid ${teamColor}">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
-        <span style="font-size:10px;font-weight:700;color:${teamColor};background:${teamColor}15;border:1px solid ${teamColor}44;border-radius:5px;padding:2px 8px;white-space:nowrap">${badge}</span>
-        ${tags}
+    // 주자 홈인 라인
+    const runnerHtml = (p.runnerLines && p.runnerLines.length)
+      ? p.runnerLines.map(t => `<div style="font-size:11px;color:${sub};margin-top:3px">↳ ${t}</div>`).join('')
+      : '';
+
+    // 구종 정보
+    const pitchHtml = p.pitchInfo
+      ? `<span style="font-size:11px;color:${sub};margin-left:6px">${p.pitchInfo}</span>`
+      : '';
+
+    return inningHeader + `<div style="padding:12px 16px;border-bottom:1px solid ${border}">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+            <span style="font-size:11px;font-weight:800;color:${hitColor};background:${hitColor}18;border:1px solid ${hitColor}44;border-radius:5px;padding:2px 8px;white-space:nowrap">${hitBadge}${p.scoreDiff > 1 ? ' +' + p.scoreDiff : ''}</span>
+            ${pitchHtml}
+          </div>
+          <div style="font-size:13px;font-weight:700;color:${textColor};line-height:1.5">${p.title}</div>
+          ${runnerHtml}
+        </div>
+        ${scoreHtml}
       </div>
-      <div style="font-size:13px;color:${textColor};line-height:1.5;font-weight:600">${p.title}</div>
-      ${subHtml}
-      ${scoreDisp}
     </div>`;
   }).join('');
 }
@@ -6213,21 +6242,20 @@ async function fetchAllScoringPlays(gameId, maxInn) {
       relays.forEach(item => {
         const mainTitle = item.title || item.text || '';
         if (!mainTitle || mainTitle.startsWith('=')) return;
-
-        // 이닝 헤더는 스킵
         if (mainTitle.match(/^\d+회(초|말)/)) return;
 
-        // item 전체(주 item + textOptions) 에서 스코어 추출
-        const allItems = [item, ...(item.textOptions || [])];
+        const opts = item.textOptions || [];
+        const allItems = [item, ...opts];
+
+        // 스코어 추출 (마지막 opt에서)
         let bestGs = null;
-        for (const it of allItems) {
-          const gs = it.currentGameState;
+        for (let k = allItems.length - 1; k >= 0; k--) {
+          const gs = allItems[k].currentGameState;
           if (gs?.awayScore != null) { bestGs = gs; break; }
         }
         const awayS = Number(bestGs?.awayScore ?? -1);
         const homeS = Number(bestGs?.homeScore ?? -1);
 
-        // 득점 발생 여부
         const scored = (awayS > prevAwayScore) || (homeS > prevHomeScore);
         const scoreDiff = Math.max(awayS - prevAwayScore, 0) + Math.max(homeS - prevHomeScore, 0);
         const isKeyword = /타점|희생플라이|밀어내기|끝내기/.test(mainTitle);
@@ -6238,7 +6266,7 @@ async function fetchAllScoringPlays(gameId, maxInn) {
         if (awayS >= 0) prevAwayScore = awayS;
         if (homeS >= 0) prevHomeScore = homeS;
 
-        // 홈런/안타 타입 판별
+        // 타격 결과 판별
         const fullText = allItems.map(it => it.title || it.text || '').join(' ');
         const isHR = /홈런/.test(fullText);
         const hitType = isHR ? '홈런'
@@ -6247,22 +6275,26 @@ async function fetchAllScoringPlays(gameId, maxInn) {
           : /안타/.test(fullText) ? '안타'
           : /희생플라이|희플/.test(fullText) ? '희생플라이'
           : /희생번트|희타/.test(fullText) ? '희생번트'
+          : '득점';
+
+        // 구종/구속 정보 추출
+        const pitchOpt = opts.find(o => o.type === 1 && o.stuff);
+        const pitchInfo = pitchOpt
+          ? `${pitchOpt.pitchNum ? pitchOpt.pitchNum + '구 ' : ''}${pitchOpt.stuff || ''}${pitchOpt.speed ? ' ' + pitchOpt.speed + 'km/h' : ''}`
           : '';
 
-        // 홈인/득점 관련 서브 텍스트 수집 (주자 홈인 정보)
-        const subLines = (item.textOptions || [])
+        // 주자 홈인 정보
+        const runnerLines = opts
           .map(o => o.title || o.text || '')
-          .filter(t => t && t !== mainTitle && /홈인|생환|홈으로|득점/.test(t));
+          .filter(t => t && t !== mainTitle && /홈인|생환|홈으로/.test(t));
 
         plays.push({
           title: mainTitle,
-          subLines,
-          hitType,
-          scoreDiff,
+          hitType, isHR, scoreDiff,
+          pitchInfo, runnerLines,
           inning: i + '회',
           awayScore: awayS >= 0 ? awayS : '',
           homeScore: homeS >= 0 ? homeS : '',
-          isHR,
           scoringTeam,
         });
       });
