@@ -913,7 +913,7 @@ let state = {
   memoTab: false, myTab: null, myTabInitialized: false,
   recordTab: 'game', playerStats: null, playerStatsLoading: false, playerStatsError: null,
   grecOpen: {},
-  batterOpen: {}, // 기록탭 타자 타석 펼침 상태 {cardId_name: bool}
+  batterOpen: {},
 };
 // 중계 전체보기 전역 변수
 let _relayGameId = null, _relayAway = '', _relayHome = '', _relayInn = 1, _relayData = null, _relayInterval = null;
@@ -1169,7 +1169,7 @@ function render() {
       }
     });
   }
-  // 타자 타석 펼침 상태 복원
+  // 타자 타석 펼침 상태 복원 (render() 후에도 유지)
   if (state.tab === 'stand' && state.batterOpen) {
     Object.keys(state.batterOpen).forEach(function(key) {
       if (!state.batterOpen[key]) return;
@@ -2263,17 +2263,10 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
     html += '</tr></thead><tbody>';
     batters.filter(p => p.p !== 'P' || p.sub || p.chain).sort((a,b) => (a.n||99)-(b.n||99)).slice(0,9).forEach(p => {
       const _rowSep = 'border-bottom:1px solid '+(d.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)');
-      // 공통: 타자 행 onclick (타자명 기준, chain이면 chain[0].name 또는 p.sub 사용)
-      const _mainName = (p.chain&&p.chain.length) ? p.chain[0].name : (p.sub ? p.sub : p.name);
-      const _onclickAttr = 'event.stopPropagation();toggleBatterDetail(this,\''+g.gameId+'\',\''+_mainName+'\',\''+cardId+'\')';
-      const _hoverIn = 'this.style.background=\'rgba(0,0,0,0.03)\'';
-      const _hoverOut = 'this.style.background=\'\'';
-
       if (p.chain && p.chain.length) {
         p.chain.forEach((s, si) => {
           const isFirst = si === 0;
-          const _chainOnclick = isFirst ? ' onclick="'+_onclickAttr+'" onmouseenter="'+_hoverIn+'" onmouseleave="'+_hoverOut+'" style="'+_rowSep+';cursor:pointer"' : ' style="'+_rowSep+'"';
-          html += '<tr'+_chainOnclick+'><td style="padding:'+(isFirst?'6px':'3px')+' 10px '+(isFirst?'3px':'3px')+'"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+(isFirst?sideColor:'transparent')+'">'+(isFirst?(p.n||p.order):'')+'</span><span style="font-size:11px;font-weight:700;color:'+(isFirst?d.text:d.sub)+'">'+s.name+'</span>'+(isFirst?'<span class="batter-arrow" style="font-size:9px;color:'+d.sub+'">▾</span>':'')+'</div></td>';
+          html += '<tr style="'+_rowSep+'"><td style="padding:'+(isFirst?'6px':'3px')+' 10px '+(isFirst?'3px':'3px')+'"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+(isFirst?sideColor:'transparent')+'">'+(isFirst?(p.n||p.order):'')+'</span><span style="font-size:11px;font-weight:700;color:'+(isFirst?d.text:d.sub)+'">'+s.name+'</span></div></td>';
           html += '<td style="padding:3px 5px;text-align:center;color:'+d.sub+'">'+(s.ab||0)+'</td>';
           html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.hit>0?700:400)+';color:'+(s.hit>0?sideColor:d.sub)+'">'+(s.hit||0)+'</td>';
           html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.run>0?700:400)+';color:'+(s.run>0?sideColor:d.sub)+'">'+(s.run||0)+'</td>';
@@ -2287,7 +2280,7 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
         html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curRbi>0?700:400)+';color:'+(p.curRbi>0?sideColor:d.sub)+'">'+(p.curRbi||0)+'</td>';
         html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curBb>0?700:400)+';color:'+(p.curBb>0?sideColor:d.sub)+'">'+(p.curBb||0)+'</td></tr>';
       } else if (p.sub) {
-        html += '<tr onclick="'+_onclickAttr+'" onmouseenter="'+_hoverIn+'" onmouseleave="'+_hoverOut+'" style="'+_rowSep+';cursor:pointer"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.sub+'</span><span class="batter-arrow" style="font-size:9px;color:'+d.sub+'">▾</span></div></td>';
+        html += '<tr style="'+_rowSep+'"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.sub+'</span></div></td>';
         html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.subAb||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subHit>0?700:400)+';color:'+(p.subHit>0?sideColor:d.sub)+'">'+(p.subHit||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subRun>0?700:400)+';color:'+(p.subRun>0?sideColor:d.sub)+'">'+(p.subRun||0)+'</td>';
@@ -2301,7 +2294,7 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curBb>0?700:400)+';color:'+(p.curBb>0?sideColor:d.sub)+'">'+(p.curBb||0)+'</td></tr>';
       } else {
         const _bRowId = 'brow-'+cardId+'-'+encodeURIComponent(p.name);
-        html += '<tr id="'+_bRowId+'" onclick="'+_onclickAttr+'" onmouseenter="'+_hoverIn+'" onmouseleave="'+_hoverOut+'" style="'+_rowSep+';cursor:pointer">';
+        html += '<tr id="'+_bRowId+'" style="'+_rowSep+';cursor:pointer" onclick="event.stopPropagation();toggleBatterDetail(this,\''+g.gameId+'\',\''+p.name+'\',\''+cardId+'\')" onmouseenter="this.style.background=\'rgba(0,0,0,0.03)\'" onmouseleave="this.style.background=\'\'">';
         html += '<td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.name+'</span><span class="batter-arrow" style="font-size:9px;color:'+d.sub+'">▾</span></div></td>';
         html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.ab||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.hit>0?700:400)+';color:'+(p.hit>0?sideColor:d.sub)+'">'+(p.hit||0)+'</td>';
@@ -4550,12 +4543,9 @@ async function fetchLineupDirect(gameId, inning) {
   if (!gameId) return null;
   const inn = Math.max(1, inning || 1);
   try {
-    let r;
-    try { r = await fetch(`/api/kboScores?gameId=${encodeURIComponent(gameId)}&inning=${inn}&action=lineup`); }
-    catch(e) { return null; }
+    const r = await fetch(`/api/kboScores?gameId=${encodeURIComponent(gameId)}&inning=${inn}&action=lineup`);
     if (!r.ok) return null;
-    let result;
-    try { result = await r.json(); } catch(e) { return null; }
+    const result = await r.json();
     if (!result) return null;
 
     // 서버가 표준화한 homeLineup/awayLineup 사용
@@ -4885,8 +4875,7 @@ window._batterPlaysCache = {};
 function _buildBatterDetailHtml(myPlays, d) {
   if (!myPlays.length) return `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">타석 기록 없음</td>`;
   const resultColor = r => {
-    if (/홈런/.test(r)) return '#E31837';
-    if (/끝내기/.test(r)) return '#E31837';
+    if (/홈런|끝내기/.test(r)) return '#E31837';
     if (/3루타/.test(r)) return '#FF6600';
     if (/2루타|적시타/.test(r)) return '#FF9500';
     if (/안타/.test(r)) return '#FF9500';
@@ -4985,14 +4974,13 @@ window.toggleBatterDetail = async function(el, gameId, batterName, cardId) {
   allPlays.sort((a, b) => a.inn !== b.inn ? a.inn - b.inn : (a.half === '초' ? -1 : 1));
   window._batterPlaysCache[cacheKey] = allPlays;
 
-  // ── fetch 완료 후: state가 아직 열림인지 확인 ──
-  if (!state.batterOpen[stateKey]) return; // fetch 중에 사용자가 닫음
+  // ── fetch 완료 후 state가 아직 열림인지 확인 ──
+  if (!state.batterOpen[stateKey]) return;
 
   // ── DOM row 다시 찾기 (render()가 중간에 호출됐을 수 있음) ──
   let targetRow = document.getElementById(detailId);
   if (!targetRow) {
-    // render()로 DOM이 재생성됐으면 새로 삽입
-    const elRow = document.querySelector(`tr[onclick*="${batterName}"][onclick*="${cardId}"]`);
+    const elRow = document.querySelector(`tr[onclick*="'${batterName}'"][onclick*="'${cardId}'"]`);
     if (!elRow) return;
     targetRow = document.createElement('tr');
     targetRow.id = detailId;
@@ -5598,40 +5586,19 @@ setInterval(fetchTodayScores, 30000);
 async function fetchRelayData(gameId, inn) {
   if (!gameId) return null;
   const inning = Math.max(1, inn || 1);
+
   try {
+    // Vercel 서버사이드 프록시를 통해 호출 (CORS 우회)
     const url = `/api/kboScores?gameId=${encodeURIComponent(gameId)}&inning=${inning}`;
-    let r;
-    try { r = await fetch(url); } catch(e) {
-      return await _fetchRelayDirect(gameId, inning);
-    }
-    if (!r.ok) return await _fetchRelayDirect(gameId, inning);
-    let data;
-    try { data = await r.json(); } catch(e) {
-      return await _fetchRelayDirect(gameId, inning);
-    }
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`proxy ${r.status}`);
+    const data = await r.json();
+    // kboScores.js는 gameId 있을 때 단일 게임 객체를 바로 반환
     return data || null;
   } catch(e) {
-    console.error('[Relay] fetchRelayData error:', e);
+    console.error("[Relay] fetchRelayData error:", e);
     return null;
   }
-}
-
-// 직접 네이버 API fallback (proxy 실패 시)
-async function _fetchRelayDirect(gameId, inning) {
-  const inn = Math.max(1, inning || 1);
-  const urls = [
-    `https://api-gw.sports.naver.com/schedule/games/${gameId}/text-relay?inning=${inn}&isHighlight=false`,
-    `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=${inn}`,
-  ];
-  for (const url of urls) {
-    try {
-      const r = await fetch(url, { headers: { Accept: 'application/json', Referer: 'https://m.sports.naver.com/' } });
-      if (!r.ok) continue;
-      const d = await r.json();
-      if (d?.result) return d.result;
-    } catch(e) { continue; }
-  }
-  return null;
 }
 
 function renderRelayDiamond(gs, lineup, away, home) {
@@ -6992,13 +6959,15 @@ _initApp();
 
 <script>
 // ── Service Worker 등록 ──
-// SW 완전 제거 (캐시 문제 방지)
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', async () => {
+    // 기존 SW 전부 해제 + 캐시 전부 삭제 후 재등록 (구버전 캐시 강제 제거)
     const regs = await navigator.serviceWorker.getRegistrations();
     for (const reg of regs) await reg.unregister();
     const keys = await caches.keys();
     for (const key of keys) await caches.delete(key);
+    // 재등록
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
   });
 }
 
