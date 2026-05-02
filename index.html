@@ -4531,9 +4531,12 @@ async function fetchLineupDirect(gameId, inning) {
   if (!gameId) return null;
   const inn = Math.max(1, inning || 1);
   try {
-    const r = await fetch(`/api/kboScores?gameId=${encodeURIComponent(gameId)}&inning=${inn}&action=lineup`);
+    let r;
+    try { r = await fetch(`/api/kboScores?gameId=${encodeURIComponent(gameId)}&inning=${inn}&action=lineup`); }
+    catch(e) { return null; }
     if (!r.ok) return null;
-    const result = await r.json();
+    let result;
+    try { result = await r.json(); } catch(e) { return null; }
     if (!result) return null;
 
     // 서버가 표준화한 homeLineup/awayLineup 사용
@@ -5544,19 +5547,40 @@ setInterval(fetchTodayScores, 30000);
 async function fetchRelayData(gameId, inn) {
   if (!gameId) return null;
   const inning = Math.max(1, inn || 1);
-
   try {
-    // Vercel 서버사이드 프록시를 통해 호출 (CORS 우회)
     const url = `/api/kboScores?gameId=${encodeURIComponent(gameId)}&inning=${inning}`;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`proxy ${r.status}`);
-    const data = await r.json();
-    // kboScores.js는 gameId 있을 때 단일 게임 객체를 바로 반환
+    let r;
+    try { r = await fetch(url); } catch(e) {
+      return await _fetchRelayDirect(gameId, inning);
+    }
+    if (!r.ok) return await _fetchRelayDirect(gameId, inning);
+    let data;
+    try { data = await r.json(); } catch(e) {
+      return await _fetchRelayDirect(gameId, inning);
+    }
     return data || null;
   } catch(e) {
-    console.error("[Relay] fetchRelayData error:", e);
+    console.error('[Relay] fetchRelayData error:', e);
     return null;
   }
+}
+
+// 직접 네이버 API fallback (proxy 실패 시)
+async function _fetchRelayDirect(gameId, inning) {
+  const inn = Math.max(1, inning || 1);
+  const urls = [
+    `https://api-gw.sports.naver.com/schedule/games/${gameId}/text-relay?inning=${inn}&isHighlight=false`,
+    `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=${inn}`,
+  ];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url, { headers: { Accept: 'application/json', Referer: 'https://m.sports.naver.com/' } });
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (d?.result) return d.result;
+    } catch(e) { continue; }
+  }
+  return null;
 }
 
 function renderRelayDiamond(gs, lineup, away, home) {
