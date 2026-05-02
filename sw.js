@@ -1,5 +1,5 @@
-// KBO 대시보드 Service Worker v4
-const CACHE_NAME = 'kbo-v4';
+// KBO 대시보드 Service Worker v5
+const CACHE_NAME = 'kbo-v5';
 // index.html은 캐시 안 함 - 항상 네트워크에서 받아야 SCH 데이터 최신 유지
 const STATIC_ASSETS = ['/manifest.json'];
 
@@ -25,6 +25,7 @@ self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
   // index.html / 루트 / JS·HTML 파일 → 항상 네트워크 우선 (캐시 저장 안 함)
   const noCache = url.pathname === '/' ||
+    url.pathname.startsWith('/api/') ||
     url.pathname.endsWith('.html') ||
     url.pathname.endsWith('.js');
   if (noCache) {
