@@ -913,6 +913,7 @@ let state = {
   memoTab: false, myTab: null, myTabInitialized: false,
   recordTab: 'game', playerStats: null, playerStatsLoading: false, playerStatsError: null,
   grecOpen: {},
+  batterOpen: {}, // 기록탭 타자 타석 펼침 상태 {cardId_name: bool}
 };
 // 중계 전체보기 전역 변수
 let _relayGameId = null, _relayAway = '', _relayHome = '', _relayInn = 1, _relayData = null, _relayInterval = null;
@@ -1165,6 +1166,17 @@ function render() {
       if (header) {
         var arrow = header.querySelector('.grec-arrow');
         if (arrow) arrow.textContent = '▼';
+      }
+    });
+  }
+  // 타자 타석 펼침 상태 복원
+  if (state.tab === 'stand' && state.batterOpen) {
+    Object.keys(state.batterOpen).forEach(function(key) {
+      if (!state.batterOpen[key]) return;
+      var detailEl = document.getElementById('batter-detail-' + key);
+      if (detailEl) {
+        detailEl.style.display = '';
+        detailEl.dataset.open = '1';
       }
     });
   }
@@ -4869,60 +4881,12 @@ function extractBatterPlays(relayData, innNum) {
 // ── 기록탭 타자 타석 상세 토글 ──
 window._batterPlaysCache = {};
 
-window.toggleBatterDetail = async function(el, gameId, batterName, cardId) {
-  const detailId = 'batter-detail-' + cardId + '-' + batterName.replace(/[^가-힣a-zA-Z0-9]/g, '_');
-
-  // ── 이미 열려있으면 닫기 (클릭 즉시 동기 처리) ──
-  const existing = document.getElementById(detailId);
-  if (existing) {
-    const isOpen = existing.dataset.open === '1';
-    existing.dataset.open = isOpen ? '0' : '1';
-    existing.style.display = isOpen ? 'none' : '';
-    el.querySelector('.batter-arrow') && (el.querySelector('.batter-arrow').textContent = isOpen ? '▾' : '▴');
-    return;
-  }
-
-  // ── 최초 클릭: 로딩 row 삽입 (tr 바로 다음 형제로) ──
-  const d = D();
-  const loadRow = document.createElement('tr');
-  loadRow.id = detailId;
-  loadRow.dataset.open = '1';
-  loadRow.style.background = d.dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
-  loadRow.innerHTML = `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">⏳ 불러오는 중...</td>`;
-  // el.nextSibling이 아닌 el.nextElementSibling로 정확히 삽입
-  el.parentNode.insertBefore(loadRow, el.nextElementSibling);
-  el.querySelector('.batter-arrow') && (el.querySelector('.batter-arrow').textContent = '▴');
-
-  // ── 캐시 확인 후 fetch ──
-  const cacheKey = String(gameId);
-  if (!window._batterPlaysCache[cacheKey]) {
-    // 순차 fetch (병렬이면 서버 부하 & 순서 꼬임)
-    const allPlays = [];
-    for (let i = 1; i <= 9; i++) {
-      try {
-        const data = await fetchRelayData(gameId, i);
-        if (!data) continue;
-        const plays = extractBatterPlays(data, i);
-        // 이미 같은 타자+이닝+half 있으면 스킵
-        plays.forEach(p => {
-          const dup = allPlays.some(x => x.batterName===p.batterName && x.inn===p.inn && x.half===p.half);
-          if (!dup) allPlays.push(p);
-        });
-      } catch(e) {}
-    }
-    allPlays.sort((a, b) => a.inn !== b.inn ? a.inn - b.inn : (a.half === '초' ? -1 : 1));
-    window._batterPlaysCache[cacheKey] = allPlays;
-  }
-
-  // ── fetch 완료 후 row가 아직 DOM에 있는지 확인 ──
-  const targetRow = document.getElementById(detailId);
-  if (!targetRow) return; // 사용자가 카드를 닫았으면 중단
-
-  const allPlays = window._batterPlaysCache[cacheKey];
-  const myPlays = allPlays.filter(p => p.batterName === batterName);
-
+// ── 타자 타석 상세 HTML 생성 ──
+function _buildBatterDetailHtml(myPlays, d) {
+  if (!myPlays.length) return `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">타석 기록 없음</td>`;
   const resultColor = r => {
-    if (/홈런|끝내기/.test(r)) return '#E31837';
+    if (/홈런/.test(r)) return '#E31837';
+    if (/끝내기/.test(r)) return '#E31837';
     if (/3루타/.test(r)) return '#FF6600';
     if (/2루타|적시타/.test(r)) return '#FF9500';
     if (/안타/.test(r)) return '#FF9500';
@@ -4943,22 +4907,102 @@ window.toggleBatterDetail = async function(el, gameId, batterName, cardId) {
     if (/희생/.test(r)) return '희번';
     return '●';
   };
-
-  if (!myPlays.length) {
-    targetRow.innerHTML = `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">타석 기록 없음</td>`;
-    return;
-  }
-
   const rows = myPlays.map(p =>
     `<span style="display:inline-flex;align-items:center;gap:4px;margin:3px 4px;padding:4px 9px;border-radius:20px;background:${d.dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.05)'}">
       <span style="font-size:10px;color:${d.sub};font-weight:600">${p.inn}회${p.half||''}</span>
       <span style="font-size:12px;font-weight:800;color:${resultColor(p.result)}">${resultIcon(p.result)} ${p.result}</span>
     </span>`
   ).join('');
+  return `<td colspan="6" style="padding:6px 10px 10px"><div style="display:flex;flex-wrap:wrap">${rows}</div></td>`;
+}
 
-  targetRow.innerHTML = `<td colspan="6" style="padding:6px 10px 10px">
-    <div style="display:flex;flex-wrap:wrap">${rows}</div>
-  </td>`;
+window.toggleBatterDetail = async function(el, gameId, batterName, cardId) {
+  const stateKey = cardId + '||' + batterName;
+  const detailId = 'batter-detail-' + cardId + '-' + batterName.replace(/[^가-힣a-zA-Z0-9]/g, '_');
+  state.batterOpen = state.batterOpen || {};
+
+  // ── 이미 열려있으면 닫기 ──
+  const existing = document.getElementById(detailId);
+  if (existing && existing.dataset.open === '1') {
+    existing.dataset.open = '0';
+    existing.style.display = 'none';
+    state.batterOpen[stateKey] = false;
+    const arr = el.querySelector('.batter-arrow');
+    if (arr) arr.textContent = '▾';
+    return;
+  }
+
+  // ── state에 열림 기록 ──
+  state.batterOpen[stateKey] = true;
+
+  // ── 캐시에 이미 있으면 바로 표시 ──
+  const cacheKey = String(gameId);
+  if (window._batterPlaysCache[cacheKey]) {
+    const myPlays = window._batterPlaysCache[cacheKey].filter(p => p.batterName === batterName);
+    let row = document.getElementById(detailId);
+    if (!row) {
+      row = document.createElement('tr');
+      row.id = detailId;
+      row.style.background = D().dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
+      el.parentNode.insertBefore(row, el.nextElementSibling);
+    }
+    row.dataset.open = '1';
+    row.style.display = '';
+    row.innerHTML = _buildBatterDetailHtml(myPlays, D());
+    const arr = el.querySelector('.batter-arrow');
+    if (arr) arr.textContent = '▴';
+    return;
+  }
+
+  // ── 최초: 로딩 row 삽입 ──
+  const d = D();
+  let loadRow = document.getElementById(detailId);
+  if (!loadRow) {
+    loadRow = document.createElement('tr');
+    loadRow.id = detailId;
+    loadRow.style.background = d.dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
+    el.parentNode.insertBefore(loadRow, el.nextElementSibling);
+  }
+  loadRow.dataset.open = '1';
+  loadRow.style.display = '';
+  loadRow.innerHTML = `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">⏳ 불러오는 중...</td>`;
+  const arr = el.querySelector('.batter-arrow');
+  if (arr) arr.textContent = '▴';
+
+  // ── 이닝별 순차 fetch ──
+  const allPlays = [];
+  for (let i = 1; i <= 9; i++) {
+    try {
+      const data = await fetchRelayData(gameId, i);
+      if (!data) continue;
+      const plays = extractBatterPlays(data, i);
+      plays.forEach(p => {
+        const dup = allPlays.some(x => x.batterName===p.batterName && x.inn===p.inn && x.half===p.half);
+        if (!dup) allPlays.push(p);
+      });
+    } catch(e) {}
+  }
+  allPlays.sort((a, b) => a.inn !== b.inn ? a.inn - b.inn : (a.half === '초' ? -1 : 1));
+  window._batterPlaysCache[cacheKey] = allPlays;
+
+  // ── fetch 완료 후: state가 아직 열림인지 확인 ──
+  if (!state.batterOpen[stateKey]) return; // fetch 중에 사용자가 닫음
+
+  // ── DOM row 다시 찾기 (render()가 중간에 호출됐을 수 있음) ──
+  let targetRow = document.getElementById(detailId);
+  if (!targetRow) {
+    // render()로 DOM이 재생성됐으면 새로 삽입
+    const elRow = document.querySelector(`tr[onclick*="${batterName}"][onclick*="${cardId}"]`);
+    if (!elRow) return;
+    targetRow = document.createElement('tr');
+    targetRow.id = detailId;
+    targetRow.style.background = D().dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
+    elRow.parentNode.insertBefore(targetRow, elRow.nextElementSibling);
+  }
+  targetRow.dataset.open = '1';
+  targetRow.style.display = '';
+  const myPlays = allPlays.filter(p => p.batterName === batterName);
+  targetRow.innerHTML = _buildBatterDetailHtml(myPlays, D());
 };
 
 document.getElementById('modal-overlay').addEventListener('click',e=>{
