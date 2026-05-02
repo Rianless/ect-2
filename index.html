@@ -7000,7 +7000,23 @@ if ('serviceWorker' in navigator) {
     const keys = await caches.keys();
     for (const key of keys) await caches.delete(key);
     // 재등록
-    navigator.serviceWorker.register('/sw.js').catch(() => {});
+    const reg = await navigator.serviceWorker.register('/sw.js').catch(() => null);
+    if (reg) {
+      // 새 SW가 설치되면 즉시 활성화 (waiting 상태 건너뜀)
+      const activate = (worker) => worker.postMessage('SKIP_WAITING');
+      if (reg.waiting) activate(reg.waiting);
+      reg.addEventListener('updatefound', () => {
+        const newWorker = reg.installing;
+        if (!newWorker) return;
+        newWorker.addEventListener('statechange', () => {
+          if (newWorker.state === 'installed') activate(newWorker);
+        });
+      });
+    }
+    // SW가 교체되면 페이지 자동 새로고침
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      window.location.reload();
+    });
   });
 }
 
