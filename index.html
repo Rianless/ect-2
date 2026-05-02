@@ -2213,13 +2213,13 @@ function _renderGameRecord(d) {
 
       // KIA 기록 (기본 표시)
       html += '<div id="'+cardId+'-kia" style="padding:10px 12px">';
-      html += _renderBatterPitcherTables(d, g, kiaKey, '#E31837');
+      html += _renderBatterPitcherTables(d, g, kiaKey, '#E31837', cardId);
       html += '</div>';
 
       // 상대팀 기록 (기본 숨김)
       const oppColor = T[opp]?.color || '#888';
       html += '<div id="'+cardId+'-opp" style="display:none;padding:10px 12px">';
-      html += _renderBatterPitcherTables(d, g, oppKey, oppColor);
+      html += _renderBatterPitcherTables(d, g, oppKey, oppColor, cardId);
       html += '</div>';
     } else {
       html += '<div style="text-align:center;padding:20px;font-size:12px;color:'+d.sub+'">라인업 데이터가 없습니다<br><span style="font-size:11px">경기 클릭 시 불러와집니다</span></div>';
@@ -2232,7 +2232,7 @@ function _renderGameRecord(d) {
   return html;
 }
 
-function _renderBatterPitcherTables(d, g, sideKey, sideColor) {
+function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
   const side = g.lineup?.[sideKey];
   const batters = side?.batters || [];
   const pitchers = side?.pitchers || [];
@@ -2281,7 +2281,9 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor) {
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curRbi>0?700:400)+';color:'+(p.curRbi>0?sideColor:d.sub)+'">'+(p.curRbi||0)+'</td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curBb>0?700:400)+';color:'+(p.curBb>0?sideColor:d.sub)+'">'+(p.curBb||0)+'</td></tr>';
       } else {
-        html += '<tr style="'+_rowSep+'"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.name+'</span></div></td>';
+        const _bRowId = 'brow-'+cardId+'-'+encodeURIComponent(p.name);
+        html += '<tr id="'+_bRowId+'" style="'+_rowSep+';cursor:pointer" onclick="toggleBatterDetail(this,\''+g.gameId+'\',\''+p.name+'\',\''+cardId+'\')" onmouseenter="this.style.background=\'rgba(0,0,0,0.03)\'" onmouseleave="this.style.background=\'\'">';
+        html += '<td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.name+'</span><span style="font-size:9px;color:'+d.sub+'">▾</span></div></td>';
         html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.ab||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.hit>0?700:400)+';color:'+(p.hit>0?sideColor:d.sub)+'">'+(p.hit||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.run>0?700:400)+';color:'+(p.run>0?sideColor:d.sub)+'">'+(p.run||0)+'</td>';
@@ -4788,6 +4790,136 @@ function extractScoringPlays(relayData) {
     return true;
   });
 }
+
+// ── 타자별 이닝 타석 기록 추출 (기록탭 타자 터치용) ──
+function extractBatterPlays(relayData, innNum) {
+  if (!relayData) return [];
+  const plays = [];
+  const relays = relayData.textRelays || [];
+  relays.forEach(item => {
+    const gs = item.currentGameState;
+    const inningInfo = gs?._inningInfo || gs?.inningInfo || gs?.inningText || gs?.inningDisplay || '';
+    const innMatch = inningInfo.match(/(\d+)회(초|말)?/);
+    const inn = innMatch ? parseInt(innMatch[1]) : innNum;
+    const half = innMatch ? (innMatch[2] || '') : '';
+
+    const title = item.title || item.text || '';
+    if (!title) return;
+
+    // 타자 이름 + 결과 파싱: "N번타자 이름 - 결과" 또는 "이름 결과" 패턴
+    const batterMatch = title.match(/\d+번타자\s*([가-힣A-Za-z·]{2,8})/);
+    if (!batterMatch) return;
+    const batterName = batterMatch[1];
+
+    // 결과 파싱
+    const allText = title + ' ' + (item.textOptions||[]).map(o=>o.text||o.title||'').join(' ');
+    let result = '';
+    if (/홈런/.test(allText)) result = '홈런';
+    else if (/3루타/.test(allText)) result = '3루타';
+    else if (/2루타/.test(allText)) result = '2루타';
+    else if (/안타/.test(allText)) result = '안타';
+    else if (/삼진|스트라이크 아웃/.test(allText)) result = '삼진';
+    else if (/볼넷|사사구|사구/.test(allText)) result = '볼넷';
+    else if (/병살/.test(allText)) result = '병살';
+    else if (/희생플라이|희플/.test(allText)) result = '희생플라이';
+    else if (/희생번트|희타/.test(allText)) result = '희생번트';
+    else if (/땅볼/.test(allText)) result = '땅볼아웃';
+    else if (/플라이|뜬공/.test(allText)) result = '뜬공아웃';
+    else if (/아웃/.test(allText)) result = '아웃';
+    else if (/몸에 맞는|사구|HBP/.test(allText)) result = '몸맞는볼';
+    else return; // 결과 불명확하면 스킵
+
+    plays.push({ batterName, inn, half, result, title });
+  });
+  return plays;
+}
+
+// ── 기록탭 타자 타석 상세 토글 ──
+window._batterPlaysCache = {};
+
+window.toggleBatterDetail = async function(el, gameId, batterName, cardId) {
+  const detailId = 'batter-detail-' + cardId + '-' + batterName.replace(/[^가-힣a-zA-Z]/g, '');
+  let detailEl = document.getElementById(detailId);
+
+  // 이미 열려있으면 닫기
+  if (detailEl && detailEl.style.display !== 'none') {
+    detailEl.style.display = 'none';
+    el.style.fontWeight = '700';
+    return;
+  }
+
+  if (!detailEl) {
+    detailEl = document.createElement('tr');
+    detailEl.id = detailId;
+    detailEl.style.background = D().dark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.025)';
+    el.parentNode.insertBefore(detailEl, el.nextSibling);
+  }
+
+  const d = D();
+  detailEl.innerHTML = `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">불러오는 중...</td>`;
+  detailEl.style.display = '';
+  el.style.fontWeight = '900';
+
+  // 캐시 확인
+  const cacheKey = gameId;
+  let allPlays = window._batterPlaysCache[cacheKey];
+
+  if (!allPlays) {
+    // 모든 이닝 relay 데이터 fetch (최대 9회)
+    allPlays = [];
+    const fetches = [];
+    for (let i = 1; i <= 9; i++) {
+      fetches.push(fetchRelayData(gameId, i).then(data => {
+        if (data) {
+          const plays = extractBatterPlays(data, i);
+          plays.forEach(p => { if (!p.inn) p.inn = i; });
+          allPlays.push(...plays);
+        }
+      }));
+    }
+    await Promise.all(fetches);
+    // 이닝 순 정렬
+    allPlays.sort((a, b) => a.inn - b.inn);
+    window._batterPlaysCache[cacheKey] = allPlays;
+  }
+
+  const myPlays = allPlays.filter(p => p.batterName === batterName);
+
+  if (!myPlays.length) {
+    detailEl.innerHTML = `<td colspan="6" style="padding:8px 12px;text-align:center;font-size:11px;color:${d.sub}">타석 기록 없음</td>`;
+    return;
+  }
+
+  const resultColor = r => {
+    if (/홈런/.test(r)) return '#E31837';
+    if (/2루타|3루타|안타/.test(r)) return '#FF9500';
+    if (/볼넷|몸맞/.test(r)) return '#3B9EF5';
+    if (/삼진/.test(r)) return d.sub;
+    return d.sub;
+  };
+  const resultIcon = r => {
+    if (/홈런/.test(r)) return '💣';
+    if (/3루타/.test(r)) return '3️⃣';
+    if (/2루타/.test(r)) return '2️⃣';
+    if (/안타/.test(r)) return '🟡';
+    if (/삼진/.test(r)) return 'K';
+    if (/볼넷|몸맞/.test(r)) return 'BB';
+    if (/병살/.test(r)) return 'DP';
+    if (/희생/.test(r)) return '희';
+    return '●';
+  };
+
+  const rows = myPlays.map(p =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;margin:3px 4px;padding:4px 9px;border-radius:20px;background:${d.dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.05)'}">
+      <span style="font-size:10px;color:${d.sub};font-weight:600">${p.inn}회${p.half}</span>
+      <span style="font-size:11px;font-weight:800;color:${resultColor(p.result)}">${resultIcon(p.result)} ${p.result}</span>
+    </span>`
+  ).join('');
+
+  detailEl.innerHTML = `<td colspan="6" style="padding:6px 10px 10px">
+    <div style="display:flex;flex-wrap:wrap;gap:0">${rows}</div>
+  </td>`;
+};
 
 document.getElementById('modal-overlay').addEventListener('click',e=>{
   if(e.target===document.getElementById('modal-overlay'))closeModal();
