@@ -725,7 +725,10 @@ export default async function handler(req, res) {
     await Promise.all(rawGames.map(async g => {
       try {
         if (g.statusCode === 'STARTED' || g.statusCode === 'LIVE' || g.statusCode === 'RESULT' || g.statusCode === 'FINAL') {
-          const inn = (g.statusCode === 'RESULT' || g.statusCode === 'FINAL') ? 9 : 1;
+          const inn = (g.statusCode === 'RESULT' || g.statusCode === 'FINAL') ? 9
+            : (g.statusCode === 'STARTED' || g.statusCode === 'LIVE')
+              ? (parseInt(String(g.statusInfo || '').match(/(\d+)/)?.[1] || '1'))
+              : 1;
           const d = await fetchGameDetail(g.gameId, inn);
           if (d) detailMap[g.gameId] = d;
         } else {
