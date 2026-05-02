@@ -2251,10 +2251,17 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
     html += '</tr></thead><tbody>';
     batters.filter(p => p.p !== 'P' || p.sub || p.chain).sort((a,b) => (a.n||99)-(b.n||99)).slice(0,9).forEach(p => {
       const _rowSep = 'border-bottom:1px solid '+(d.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)');
+      // 공통: 타자 행 onclick (타자명 기준, chain이면 chain[0].name 또는 p.sub 사용)
+      const _mainName = (p.chain&&p.chain.length) ? p.chain[0].name : (p.sub ? p.sub : p.name);
+      const _onclickAttr = 'event.stopPropagation();toggleBatterDetail(this,\''+g.gameId+'\',\''+_mainName+'\',\''+cardId+'\')';
+      const _hoverIn = 'this.style.background=\'rgba(0,0,0,0.03)\'';
+      const _hoverOut = 'this.style.background=\'\'';
+
       if (p.chain && p.chain.length) {
         p.chain.forEach((s, si) => {
           const isFirst = si === 0;
-          html += '<tr style="'+_rowSep+'"><td style="padding:'+(isFirst?'6px':'3px')+' 10px '+(isFirst?'3px':'3px')+'"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+(isFirst?sideColor:'transparent')+'">'+(isFirst?(p.n||p.order):'')+'</span><span style="font-size:11px;font-weight:700;color:'+(isFirst?d.text:d.sub)+'">'+s.name+'</span></div></td>';
+          const _chainOnclick = isFirst ? ' onclick="'+_onclickAttr+'" onmouseenter="'+_hoverIn+'" onmouseleave="'+_hoverOut+'" style="'+_rowSep+';cursor:pointer"' : ' style="'+_rowSep+'"';
+          html += '<tr'+_chainOnclick+'><td style="padding:'+(isFirst?'6px':'3px')+' 10px '+(isFirst?'3px':'3px')+'"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+(isFirst?sideColor:'transparent')+'">'+(isFirst?(p.n||p.order):'')+'</span><span style="font-size:11px;font-weight:700;color:'+(isFirst?d.text:d.sub)+'">'+s.name+'</span>'+(isFirst?'<span class="batter-arrow" style="font-size:9px;color:'+d.sub+'">▾</span>':'')+'</div></td>';
           html += '<td style="padding:3px 5px;text-align:center;color:'+d.sub+'">'+(s.ab||0)+'</td>';
           html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.hit>0?700:400)+';color:'+(s.hit>0?sideColor:d.sub)+'">'+(s.hit||0)+'</td>';
           html += '<td style="padding:3px 5px;text-align:center;font-weight:'+(s.run>0?700:400)+';color:'+(s.run>0?sideColor:d.sub)+'">'+(s.run||0)+'</td>';
@@ -2268,7 +2275,7 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
         html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curRbi>0?700:400)+';color:'+(p.curRbi>0?sideColor:d.sub)+'">'+(p.curRbi||0)+'</td>';
         html += '<td style="padding:3px 5px 6px;text-align:center;font-weight:'+(p.curBb>0?700:400)+';color:'+(p.curBb>0?sideColor:d.sub)+'">'+(p.curBb||0)+'</td></tr>';
       } else if (p.sub) {
-        html += '<tr style="'+_rowSep+'"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.sub+'</span></div></td>';
+        html += '<tr onclick="'+_onclickAttr+'" onmouseenter="'+_hoverIn+'" onmouseleave="'+_hoverOut+'" style="'+_rowSep+';cursor:pointer"><td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.sub+'</span><span class="batter-arrow" style="font-size:9px;color:'+d.sub+'">▾</span></div></td>';
         html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.subAb||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subHit>0?700:400)+';color:'+(p.subHit>0?sideColor:d.sub)+'">'+(p.subHit||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subRun>0?700:400)+';color:'+(p.subRun>0?sideColor:d.sub)+'">'+(p.subRun||0)+'</td>';
@@ -2282,7 +2289,7 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curBb>0?700:400)+';color:'+(p.curBb>0?sideColor:d.sub)+'">'+(p.curBb||0)+'</td></tr>';
       } else {
         const _bRowId = 'brow-'+cardId+'-'+encodeURIComponent(p.name);
-        html += '<tr id="'+_bRowId+'" style="'+_rowSep+';cursor:pointer" onclick="event.stopPropagation();toggleBatterDetail(this,\''+g.gameId+'\',\''+p.name+'\',\''+cardId+'\')" onmouseenter="this.style.background=\'rgba(0,0,0,0.03)\'" onmouseleave="this.style.background=\'\'">';
+        html += '<tr id="'+_bRowId+'" onclick="'+_onclickAttr+'" onmouseenter="'+_hoverIn+'" onmouseleave="'+_hoverOut+'" style="'+_rowSep+';cursor:pointer">';
         html += '<td style="padding:6px 10px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+sideColor+'">'+(p.n||p.order)+'</span><span style="font-size:11px;font-weight:700;color:'+d.text+'">'+p.name+'</span><span class="batter-arrow" style="font-size:9px;color:'+d.sub+'">▾</span></div></td>';
         html += '<td style="padding:6px 5px;text-align:center;color:'+d.sub+'">'+(p.ab||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.hit>0?700:400)+';color:'+(p.hit>0?sideColor:d.sub)+'">'+(p.hit||0)+'</td>';
