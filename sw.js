@@ -1,5 +1,5 @@
-// KBO 대시보드 Service Worker v5
-const CACHE_NAME = 'kbo-v5';
+// KBO 대시보드 Service Worker v6
+const CACHE_NAME = 'kbo-v6';
 // index.html은 캐시 안 함 - 항상 네트워크에서 받아야 SCH 데이터 최신 유지
 const STATIC_ASSETS = ['/manifest.json'];
 
@@ -7,18 +7,29 @@ self.addEventListener('install', e => {
   e.waitUntil(
     caches.open(CACHE_NAME).then(cache =>
       cache.addAll(STATIC_ASSETS).catch(() => {})
-    )
+    ).then(() => self.skipWaiting())
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', e => {
   e.waitUntil(
     caches.keys().then(keys =>
       Promise.all(keys.filter(k => k !== CACHE_NAME).map(k => caches.delete(k)))
-    )
+    ).then(() => self.clients.claim())
+    .then(() => {
+      // 모든 열린 탭에 새로고침 요청
+      return self.clients.matchAll({ type: 'window' }).then(clients => {
+        clients.forEach(client => client.navigate(client.url));
+      });
+    })
   );
-  self.clients.claim();
+});
+
+// SKIP_WAITING 메시지 수신 시 즉시 활성화
+self.addEventListener('message', e => {
+  if (e.data === 'SKIP_WAITING' || e.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
 
 self.addEventListener('fetch', e => {
@@ -63,6 +74,10 @@ self.addEventListener('notificationclick', e => {
 });
 
 self.addEventListener('message', e => {
+  if (e.data === 'SKIP_WAITING' || e.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+    return;
+  }
   if (e.data && e.data.type === 'LOCAL_NOTIFY') {
     const { title = '🐯 KIA', body = '', tag = 'kia' } = e.data;
     self.registration.showNotification(title, {
