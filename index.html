@@ -4849,18 +4849,25 @@ function extractBatterPlays(relayData, innNum) {
     // 타자명 추출 - 여러 패턴 시도
     let batterName = '';
 
-    // 패턴1: "N번타자 이름" (가장 일반적)
+    // 패턴1: "N번타자 이름" - 공백 0~2개 허용
     for (const t of allTexts) {
-      const m = t.match(/(\d+)번타자\s*([가-힣A-Za-z·]{2,8})/);
+      const m = t.match(/(\d+)번타자\s{0,2}([가-힣A-Za-z·]{2,8})/);
       if (m) { batterName = m[2]; break; }
     }
 
-    // 패턴2: "이름 홈런/안타/삼진..." 형태 (타자명이 앞에 오는 경우)
+    // 패턴2: "이름 결과" 형태
     if (!batterName) {
-      const hitKeywords = /홈런|안타|2루타|3루타|삼진|볼넷|병살|희생|땅볼|플라이|뜬공|몸맞|아웃/;
       for (const t of allTexts) {
-        const m = t.match(/^([가-힣]{2,4})\s*(홈런|안타|[123]루타|삼진|볼넷|병살|희생|내야안타)/);
+        const m = t.match(/^([가-힣]{2,5})\s*(홈런|안타|[123]루타|삼진|볼넷|병살|희생|내야안타|아웃)/);
         if (m) { batterName = m[1]; break; }
+      }
+    }
+
+    // 패턴3: title 자체가 "이름" 이고 opts에 결과 있는 경우
+    if (!batterName && mainTitle) {
+      const nameOnly = mainTitle.match(/^([가-힣]{2,5})$/);
+      if (nameOnly && fullText.match(/홈런|안타|삼진|볼넷|아웃|병살|희생/)) {
+        batterName = nameOnly[1];
       }
     }
 
