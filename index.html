@@ -2263,7 +2263,10 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
     html += '</tr></thead><tbody>';
     batters.filter(p => p.p !== 'P' || p.sub || p.chain).sort((a,b) => (a.n||99)-(b.n||99)).slice(0,9).forEach(p => {
       const _rowSep = 'border-bottom:1px solid '+(d.dark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.04)');
-      // 모든 타자 타입 공통 onclick (chain이면 첫번째 선수 이름, sub이면 sub 이름 사용)
+      // 모든 타자 타입 공통 onclick
+      // chain: 첫번째(선발) 선수 이름으로 검색
+      // sub: p.sub(선발)과 p.name(교체) 둘 다 검색 가능하도록 선발 이름 사용
+      // normal: p.name
       const _clickName = (p.chain&&p.chain.length) ? p.chain[0].name : (p.sub ? p.sub : p.name);
       const _oc = 'event.stopPropagation();toggleBatterDetail(this,\''+g.gameId+'\',\''+_clickName+'\',\''+cardId+'\')';
       const _hov = 'onmouseenter="this.style.background=\'rgba(0,0,0,0.03)\'" onmouseleave="this.style.background=\'\'"';
@@ -2294,7 +2297,8 @@ function _renderBatterPitcherTables(d, g, sideKey, sideColor, cardId) {
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subRun>0?700:400)+';color:'+(p.subRun>0?sideColor:d.sub)+'">'+(p.subRun||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subRbi>0?700:400)+';color:'+(p.subRbi>0?sideColor:d.sub)+'">'+(p.subRbi||0)+'</td>';
         html += '<td style="padding:6px 5px;text-align:center;font-weight:'+(p.subBb>0?700:400)+';color:'+(p.subBb>0?sideColor:d.sub)+'">'+(p.subBb||0)+'</td></tr>';
-        html += '<tr style="'+_rowSep+'"><td style="padding:4px 10px 6px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+d.muted+'">▼</span><span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+p.name+'</span></div></td>';
+        const _subCurOc = 'event.stopPropagation();toggleBatterDetail(this,\''+g.gameId+'\',\''+p.name+'\',\''+cardId+'\')';
+        html += '<tr onclick="'+_subCurOc+'" '+_hov+' style="'+_rowSep+';cursor:pointer"><td style="padding:4px 10px 6px"><div style="display:flex;align-items:center;gap:5px"><span style="font-size:9px;font-weight:900;min-width:14px;color:'+d.muted+'">▼</span><span style="font-size:11px;font-weight:700;color:'+d.sub+'">'+p.name+'</span><span class="batter-arrow" style="font-size:9px;color:'+d.sub+'">▾</span></div></td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;color:'+d.sub+'">'+(p.curAb||0)+'</td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curHit>0?700:400)+';color:'+(p.curHit>0?sideColor:d.sub)+'">'+(p.curHit||0)+'</td>';
         html += '<td style="padding:4px 5px 6px;text-align:center;font-weight:'+(p.curRun>0?700:400)+';color:'+(p.curRun>0?sideColor:d.sub)+'">'+(p.curRun||0)+'</td>';
@@ -4819,13 +4823,14 @@ function extractBatterPlays(relayData, innNum) {
   let curInn = innNum, curHalf = '';
 
   relays.forEach(item => {
+    const mainTitle = item.title || item.text || '';
+
     // 이닝 헤더 컨텍스트 갱신
-    const headerTitle = item.title || item.text || '';
-    const headerMatch = headerTitle.match(/^(\d+)회(초|말)/);
+    const headerMatch = mainTitle.match(/^(\d+)회(초|말)/);
     if (headerMatch) {
       curInn = parseInt(headerMatch[1]);
       curHalf = headerMatch[2];
-      return; // 헤더 row는 타석 처리 안 함
+      return;
     }
 
     // gs에서 이닝 갱신
@@ -4837,28 +4842,38 @@ function extractBatterPlays(relayData, innNum) {
       if (gsMatch[2]) curHalf = gsMatch[2];
     }
 
-    // item 자체 title 또는 textOptions에서 타자명 추출
-    const mainTitle = item.title || item.text || '';
     const opts = item.textOptions || [];
     const allTexts = [mainTitle, ...opts.map(o => o.title || o.text || '')];
-    const combinedText = allTexts.join(' ');
+    const fullText = allTexts.join(' ');
 
-    // "N번타자 이름" 패턴 탐색 (title 또는 opts 어디서든)
+    // 타자명 추출 - 여러 패턴 시도
     let batterName = '';
+
+    // 패턴1: "N번타자 이름" (가장 일반적)
     for (const t of allTexts) {
       const m = t.match(/(\d+)번타자\s*([가-힣A-Za-z·]{2,8})/);
       if (m) { batterName = m[2]; break; }
     }
+
+    // 패턴2: "이름 홈런/안타/삼진..." 형태 (타자명이 앞에 오는 경우)
+    if (!batterName) {
+      const hitKeywords = /홈런|안타|2루타|3루타|삼진|볼넷|병살|희생|땅볼|플라이|뜬공|몸맞|아웃/;
+      for (const t of allTexts) {
+        const m = t.match(/^([가-힣]{2,4})\s*(홈런|안타|[123]루타|삼진|볼넷|병살|희생|내야안타)/);
+        if (m) { batterName = m[1]; break; }
+      }
+    }
+
     if (!batterName) return;
 
-    const fullText = combinedText;
-
+    // 결과 판별
     let result = '';
     if (/홈런/.test(fullText)) result = '홈런';
     else if (/끝내기 안타|끝내기/.test(fullText)) result = '끝내기안타';
     else if (/3루타/.test(fullText)) result = '3루타';
     else if (/2루타/.test(fullText)) result = '2루타';
     else if (/적시타/.test(fullText)) result = '적시타';
+    else if (/내야안타/.test(fullText)) result = '내야안타';
     else if (/안타/.test(fullText)) result = '안타';
     else if (/삼진|스트라이크 아웃/.test(fullText)) result = '삼진';
     else if (/볼넷|사사구|포볼/.test(fullText)) result = '볼넷';
@@ -4869,9 +4884,8 @@ function extractBatterPlays(relayData, innNum) {
     else if (/땅볼/.test(fullText)) result = '땅볼아웃';
     else if (/플라이|뜬공/.test(fullText)) result = '뜬공아웃';
     else if (/아웃/.test(fullText)) result = '아웃';
-    else return; // 결과 불명확하면 스킵
+    else return;
 
-    // 완전 동일한 항목만 중복 제거
     const isDup = plays.some(p =>
       p.batterName === batterName && p.inn === curInn &&
       p.half === curHalf && p.result === result
@@ -5784,7 +5798,7 @@ function renderRelayText(relays, away, home) {
     } else if (fullText.match(/파울 플라이/)) {
       badge='파울플라이'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
     } else if (fullText.match(/라인드라이브 아웃/)) {
-      badge='라드아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
+      badge='라인아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
     } else if (fullText.match(/아웃|출루/)) {
       badge='아웃'; bdColor='#555'; bdBg='rgba(0,0,0,0.07)';
     } else if (fullText.match(/투수.*:.*교체|투수 교체|투수교체/)) {
