@@ -158,129 +158,8 @@ export default async function handler(req, res) {
     return null;
   }
 
-  // ── KBO 공식 라인업 fetch ──
-  // 네이버 game 객체(g)에서 awayTeamCode + homeTeamCode로 KBO gameId 생성
-  async function fetchKboLineup(naverGameId, g) {
-    try {
-      const date = String(naverGameId).slice(0, 8);
-      const away = g?.awayTeamCode || '';
-      const home = g?.homeTeamCode || '';
-      // 팀코드가 없으면 네이버 gameId에서 직접 추출 (날짜 8자리 이후 ~ 끝에서 4자리 전까지)
-      // 예: 20260505HHHT02026 → HHHT0 → away=HH, home=HT
-      let kboGameId;
-      if (away && home) {
-        kboGameId = `${date}${away}${home}0`;
-      } else {
-        // 네이버 gameId에서 팀코드 부분 추출 (8자리 날짜 이후, 연도 4자리 제거)
-        const rawId = String(naverGameId);
-        const teamPart = rawId.slice(8).replace(/\d{4}$/, ''); // 끝 4자리 연도 제거
-        kboGameId = `${date}${teamPart}`;
-        if (!kboGameId.endsWith('0')) kboGameId += '0';
-      }
-      const year = String(naverGameId).slice(0, 4);
-
-      const body = new URLSearchParams({
-        leId: '1',
-        srId: '0',
-        seasonId: year,
-        gameId: kboGameId,
-      }).toString();
-
-      const r = await fetchWithTimeout('https://www.koreabaseball.com/ws/Schedule.asmx/GetLineUpAnalysis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'Referer': 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx',
-          'Origin': 'https://www.koreabaseball.com',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      }, 6000);
-
-      if (!r.ok) throw new Error(`KBO HTTP ${r.status}`);
-      const data = await r.json();
-
-      // data[0][0].LINEUP_CK: true = 오늘 확정 라인업, false = 최근 라인업 기준
-      const isConfirmed = data?.[0]?.[0]?.LINEUP_CK === true;
-
-      // data[3][0] = 홈팀 타자 rows JSON 문자열
-      // data[4][0] = 원정팀 타자 rows JSON 문자열
-      const parseRows = (rawStr) => {
-        if (!rawStr) return [];
-        try {
-          const parsed = typeof rawStr === 'string' ? JSON.parse(rawStr) : rawStr;
-          return (parsed.rows || []).map(r => ({
-            batOrder: Number(r.row[0]?.Text || 0),
-            posName:  r.row[1]?.Text || '',
-            name:     r.row[2]?.Text || '',
-            war:      r.row[3]?.Text || '',
-          }));
-        } catch { return []; }
-      };
-
-      const homeBatters = parseRows(data?.[3]?.[0]);
-      const awayBatters = parseRows(data?.[4]?.[0]);
-
-      if (!homeBatters.length && !awayBatters.length) throw new Error('KBO empty lineup');
-
-      console.log(`[fetchKboLineup] OK kboGameId:${kboGameId} confirmed:${isConfirmed} home:${homeBatters.length} away:${awayBatters.length}`);
-
-      // 네이버 포맷과 호환되도록 변환하여 반환
-      return {
-        homeLineup: { batter: homeBatters, pitcher: [] },
-        awayLineup: { batter: awayBatters, pitcher: [] },
-        _kboConfirmed: isConfirmed,
-        _kboGameId: kboGameId,
-      };
-    } catch(e) {
-      console.log('[fetchKboLineup] failed:', e.message);
-      return null;
-    }
-  }
-
-  // ── 라인업 fetch: KBO 공식(0순위) → 네이버(1~3순위) ──
-  async function fetchLineup(gameId, inning, g) {
+  async function fetchLineup(gameId, inning) {
     const inn = inning || 1;
-
-    // 0순위: KBO 공식 API — 경기 당일 라인업 발표가 네이버보다 빠름
-    if (g) {
-      const kboResult = await fetchKboLineup(gameId, g);
-      if (kboResult?._kboConfirmed) {
-        // 확정 라인업이면 바로 반환
-        console.log('[fetchLineup] KBO confirmed lineup! gameId:', gameId);
-        return kboResult;
-      }
-      // 미확정이면 kboResult를 보관해두고 네이버 시도 후 fallback으로 활용
-      const urls = [
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/preview`,
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/starting-lineup`,
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/lineup`,
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=${inn}&isHighlight=false`,
-      ];
-      const validateLineup = r => r && Object.keys(r).length > 0;
-      try {
-        const result = await Promise.any(
-          urls.slice(0, 3).map(url => fetchOneValid(url, validateLineup))
-        );
-        console.log('[fetchLineup] naver parallel OK for', gameId);
-        return result;
-      } catch {
-        try {
-          const result = await fetchOneValid(urls[3], validateLineup);
-          console.log('[fetchLineup] naver polling fallback OK for', gameId);
-          return result;
-        } catch {
-          // 네이버도 실패하면 KBO 미확정 라인업이라도 반환
-          if (kboResult) {
-            console.log('[fetchLineup] fallback to KBO unconfirmed lineup for', gameId);
-            return kboResult;
-          }
-          return null;
-        }
-      }
-    }
-
-    // g 없이 호출된 경우 (기존 동작 유지)
     const urls = [
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/preview`,
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/starting-lineup`,
@@ -497,18 +376,6 @@ export default async function handler(req, res) {
       winPitcher: gameData.winPitcherName || g.winPitcherName || null,
       losePitcher: gameData.losePitcherName || g.losePitcherName || null,
       lineup: detail ? (() => {
-        // ── KBO 공식 API 데이터인 경우 (_kboConfirmed 플래그) ──
-        if (detail._kboConfirmed !== undefined && detail.homeLineup && detail.awayLineup) {
-          const homeBatters = detail.homeLineup.batter || [];
-          const awayBatters = detail.awayLineup.batter || [];
-          if (!homeBatters.length && !awayBatters.length) return null;
-          console.log('[lineup parse KBO] awayB:', awayBatters.length, 'homeB:', homeBatters.length, 'confirmed:', detail._kboConfirmed);
-          return {
-            away: { batters: awayBatters, pitcher: detail.awayLineup.pitcher || [] },
-            home: { batters: homeBatters, pitcher: detail.homeLineup.pitcher || [] },
-          };
-        }
-        // ── 네이버 API 데이터 ──
         const gp = detail.game || {};
         const lu = detail.lineUpData || gp.lineUpData || {};
         const awayL = lu.awayLineup || lu.awayTeamLineup
@@ -618,6 +485,7 @@ export default async function handler(req, res) {
       });
     }
 
+    // ── action=lineup: 라인업 + currentGameState ──
     // ── 순위 액션: 시즌 전체 일정 기반 계산 ──
     if (action === 'standings') {
       const year = kst.getUTCFullYear();
@@ -666,17 +534,8 @@ export default async function handler(req, res) {
       return res.status(200).json({ standings: rows });
     }
 
-    // ── action=lineup: 라인업 + currentGameState ──
     if (gameId && action === 'lineup') {
       const inn = inning || 1;
-
-      // 이 action에서는 g 객체가 필요하므로 스케줄에서 가져옴
-      const m = String(gameId).match(/^(\d{4})(\d{2})(\d{2})/);
-      const gameDateDash = m ? `${m[1]}-${m[2]}-${m[3]}` : todayDash;
-      const rawGamesForLineup = await fetchSchedule(gameDateDash).catch(() => []);
-      // gameId 뒤에 연도가 붙는 경우 대비 (예: 20260505HHHT02026 → 앞 15자리만 비교)
-      const normalizeGid = id => String(id).slice(0, 15);
-      const gForLineup = rawGamesForLineup.find(x => normalizeGid(x.gameId) === normalizeGid(gameId)) || null;
 
       function extractLineupPair(raw) {
         if (!raw) return { home: null, away: null };
@@ -692,10 +551,8 @@ export default async function handler(req, res) {
           if (!away) away = lu.awayLineup || lu.awayTeamLineup || null;
         }
 
-        if (!home || !away) {
-          if (!home) home = td.homeTeamLineup || raw.homeTeamLineup || gd.homeTeamLineup || null;
-          if (!away) away = td.awayTeamLineup || raw.awayTeamLineup || gd.awayTeamLineup || null;
-        }
+        if (!home) home = td.homeTeamLineup || raw.homeTeamLineup || gd.homeTeamLineup || null;
+        if (!away) away = td.awayTeamLineup || raw.awayTeamLineup || gd.awayTeamLineup || null;
 
         console.log('[extractLineupPair] homeL:', !!home, 'awayL:', !!away, 'raw keys:', Object.keys(raw).slice(0,10).join(','));
         return { home, away };
@@ -720,6 +577,7 @@ export default async function handler(req, res) {
 
       function parsePitchers(arr) {
         if (!arr?.length) return [];
+        
         return arr.map(p => ({
           seqno: p.seqno || p.orderNum || 0,
           name: p.name || p.playerName || '',
@@ -735,8 +593,8 @@ export default async function handler(req, res) {
         }));
       }
 
-      // 1차: /lineup 전용 API (KBO 0순위 포함)
-      const lineupRaw = await fetchLineup(gameId, inn, gForLineup);
+      // 1차: /lineup 전용 API
+      const lineupRaw = await fetchLineup(gameId, inn);
       let { home: homeLineup, away: awayLineup } = extractLineupPair(lineupRaw);
 
       // 2차: game-polling 시도
@@ -766,7 +624,7 @@ export default async function handler(req, res) {
         return res.status(404).json({ error: 'Lineup not found' });
       }
 
-      // ── currentGameState를 lineup + game-polling + record 전체에서 탐색 ──
+      // ── 핵심 수정: currentGameState를 lineup + game-polling + record 전체에서 탐색 ──
       const allRaws = [lineupRaw, recordRaw].filter(Boolean);
       let gs = null;
       for (const raw of allRaws) {
@@ -832,7 +690,6 @@ export default async function handler(req, res) {
         },
         currentGameState: gs,
         pcodeMap,
-        _kboConfirmed: lineupRaw?._kboConfirmed ?? null,
         _raw_keys: Object.keys(lineupRaw || {}).slice(0, 20),
       });
     }
@@ -875,8 +732,7 @@ export default async function handler(req, res) {
           const d = await fetchGameDetail(g.gameId, inn);
           if (d) detailMap[g.gameId] = d;
         } else {
-          // SCHEDULED 경기: g 객체 전달하여 KBO 라인업 0순위 시도
-          const lu = await fetchLineup(g.gameId, 1, g);
+          const lu = await fetchLineup(g.gameId, 1);
           if (lu) detailMap[g.gameId] = lu;
         }
       } catch(e) {}
