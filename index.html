@@ -4551,6 +4551,40 @@ function _parsePitchers(src) {
   return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:Number(p.er||p.earnedRun||0), r:Number(p.r||p.run||p.ra||p.runs||p.er||p.earnedRun||0), kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.ballCount||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0), sp:Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0) }));
 }
 
+// ── 브라우저에서 직접 KBO 라인업 fetch ──
+async function fetchKboLineupDirect(gameId) {
+  try {
+    const date = String(gameId).slice(0, 8);
+    const teamPart = String(gameId).slice(8).replace(/\d{4}$/, '');
+    const kboGameId = date + teamPart + (teamPart.endsWith('0') ? '' : '0');
+    const year = String(gameId).slice(0, 4);
+    const body = new URLSearchParams({ leId: '1', srId: '0', seasonId: year, gameId: kboGameId }).toString();
+    const r = await fetch('https://www.koreabaseball.com/ws/Schedule.asmx/GetLineUpAnalysis', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
+      body,
+    });
+    if (!r.ok) throw new Error('KBO ' + r.status);
+    const data = await r.json();
+    const isConfirmed = data?.[0]?.[0]?.LINEUP_CK === true;
+    const parseRows = (rawStr) => {
+      if (!rawStr) return [];
+      try {
+        const parsed = typeof rawStr === 'string' ? JSON.parse(rawStr) : rawStr;
+        return (parsed.rows || []).map(row => ({ batOrder: Number(row.row[0]?.Text || 0), posName: row.row[1]?.Text || '', name: row.row[2]?.Text || '' }));
+      } catch { return []; }
+    };
+    const homeBatters = parseRows(data?.[3]?.[0]);
+    const awayBatters = parseRows(data?.[4]?.[0]);
+    if (!homeBatters.length && !awayBatters.length) return null;
+    console.log('[fetchKboLineupDirect] OK', kboGameId, 'confirmed:', isConfirmed, 'home:', homeBatters.length, 'away:', awayBatters.length);
+    return { home: { batters: homeBatters, pitchers: [] }, away: { batters: awayBatters, pitchers: [] }, currentGameState: null, pcodeMap: {}, _kboConfirmed: isConfirmed };
+  } catch(e) {
+    console.log('[fetchKboLineupDirect] failed:', e.message);
+    return null;
+  }
+}
+
 async function fetchLineupDirect(gameId, inning) {
   if (!gameId) return null;
   const inn = Math.max(1, inning || 1);
@@ -4568,7 +4602,12 @@ async function fetchLineupDirect(gameId, inning) {
     // console.log('[lineup raw keys]', result._raw_keys); // 디버그
 
     if (!homeL && !awayL) {
-      return gs ? { currentGameState: gs } : null;
+      if (gs) return { currentGameState: gs };
+      // 서버에서 라인업 못 받으면 브라우저에서 직접 KBO API 시도
+      console.log('[fetchLineupDirect] server no lineup, trying KBO direct...');
+      const kboResult = await fetchKboLineupDirect(gameId);
+      if (kboResult) return kboResult;
+      return null;
     }
 
     // pcode → 이름 맵 (gs 베이스 이름 추출용)
