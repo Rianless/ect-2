@@ -165,7 +165,18 @@ export default async function handler(req, res) {
       const date = String(naverGameId).slice(0, 8);
       const away = g?.awayTeamCode || '';
       const home = g?.homeTeamCode || '';
-      const kboGameId = `${date}${away}${home}0`;
+      // 팀코드가 없으면 네이버 gameId에서 직접 추출 (날짜 8자리 이후 ~ 끝에서 4자리 전까지)
+      // 예: 20260505HHHT02026 → HHHT0 → away=HH, home=HT
+      let kboGameId;
+      if (away && home) {
+        kboGameId = `${date}${away}${home}0`;
+      } else {
+        // 네이버 gameId에서 팀코드 부분 추출 (8자리 날짜 이후, 연도 4자리 제거)
+        const rawId = String(naverGameId);
+        const teamPart = rawId.slice(8).replace(/\d{4}$/, ''); // 끝 4자리 연도 제거
+        kboGameId = `${date}${teamPart}`;
+        if (!kboGameId.endsWith('0')) kboGameId += '0';
+      }
       const year = String(naverGameId).slice(0, 4);
 
       const body = new URLSearchParams({
@@ -663,7 +674,9 @@ export default async function handler(req, res) {
       const m = String(gameId).match(/^(\d{4})(\d{2})(\d{2})/);
       const gameDateDash = m ? `${m[1]}-${m[2]}-${m[3]}` : todayDash;
       const rawGamesForLineup = await fetchSchedule(gameDateDash).catch(() => []);
-      const gForLineup = rawGamesForLineup.find(x => String(x.gameId) === String(gameId)) || null;
+      // gameId 뒤에 연도가 붙는 경우 대비 (예: 20260505HHHT02026 → 앞 15자리만 비교)
+      const normalizeGid = id => String(id).slice(0, 15);
+      const gForLineup = rawGamesForLineup.find(x => normalizeGid(x.gameId) === normalizeGid(gameId)) || null;
 
       function extractLineupPair(raw) {
         if (!raw) return { home: null, away: null };
