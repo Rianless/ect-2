@@ -486,6 +486,18 @@ export default async function handler(req, res) {
       winPitcher: gameData.winPitcherName || g.winPitcherName || null,
       losePitcher: gameData.losePitcherName || g.losePitcherName || null,
       lineup: detail ? (() => {
+        // ── KBO 공식 API 데이터인 경우 (_kboConfirmed 플래그) ──
+        if (detail._kboConfirmed !== undefined && detail.homeLineup && detail.awayLineup) {
+          const homeBatters = detail.homeLineup.batter || [];
+          const awayBatters = detail.awayLineup.batter || [];
+          if (!homeBatters.length && !awayBatters.length) return null;
+          console.log('[lineup parse KBO] awayB:', awayBatters.length, 'homeB:', homeBatters.length, 'confirmed:', detail._kboConfirmed);
+          return {
+            away: { batters: awayBatters, pitcher: detail.awayLineup.pitcher || [] },
+            home: { batters: homeBatters, pitcher: detail.homeLineup.pitcher || [] },
+          };
+        }
+        // ── 네이버 API 데이터 ──
         const gp = detail.game || {};
         const lu = detail.lineUpData || gp.lineUpData || {};
         const awayL = lu.awayLineup || lu.awayTeamLineup
