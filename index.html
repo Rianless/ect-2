@@ -3974,8 +3974,26 @@ function renderModal(d) {
             const b2c = base2 ? '#FFB300' : baseColor;
             const b3c = base3 ? '#FFB300' : baseColor;
 
-            // 주자 핀만 SVG 위에 표시 (투수·타자는 matchupHtml로 분리)
+            // 타자/투수/주자 정보 표시 핀 (SVG 외부 absolute div)
             const situationPins = [];
+            // 타자 핀 (홈플레이트 위)
+            if(batterNameCgs) {
+              situationPins.push(`<div style="position:absolute;left:50%;top:88%;transform:translate(-50%,-50%);z-index:5">
+                <div style="background:#E31837;border-radius:8px;padding:3px 8px;display:flex;align-items:center;gap:3px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)">
+                  <span style="font-size:9px;font-weight:900;color:#fff;background:rgba(255,255,255,0.25);border-radius:3px;padding:1px 3px">타</span>
+                  <span style="font-size:11px;font-weight:700;color:#fff">${batterNameCgs}</span>
+                </div>
+              </div>`);
+            }
+            // 투수 핀 (마운드) - 수비팀 색상 사용
+            if(pitcherNameCgs) {
+              situationPins.push(`<div style="position:absolute;left:50%;top:56%;transform:translate(-50%,-50%);z-index:5">
+                <div style="background:${defColor};border-radius:8px;padding:3px 8px;display:flex;align-items:center;gap:3px;white-space:nowrap;box-shadow:0 2px 8px rgba(0,0,0,0.4)">
+                  <span style="font-size:9px;font-weight:900;color:#fff;background:rgba(255,255,255,0.25);border-radius:3px;padding:1px 3px">P</span>
+                  <span style="font-size:11px;font-weight:700;color:#fff">${pitcherNameCgs}</span>
+                </div>
+              </div>`);
+            }
             // 주자 핀 (1루)
             if(base1) {
               situationPins.push(`<div style="position:absolute;left:75%;top:52%;transform:translate(-50%,-50%);z-index:5">
@@ -4001,33 +4019,8 @@ function renderModal(d) {
               </div>`);
             }
 
-            // ── 투수 / 타자 대결 헤더 (다이아몬드 위) ──
-            const matchupHtml = (pitcherNameCgs || batterNameCgs) ? `
-            <div style="display:flex;align-items:center;justify-content:center;gap:0;padding:8px 14px 6px">
-              ${pitcherNameCgs ? `
-              <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:${defColor}22;border:1.5px solid ${defColor}55;border-radius:10px">
-                <span style="font-size:9px;font-weight:900;color:${defColor};background:${defColor}33;border-radius:4px;padding:1px 4px;letter-spacing:0.5px">P</span>
-                <span style="font-size:13px;font-weight:800;color:${darkBg?'#fff':d.text}">${pitcherNameCgs}</span>
-              </div>` : ''}
-              ${pitcherNameCgs && batterNameCgs ? `<div style="padding:0 8px;font-size:14px;font-weight:900;color:${d.sub}">vs</div>` : ''}
-              ${batterNameCgs ? `
-              <div style="display:flex;align-items:center;gap:5px;padding:5px 10px;background:#E3183722;border:1.5px solid #E3183755;border-radius:10px">
-                <span style="font-size:9px;font-weight:900;color:#E31837;background:#E3183733;border-radius:4px;padding:1px 4px;letter-spacing:0.5px">타</span>
-                <span style="font-size:13px;font-weight:800;color:${darkBg?'#fff':d.text}">${batterNameCgs}</span>
-              </div>` : ''}
-            </div>` : '';
-
-            // ── 이닝 뱃지 (다이아몬드 오른쪽 위 절대 위치) ──
-            const inningBadge = inningDisp ? `
-            <div style="position:absolute;top:8px;right:8px;z-index:10;background:${darkBg?'rgba(20,28,46,0.88)':'rgba(255,255,255,0.88)'};border:1.5px solid ${darkBg?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)'};border-radius:10px;padding:4px 10px;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.18)">
-              <span style="font-size:13px;font-weight:900;color:${d.text};letter-spacing:0.5px">${inningDisp}</span>
-            </div>` : '';
-
-            // ── situationPins에서 투수·타자 핀 제거 (다이아몬드 위로 올렸으므로 주자만 남김) ──
-            const runnerPins = situationPins; // 주자 핀만 (투수·타자는 이미 matchupHtml로)
-
             const diamond = fieldPlayers.length > 0 ? `
-            <div style="position:relative;width:100%;padding-bottom:85%">
+            <div style="position:relative;width:100%;padding-bottom:85%;margin-bottom:4px">
               <svg viewBox="0 0 320 272" style="position:absolute;inset:0;width:100%;height:100%">
                 <!-- 외야 잔디 -->
                 <path d="M160 248 L20 80 Q160 -15 300 80 Z" fill="${fieldBg}" stroke="${grassLine}" stroke-width="1"/>
@@ -4047,11 +4040,10 @@ function renderModal(d) {
                 <!-- 홈 -->
                 <polygon points="160,228 167,221 167,213 153,213 153,221" fill="${homeColor2}"/>
               </svg>
-              ${inningBadge}
               ${pins}
-              ${runnerPins.join('')}
-            </div>` : (runnerPins.length > 0 ? `
-            <div style="position:relative;width:100%;padding-bottom:85%">
+              ${situationPins.join('')}
+            </div>` : (situationPins.length > 0 ? `
+            <div style="position:relative;width:100%;padding-bottom:85%;margin-bottom:4px">
               <svg viewBox="0 0 320 272" style="position:absolute;inset:0;width:100%;height:100%">
                 <path d="M160 248 L20 80 Q160 -15 300 80 Z" fill="${fieldBg}" stroke="${grassLine}" stroke-width="1"/>
                 <polygon points="160,60 232,140 160,220 88,140" fill="${darkBg?'rgba(255,255,255,0.02)':'rgba(0,0,0,0.03)'}" stroke="${darkBg?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.15)'}" stroke-width="1.5"/>
@@ -4063,30 +4055,32 @@ function renderModal(d) {
                 <rect x="${88-8}" y="${140-8}" width="16" height="16" rx="2" fill="${b3c}" transform="rotate(45,88,140)"/>
                 <polygon points="160,228 167,221 167,213 153,213 153,221" fill="${homeColor2}"/>
               </svg>
-              ${inningBadge}
-              ${runnerPins.join('')}
-            </div>` : (inningDisp ? `
-            <div style="position:relative;padding:16px 0 8px;text-align:center">
-              <span style="font-size:15px;font-weight:900;color:${d.text}">${inningDisp}</span>
-            </div>` : ''));
+              ${situationPins.join('')}
+            </div>` : '');
 
-            // ── 볼카운트 (라벨 없이 도트만, 다이아몬드 아래) ──
+            // 볼카운트 + 아웃 + 이닝
             const countHtml = (balls !== null || outs !== null) ? `
-            <div style="display:flex;align-items:center;justify-content:center;gap:16px;padding:8px 14px 10px;border-top:1px solid ${d.bgB}">
-              <div style="display:flex;gap:4px;align-items:center">
-                ${[0,1,2,3].map(i=>`<div style="width:14px;height:14px;border-radius:50%;background:${i<(balls||0)?'#00C864':'transparent'};border:2px solid ${i<(balls||0)?'#00C864':d.bgB}"></div>`).join('')}
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid ${d.bgB};background:${d.bg}">
+              <div style="text-align:center">
+                <div style="font-size:9px;color:${d.sub};margin-bottom:4px;font-weight:600">볼</div>
+                <div style="display:flex;gap:3px">${[0,1,2,3].map(i=>`<div style="width:12px;height:12px;border-radius:50%;background:${i<(balls||0)?'#00C864':'transparent'};border:1.5px solid ${i<(balls||0)?'#00C864':d.bgB}"></div>`).join('')}</div>
               </div>
-              <div style="width:1px;height:16px;background:${d.bgB}"></div>
-              <div style="display:flex;gap:4px;align-items:center">
-                ${[0,1].map(i=>`<div style="width:14px;height:14px;border-radius:50%;background:${i<(strikes||0)?'#FFB300':'transparent'};border:2px solid ${i<(strikes||0)?'#FFB300':d.bgB}"></div>`).join('')}
+              <div style="text-align:center">
+                <div style="font-size:9px;color:${d.sub};margin-bottom:4px;font-weight:600">스트라이크</div>
+                <div style="display:flex;gap:3px">${[0,1].map(i=>`<div style="width:12px;height:12px;border-radius:50%;background:${i<(strikes||0)?'#FFB300':'transparent'};border:1.5px solid ${i<(strikes||0)?'#FFB300':d.bgB}"></div>`).join('')}</div>
               </div>
-              <div style="width:1px;height:16px;background:${d.bgB}"></div>
-              <div style="display:flex;gap:4px;align-items:center">
-                ${[0,1,2].map(i=>`<div style="width:14px;height:14px;border-radius:50%;background:${i<(outs||0)?'#E31837':'transparent'};border:2px solid ${i<(outs||0)?'#E31837':d.bgB}"></div>`).join('')}
+              <div style="text-align:center">
+                <div style="font-size:9px;color:${d.sub};margin-bottom:4px;font-weight:600">아웃</div>
+                <div style="display:flex;gap:3px">${[0,1,2].map(i=>`<div style="width:12px;height:12px;border-radius:50%;background:${i<(outs||0)?'#E31837':'transparent'};border:1.5px solid ${i<(outs||0)?'#E31837':d.bgB}"></div>`).join('')}</div>
               </div>
-            </div>` : '';
+              <div style="text-align:center">
+                <div style="font-size:9px;color:${d.sub};margin-bottom:4px;font-weight:600">이닝</div>
+                <div style="font-size:13px;font-weight:900;color:${d.text}">${inningDisp||'-'}</div>
+              </div>
+            </div>` : (inningDisp ? `
+            <div style="text-align:center;padding:8px;border-top:1px solid ${d.bgB};font-size:12px;font-weight:700;color:${d.sub}">${inningDisp}</div>` : '');
 
-            return `<div style="padding:0 10px">${matchupHtml}<div style="position:relative">${diamond}</div></div>${countHtml}`;
+            return `<div style="padding:10px 10px 0">${diamond}</div>${countHtml}`;
           })()}
         </div>`}
       </div>
@@ -5710,29 +5704,31 @@ function renderRelayDiamond(gs, lineup, away, home) {
     </div>`;
   }).join('');
 
+  // 투수 팀 색상 (수비팀)
+  const pitcherTeamColor = defTeamColor;
+  // 타자 팀 색상 (공격팀: 초=away, 말=home)
+  const batterTeamColor = isBottom2 ? ((T[home]||{}).color||'#E31837') : awayColor;
+
+  const divider = `<div style="width:1px;height:18px;background:${dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.12)'}"></div>`;
+
   return `
-    <div style="padding:10px 14px 8px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:11px;color:${dark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.45)'};font-weight:600">⚾ ${pitcherName||'투수'}</div>
-        <div style="display:flex;align-items:center;gap:6px">
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="display:flex;gap:3px">${[0,1,2,3].map(i=>`<div style="width:10px;height:10px;border-radius:50%;background:${i<balls?'#00C864':'transparent'};border:1.5px solid ${i<balls?'#00C864':'rgba(0,0,0,0.22)'}"></div>`).join('')}</div>
-            <span style="font-size:8px;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.35)'}">볼</span>
-          </div>
-          <span style="color:rgba(0,0,0,0.2);font-size:11px">|</span>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="display:flex;gap:3px">${[0,1].map(i=>`<div style="width:10px;height:10px;border-radius:50%;background:${i<strikes?'#FFB300':'transparent'};border:1.5px solid ${i<strikes?'#FFB300':'rgba(0,0,0,0.22)'}"></div>`).join('')}</div>
-            <span style="font-size:8px;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.35)'}">스</span>
-          </div>
-          <span style="color:rgba(0,0,0,0.2);font-size:11px">|</span>
-          <div style="display:flex;flex-direction:column;align-items:center;gap:2px">
-            <div style="display:flex;gap:3px">${[0,1,2].map(i=>`<div style="width:10px;height:10px;border-radius:50%;background:${i<outs?'#E31837':'transparent'};border:1.5px solid ${i<outs?'#E31837':'rgba(0,0,0,0.22)'}"></div>`).join('')}</div>
-            <span style="font-size:8px;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.35)'}">아웃</span>
-          </div>
-          <span style="font-size:12px;font-weight:800;color:${dark?'#fff':'#0A0E1A'};margin-left:4px">${inningDisp}</span>
-        </div>
-        <div style="font-size:11px;color:${dark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.45)'};font-weight:600">🏏 ${batterName||'타자'}</div>
+    <div>
+      <!-- ── 투수 vs 타자 헤더 ── -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:0;padding:10px 16px 8px">
+        ${pitcherName ? `
+        <div style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:${pitcherTeamColor}1a;border:1.5px solid ${pitcherTeamColor}55;border-radius:10px">
+          <span style="font-size:9px;font-weight:900;color:${pitcherTeamColor};background:${pitcherTeamColor}33;border-radius:4px;padding:1px 5px;letter-spacing:0.5px">P</span>
+          <span style="font-size:14px;font-weight:800;color:${dark?'#fff':'#0a0e1a'}">${pitcherName}</span>
+        </div>` : ''}
+        ${pitcherName && batterName ? `<div style="padding:0 10px;font-size:13px;font-weight:900;color:${dark?'rgba(255,255,255,0.3)':'rgba(0,0,0,0.25)'}">vs</div>` : ''}
+        ${batterName ? `
+        <div style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:${batterTeamColor}1a;border:1.5px solid ${batterTeamColor}55;border-radius:10px">
+          <span style="font-size:9px;font-weight:900;color:${batterTeamColor};background:${batterTeamColor}33;border-radius:4px;padding:1px 5px;letter-spacing:0.5px">타</span>
+          <span style="font-size:14px;font-weight:800;color:${dark?'#fff':'#0a0e1a'}">${batterName}</span>
+        </div>` : ''}
       </div>
+
+      <!-- ── 다이아몬드 (이닝뱃지 오른쪽 위) ── -->
       <div style="position:relative;width:100%;padding-bottom:68%">
         <svg viewBox="0 0 320 220" style="position:absolute;inset:0;width:100%;height:100%">
           <path d="M160 206 L20 65 Q160 -8 300 65 Z" fill="${fieldBg}" stroke="rgba(0,0,0,0.06)" stroke-width="1"/>
@@ -5743,10 +5739,29 @@ function renderRelayDiamond(gs, lineup, away, home) {
           <rect x="${88-8}" y="${120-8}" width="16" height="16" rx="2" fill="${b3c}" transform="rotate(45,88,120)"/>
           <polygon points="160,200 167,193 167,185 153,185 153,193" fill="#c0392b"/>
         </svg>
+        ${inningDisp ? `
+        <div style="position:absolute;top:8px;right:10px;z-index:10;background:${dark?'rgba(15,22,38,0.88)':'rgba(255,255,255,0.9)'};border:1.5px solid ${dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)'};border-radius:10px;padding:4px 11px;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.18)">
+          <span style="font-size:13px;font-weight:900;color:${dark?'#fff':'#0a0e1a'};letter-spacing:0.5px">${inningDisp}</span>
+        </div>` : ''}
         ${pins2}
         ${base1 ? `<div style="position:absolute;left:75%;top:55%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r1Name}</span></div></div>` : ''}
         ${base2 ? `<div style="position:absolute;left:50%;top:18%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r2Name}</span></div></div>` : ''}
         ${base3 ? `<div style="position:absolute;left:25%;top:55%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r3Name}</span></div></div>` : ''}
+      </div>
+
+      <!-- ── 볼카운트 (라벨 없이 도트만) ── -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:16px;padding:9px 16px 11px;border-top:1px solid ${dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.08)'}">
+        <div style="display:flex;gap:5px;align-items:center">
+          ${[0,1,2,3].map(i=>`<div style="width:13px;height:13px;border-radius:50%;background:${i<balls?'#00C864':'transparent'};border:2px solid ${i<balls?'#00C864':dark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.18)'}"></div>`).join('')}
+        </div>
+        ${divider}
+        <div style="display:flex;gap:5px;align-items:center">
+          ${[0,1].map(i=>`<div style="width:13px;height:13px;border-radius:50%;background:${i<strikes?'#FFB300':'transparent'};border:2px solid ${i<strikes?'#FFB300':dark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.18)'}"></div>`).join('')}
+        </div>
+        ${divider}
+        <div style="display:flex;gap:5px;align-items:center">
+          ${[0,1,2].map(i=>`<div style="width:13px;height:13px;border-radius:50%;background:${i<outs?'#E31837':'transparent'};border:2px solid ${i<outs?'#E31837':dark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.18)'}"></div>`).join('')}
+        </div>
       </div>
     </div>`;
 }
