@@ -4063,7 +4063,7 @@ function renderModal(d) {
             <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-top:1px solid ${d.bgB};background:${d.bg}">
               <div style="text-align:center">
                 <div style="font-size:9px;color:${d.sub};margin-bottom:4px;font-weight:600">볼</div>
-                <div style="display:flex;gap:3px">${[0,1,2,3].map(i=>`<div style="width:12px;height:12px;border-radius:50%;background:${i<(balls||0)?'#00C864':'transparent'};border:1.5px solid ${i<(balls||0)?'#00C864':d.bgB}"></div>`).join('')}</div>
+                <div style="display:flex;gap:3px">${[0,1,2].map(i=>`<div style="width:12px;height:12px;border-radius:50%;background:${i<(balls||0)?'#00C864':'transparent'};border:1.5px solid ${i<(balls||0)?'#00C864':d.bgB}"></div>`).join('')}</div>
               </div>
               <div style="text-align:center">
                 <div style="font-size:9px;color:${d.sub};margin-bottom:4px;font-weight:600">스트라이크</div>
@@ -5748,7 +5748,7 @@ function renderRelayDiamond(gs, lineup, away, home) {
       <!-- ── 볼카운트 (라벨 없이 도트만) ── -->
       <div style="display:flex;align-items:center;justify-content:center;gap:16px;padding:9px 16px 11px;border-top:1px solid ${dark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.08)'}">
         <div style="display:flex;gap:5px;align-items:center">
-          ${[0,1,2,3].map(i=>`<div style="width:13px;height:13px;border-radius:50%;background:${i<balls?'#00C864':'transparent'};border:2px solid ${i<balls?'#00C864':dark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.18)'}"></div>`).join('')}
+          ${[0,1,2].map(i=>`<div style="width:13px;height:13px;border-radius:50%;background:${i<balls?'#00C864':'transparent'};border:2px solid ${i<balls?'#00C864':dark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.18)'}"></div>`).join('')}
         </div>
         ${divider}
         <div style="display:flex;gap:5px;align-items:center">
