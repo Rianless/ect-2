@@ -5739,10 +5739,6 @@ function renderRelayDiamond(gs, lineup, away, home) {
           <rect x="${88-8}" y="${120-8}" width="16" height="16" rx="2" fill="${b3c}" transform="rotate(45,88,120)"/>
           <polygon points="160,200 167,193 167,185 153,185 153,193" fill="#c0392b"/>
         </svg>
-        ${inningDisp ? `
-        <div style="position:absolute;top:8px;right:10px;z-index:10;background:${dark?'rgba(15,22,38,0.88)':'rgba(255,255,255,0.9)'};border:1.5px solid ${dark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)'};border-radius:10px;padding:4px 11px;backdrop-filter:blur(8px);box-shadow:0 2px 8px rgba(0,0,0,0.18)">
-          <span style="font-size:13px;font-weight:900;color:${dark?'#fff':'#0a0e1a'};letter-spacing:0.5px">${inningDisp}</span>
-        </div>` : ''}
         ${pins2}
         ${base1 ? `<div style="position:absolute;left:75%;top:55%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r1Name}</span></div></div>` : ''}
         ${base2 ? `<div style="position:absolute;left:50%;top:18%;transform:translate(-50%,-50%);z-index:5"><div style="background:#FFB300;border-radius:6px;padding:2px 7px;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,0.3)"><span style="font-size:10px;font-weight:800;color:#000">${r2Name}</span></div></div>` : ''}
@@ -5762,6 +5758,7 @@ function renderRelayDiamond(gs, lineup, away, home) {
         <div style="display:flex;gap:5px;align-items:center">
           ${[0,1,2].map(i=>`<div style="width:13px;height:13px;border-radius:50%;background:${i<outs?'#E31837':'transparent'};border:2px solid ${i<outs?'#E31837':dark?'rgba(255,255,255,0.2)':'rgba(0,0,0,0.18)'}"></div>`).join('')}
         </div>
+        ${inningDisp ? `${divider}<span style="font-size:13px;font-weight:900;color:${dark?'#fff':'#0a0e1a'};letter-spacing:0.5px">${inningDisp}</span>` : ''}
       </div>
     </div>`;
 }
