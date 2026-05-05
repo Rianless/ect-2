@@ -4409,6 +4409,20 @@ function renderModal(d) {
     saveMemoData(data);
   });
 
+  // ── PC 인라인 모드: modal-content 내용을 inlineBox에 동기화 ──
+  if (window.innerWidth >= 1080) {
+    const inlineBox = document.getElementById('pc-modal-inline-box');
+    if (inlineBox) {
+      const mc = document.getElementById('modal-content');
+      if (mc) {
+        inlineBox.innerHTML = mc.innerHTML;
+        // 닫기(X) 버튼 숨기기
+        inlineBox.querySelectorAll('button').forEach(btn => {
+          if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes('closeModal')) btn.style.display = 'none';
+        });
+      }
+    }
+  }
 }
 
 
@@ -4756,15 +4770,8 @@ function openModal(idx,date) {
         const cal = document.getElementById('pc-cal-content');
         if (cal) cal.style.display = 'none';
 
-        // 모달 내용 렌더링 (modal-content를 inlineBox에 복사)
+        // 모달 내용 렌더링 (renderModal이 자동으로 inlineBox에 싱크)
         renderModal(D());
-        const modalContent = document.getElementById('modal-content');
-        if (modalContent) {
-          inlineBox.innerHTML = modalContent.innerHTML;
-          // 닫기 버튼(X) 숨기기
-          const closeBtn = inlineBox.querySelector('[onclick*="closeModal"]');
-          if (closeBtn) closeBtn.style.display = 'none';
-        }
 
         // 라인업 fetch
         if (gPc.gameId) {
@@ -4778,12 +4785,6 @@ function openModal(idx,date) {
               state.modalGame = SCH[idx3];
             }
             renderModal(D());
-            const mc = document.getElementById('modal-content');
-            if (mc && inlineBox) {
-              inlineBox.innerHTML = mc.innerHTML;
-              const cb = inlineBox.querySelector('[onclick*="closeModal"]');
-              if (cb) cb.style.display = 'none';
-            }
           });
         }
         return;
