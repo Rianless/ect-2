@@ -111,8 +111,9 @@ export default async function handler(req, res) {
     const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    const result = d?.result;
-    if (!result || !validateFn(result)) throw new Error('invalid');
+    // result 래핑된 경우와 아닌 경우 모두 처리
+    const result = (d?.result && validateFn(d.result)) ? d.result : (validateFn(d) ? d : null);
+    if (!result) throw new Error('invalid');
     return result;
   }
 
