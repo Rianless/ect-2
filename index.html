@@ -4708,6 +4708,88 @@ window.refreshModalSituation = async function(gameId, date, away, home) {
 };
 
 function openModal(idx,date) {
+  // ── PC: 모달 내용을 pc-cal-relay-area에 인라인으로 표시 ──
+  if (window.innerWidth >= 1080) {
+    const dayGs2=SCH.filter(g=>g.date===date);
+    const sorted2=[...dayGs2.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs2.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
+    const gPc = sorted2[idx];
+    if (gPc) {
+      state.modalGame = gPc;
+      if (gPc.away === 'KIA') state.modalLt = 'away';
+      else if (gPc.home === 'KIA') state.modalLt = 'home';
+      else state.modalLt = 'away';
+      if (gPc.home === 'KIA') state.modalRecTab = 'home';
+      else if (gPc.away === 'KIA') state.modalRecTab = 'away';
+      else state.modalRecTab = null;
+
+      const calRelayArea = document.getElementById('pc-cal-relay-area');
+      if (calRelayArea) {
+        // 기존 relay 패널 숨기기
+        const panel = document.getElementById('relay-panel');
+        if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
+
+        calRelayArea.innerHTML = '';
+        const wrapper = document.createElement('div');
+        wrapper.id = 'pc-modal-inline-wrapper';
+        wrapper.style.cssText = 'width:100%;';
+
+        // ← 일정으로 버튼
+        const backBtn = document.createElement('button');
+        backBtn.innerHTML = '← 일정으로';
+        const isDark = state.dark;
+        backBtn.style.cssText = 'margin-bottom:12px;padding:6px 14px;background:' + (isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)') + ';border:1px solid ' + (isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.12)') + ';border-radius:8px;font-size:12px;font-weight:700;color:' + (isDark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.5)') + ';cursor:pointer;font-family:"Noto Sans KR",sans-serif;display:inline-block;';
+        backBtn.onclick = () => {
+          calRelayArea.innerHTML = '';
+          const cal = document.getElementById('pc-cal-content');
+          if (cal) cal.style.display = '';
+        };
+        wrapper.appendChild(backBtn);
+
+        // 모달 내용을 담을 div
+        const inlineBox = document.createElement('div');
+        inlineBox.id = 'pc-modal-inline-box';
+        inlineBox.style.cssText = 'width:100%;background:' + (isDark?'rgba(14,19,30,0.96)':'rgba(245,247,252,0.97)') + ';border-radius:20px;border:1px solid var(--glass-border);box-shadow:var(--nm-3);padding:0 0 24px 0;overflow:hidden;animation:fadeIn 0.2s ease;';
+        wrapper.appendChild(inlineBox);
+        calRelayArea.appendChild(wrapper);
+
+        // 달력 숨기기
+        const cal = document.getElementById('pc-cal-content');
+        if (cal) cal.style.display = 'none';
+
+        // 모달 내용 렌더링 (modal-content를 inlineBox에 복사)
+        renderModal(D());
+        const modalContent = document.getElementById('modal-content');
+        if (modalContent) {
+          inlineBox.innerHTML = modalContent.innerHTML;
+          // 닫기 버튼(X) 숨기기
+          const closeBtn = inlineBox.querySelector('[onclick*="closeModal"]');
+          if (closeBtn) closeBtn.style.display = 'none';
+        }
+
+        // 라인업 fetch
+        if (gPc.gameId) {
+          const inn = gPc.inning || 1;
+          fetchLineupDirect(gPc.gameId, inn).then(lineup => {
+            if (!lineup) return;
+            const idx3 = SCH.findIndex(s=>s.date===gPc.date&&s.away===gPc.away&&s.home===gPc.home);
+            if (idx3 !== -1) {
+              if (lineup.home || lineup.away) SCH[idx3].lineup = lineup;
+              if (lineup.currentGameState) SCH[idx3].currentGameState = lineup.currentGameState;
+              state.modalGame = SCH[idx3];
+            }
+            renderModal(D());
+            const mc = document.getElementById('modal-content');
+            if (mc && inlineBox) {
+              inlineBox.innerHTML = mc.innerHTML;
+              const cb = inlineBox.querySelector('[onclick*="closeModal"]');
+              if (cb) cb.style.display = 'none';
+            }
+          });
+        }
+        return;
+      }
+    }
+  }
   const dayGs=SCH.filter(g=>g.date===date);
   const sorted=[...dayGs.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
   state.modalGame=sorted[idx];
