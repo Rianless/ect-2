@@ -1,20 +1,4 @@
-export const config = { runtime: 'edge' };
-
-export default async function handler(req) {
-  const res = {
-    _headers: {},
-    _status: 200,
-    _body: null,
-    setHeader(k, v) { this._headers[k] = v; },
-    status(code) { this._status = code; return this; },
-    json(data) {
-      this._body = JSON.stringify(data);
-      return new Response(this._body, {
-        status: this._status,
-        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', ...this._headers }
-      });
-    }
-  };
+export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const pad = n => String(n).padStart(2, '0');
@@ -127,9 +111,8 @@ export default async function handler(req) {
     const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     const d = await r.json();
-    // result 래핑된 경우와 아닌 경우 모두 처리
-    const result = (d?.result && validateFn(d.result)) ? d.result : (validateFn(d) ? d : null);
-    if (!result) throw new Error('invalid');
+    const result = d?.result;
+    if (!result || !validateFn(result)) throw new Error('invalid');
     return result;
   }
 
@@ -175,97 +158,8 @@ export default async function handler(req) {
     return null;
   }
 
-  // ── fullcount.kr 라인업 fetch (KIA 전용, CORS 열림) ──
-  async function fetchFullcountLineup(gameId) {
-    try {
-      const r = await fetchWithTimeout('https://fullcount.kr/data/teams/kia/lineup.json', {
-        headers: { 'Accept': 'application/json', 'Referer': 'https://fullcount.kr/' }
-      }, 5000);
-      if (!r.ok) throw new Error(`fullcount ${r.status}`);
-      const data = await r.json();
-
-      // 날짜 일치 확인
-      const fcDate = String(data?.meta?.kboGameId || data?.meta?.gameId || '').slice(0, 8);
-      const reqDate = String(gameId).slice(0, 8);
-      if (fcDate !== reqDate) {
-        console.log('[fetchFullcountLineup] date mismatch:', fcDate, '!=', reqDate);
-        return null;
-      }
-
-      const isConfirmed = data?.meta?.lineupVerification?.ours?.confirmed === true;
-
-      // KIA 홈/어웨이 판단: gameId에서 팀코드 추출
-      // 예: 20260506HHHT02026 → teamPart=HHHT0 → homeCode=HT(KIA)
-      const teamPart = String(gameId).slice(8).replace(/\d{4}$/, '');
-      const isKiaHome = teamPart.slice(2, 4) === 'HT';
-
-      const kiaBatters = (data.batters || []).map(p => ({
-        batOrder: p.order, posName: p.position, name: p.name,
-      }));
-      const oppBatters = (data.opponentBatters || []).map(p => ({
-        batOrder: p.order, posName: p.position, name: p.name,
-      }));
-
-      if (!kiaBatters.length) {
-        console.log('[fetchFullcountLineup] empty batters');
-        return null;
-      }
-
-      const homeBatters = isKiaHome ? kiaBatters : oppBatters;
-      const awayBatters = isKiaHome ? oppBatters : kiaBatters;
-
-      console.log(`[fetchFullcountLineup] OK gameId:${gameId} confirmed:${isConfirmed} home:${homeBatters.length} away:${awayBatters.length}`);
-
-      return {
-        homeLineup: { batter: homeBatters, pitcher: [] },
-        awayLineup: { batter: awayBatters, pitcher: [] },
-        _fullcountConfirmed: isConfirmed,
-      };
-    } catch(e) {
-      console.log('[fetchFullcountLineup] failed:', e.message);
-      return null;
-    }
-  }
-
   async function fetchLineup(gameId, inning) {
     const inn = inning || 1;
-
-    // 0순위: fullcount.kr (KIA 경기인 경우)
-    const teamPart = String(gameId).slice(8).replace(/\d{4}$/, '');
-    const isKiaGame = teamPart.includes('HT'); // HT = KIA 팀코드
-    if (isKiaGame) {
-      const fcResult = await fetchFullcountLineup(gameId);
-      if (fcResult?._fullcountConfirmed) {
-        console.log('[fetchLineup] fullcount confirmed lineup!', gameId);
-        return fcResult;
-      }
-      // 미확정이어도 네이버 실패 시 fallback으로 활용
-      const urls = [
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/preview`,
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/starting-lineup`,
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/lineup`,
-        `https://api-gw.sports.naver.com/schedule/games/${gameId}/game-polling?inning=${inn}&isHighlight=false`,
-      ];
-      const validateLineup = r => r && Object.keys(r).length > 0;
-      try {
-        const result = await Promise.any(urls.slice(0, 3).map(url => fetchOneValid(url, validateLineup)));
-        console.log('[fetchLineup] naver parallel OK for', gameId);
-        return result;
-      } catch {
-        try {
-          const result = await fetchOneValid(urls[3], validateLineup);
-          return result;
-        } catch {
-          if (fcResult) {
-            console.log('[fetchLineup] fallback to fullcount unconfirmed', gameId);
-            return fcResult;
-          }
-          return null;
-        }
-      }
-    }
-
-    // KIA 경기 아닌 경우: 네이버만 사용
     const urls = [
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/preview`,
       `https://api-gw.sports.naver.com/schedule/games/${gameId}/starting-lineup`,
@@ -274,7 +168,9 @@ export default async function handler(req) {
     ];
     const validateLineup = r => r && Object.keys(r).length > 0;
     try {
-      const result = await Promise.any(urls.slice(0, 3).map(url => fetchOneValid(url, validateLineup)));
+      const result = await Promise.any(
+        urls.slice(0, 3).map(url => fetchOneValid(url, validateLineup))
+      );
       console.log('[fetchLineup] parallel OK for', gameId);
       return result;
     } catch {
@@ -697,20 +593,9 @@ export default async function handler(req) {
         }));
       }
 
-      // 1차: /lineup 전용 API (fullcount.kr 0순위 포함)
+      // 1차: /lineup 전용 API
       const lineupRaw = await fetchLineup(gameId, inn);
-
-      // fullcount.kr 데이터인 경우 직접 추출
-      let homeLineup, awayLineup;
-      if (lineupRaw?._fullcountConfirmed !== undefined && lineupRaw?.homeLineup && lineupRaw?.awayLineup) {
-        homeLineup = lineupRaw.homeLineup;
-        awayLineup = lineupRaw.awayLineup;
-        console.log('[action=lineup] fullcount direct home:', homeLineup.batter?.length, 'away:', awayLineup.batter?.length);
-      } else {
-        const pair = extractLineupPair(lineupRaw);
-        homeLineup = pair.home;
-        awayLineup = pair.away;
-      }
+      let { home: homeLineup, away: awayLineup } = extractLineupPair(lineupRaw);
 
       // 2차: game-polling 시도
       if (!homeLineup && !awayLineup) {
