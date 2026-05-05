@@ -4632,7 +4632,15 @@ async function fetchLineupDirect(gameId, inning) {
   const inn = Math.max(1, inning || 1);
   try {
     const r = await fetch(`/api/kboScores?gameId=${encodeURIComponent(gameId)}&inning=${inn}&action=lineup`);
-    if (!r.ok) return null;
+
+    // 서버 실패(404 포함)시 바로 fullcount.kr 직접 시도
+    if (!r.ok) {
+      console.log('[fetchLineupDirect] server', r.status, '→ trying fullcount direct...');
+      const fcResult = await fetchKboLineupDirect(gameId);
+      if (fcResult) return fcResult;
+      return null;
+    }
+
     const result = await r.json();
     if (!result) return null;
 
@@ -4641,14 +4649,12 @@ async function fetchLineupDirect(gameId, inning) {
     const awayL = result.awayLineup;
     const gs    = result.currentGameState;
 
-    // console.log('[lineup raw keys]', result._raw_keys); // 디버그
-
     if (!homeL && !awayL) {
       if (gs) return { currentGameState: gs };
-      // 서버에서 라인업 못 받으면 브라우저에서 직접 KBO API 시도
-      console.log('[fetchLineupDirect] server no lineup, trying KBO direct...');
-      const kboResult = await fetchKboLineupDirect(gameId);
-      if (kboResult) return kboResult;
+      // 서버에서 라인업 못 받으면 브라우저에서 직접 fullcount 시도
+      console.log('[fetchLineupDirect] server no lineup, trying fullcount direct...');
+      const fcResult = await fetchKboLineupDirect(gameId);
+      if (fcResult) return fcResult;
       return null;
     }
 
