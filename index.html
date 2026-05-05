@@ -84,7 +84,7 @@
     .skeleton{background:linear-gradient(90deg,var(--c-bg) 0%,var(--c-bg-b) 50%,var(--c-bg) 100%);background-size:200% 100%;animation:shimmer 1.6s infinite linear;border-radius:var(--r-sm)}
     #modal-overlay{position:fixed;inset:0;z-index:100;background:rgba(10,14,26,0.5);backdrop-filter:blur(14px) saturate(1.2);-webkit-backdrop-filter:blur(14px) saturate(1.2);display:none;align-items:flex-end;justify-content:center;animation:fadeIn 0.22s var(--ease-soft)}
     #modal-overlay.open{display:flex}
-    #modal-box{width:100%;max-width:520px;height:92vh;background:rgba(245,247,252,0.98);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--glass-border);border-bottom:none;border-radius:var(--r-xl) var(--r-xl) 0 0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;animation:slideUp 0.38s var(--ease-bounce);box-shadow:0 -12px 44px rgba(0,0,0,0.22),var(--edge-top)}
+    #modal-box{width:100%;max-width:520px;height:92vh;background:rgba(245,247,252,0.98);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border:1px solid var(--glass-border);border-bottom:none;border-radius:var(--r-xl) var(--r-xl) 0 0;overflow-y:auto;-webkit-overflow-scrolling:touch;padding-bottom:28px;animation:slideUp 0.38s var(--ease-bounce);box-shadow:0 -12px 44px rgba(0,0,0,0.22),var(--edge-top)}@media(min-width:1080px){#modal-overlay{align-items:center}#modal-box{max-width:480px;height:88vh;border-radius:var(--r-xl);border:1px solid var(--glass-border);box-shadow:0 8px 48px rgba(0,0,0,0.28);animation:fadeIn 0.22s var(--ease-soft)}}
     body.dark #modal-box{background:rgba(18,24,38,0.96);border-color:rgba(255,255,255,0.08)}
     #modal-box.closing{animation:slideDown 0.3s var(--ease-soft) forwards}
     .nav{position:fixed;bottom:0;left:0;right:0;background:var(--glass-bg);backdrop-filter:var(--glass-blur);-webkit-backdrop-filter:var(--glass-blur);border-top:1px solid var(--glass-border);display:flex;padding:8px 10px calc(8px + env(safe-area-inset-bottom));z-index:50;box-shadow:0 -6px 28px rgba(0,0,0,0.1),var(--edge-top)}
@@ -4708,17 +4708,7 @@ window.refreshModalSituation = async function(gameId, date, away, home) {
 };
 
 function openModal(idx,date) {
-  // ── PC: gameId 있으면 relay, 없으면 기존 모달(PC 스타일) ──
-  if (window.innerWidth >= 1080) {
-    const dayGs=SCH.filter(g=>g.date===date);
-    const sorted=[...dayGs.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
-    const g = sorted[idx];
-    if (g && g.gameId) {
-      openRelay(g.gameId, g.away, g.home, g.inning || 1);
-      return;
-    }
-    // gameId 없는 예정 경기 → 기존 모달로 표시 (PC 스타일 적용됨)
-  }
+  // ── PC/모바일 모두 모달 열기 ──
   const dayGs=SCH.filter(g=>g.date===date);
   const sorted=[...dayGs.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
   state.modalGame=sorted[idx];
