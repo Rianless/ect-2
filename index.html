@@ -1203,6 +1203,12 @@ function renderNav() {
 function renderContent(d) {
   // PC 인라인 중계 열려있으면 content 재렌더 스킵 (새 방식: pc-relay-inline-wrapper 존재 여부)
   if (window.innerWidth >= 1080) {
+    // PC 인라인 모달 열려있으면 스킵
+    const modalWrapper = document.getElementById('pc-modal-inline-wrapper');
+    if (modalWrapper && state.tab === 'cal') return;
+    if (modalWrapper && state.tab !== 'cal') {
+      modalWrapper.parentElement && modalWrapper.parentElement.removeChild(modalWrapper);
+    }
     const wrapper = document.getElementById('pc-relay-inline-wrapper');
     // 탭이 바뀌었으면 중계 패널 닫고 렌더 허용
     if (wrapper && state.tab !== 'cal') {
