@@ -1,4 +1,20 @@
-export default async function handler(req, res) {
+export const config = { runtime: 'edge' };
+
+export default async function handler(req) {
+  const res = {
+    _headers: {},
+    _status: 200,
+    _body: null,
+    setHeader(k, v) { this._headers[k] = v; },
+    status(code) { this._status = code; return this; },
+    json(data) {
+      this._body = JSON.stringify(data);
+      return new Response(this._body, {
+        status: this._status,
+        headers: { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*', ...this._headers }
+      });
+    }
+  };
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   const pad = n => String(n).padStart(2, '0');
