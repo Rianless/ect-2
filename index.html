@@ -4708,7 +4708,16 @@ window.refreshModalSituation = async function(gameId, date, away, home) {
 };
 
 function openModal(idx,date) {
-  // ── PC/모바일 모두 모달 열기 ──
+  // ── PC: 무조건 인라인 중계로 바로 열기 ──
+  if (window.innerWidth >= 1080) {
+    const dayGs=SCH.filter(g=>g.date===date);
+    const sorted=[...dayGs.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
+    const g = sorted[idx];
+    if (g && g.gameId) {
+      openRelay(g.gameId, g.away, g.home, g.inning || 1);
+      return;
+    }
+  }
   const dayGs=SCH.filter(g=>g.date===date);
   const sorted=[...dayGs.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
   state.modalGame=sorted[idx];
