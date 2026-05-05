@@ -4573,34 +4573,54 @@ function _parsePitchers(src) {
   return arr.map(p=>({ seqno:p.seqno, name:p.name||'', inn:p.inn||'0', er:Number(p.er||p.earnedRun||0), r:Number(p.r||p.run||p.ra||p.runs||p.er||p.earnedRun||0), kk:Number(p.kk||p.so||p.strikeout||0), bb:Number(p.bb||p.walk||p.walks||0), hit:Number(p.hit||p.ha||0), pc:Number(p.pc||p.ballCount||p.pitchCount||p.numPitch||p.pitches||p.np||p.numberOfPitches||p.pitchThrown||p.totalPitches||0), sp:Number(p.sp||p.strikeCount||p.strikes||p.numStrike||p.numberOfStrikes||0) }));
 }
 
-// ── 브라우저에서 직접 KBO 라인업 fetch ──
+// ── fullcount.kr 라인업 fetch (CORS 열려있음) ──
 async function fetchKboLineupDirect(gameId) {
   try {
-    const date = String(gameId).slice(0, 8);
-    const teamPart = String(gameId).slice(8).replace(/\d{4}$/, '');
-    const kboGameId = date + teamPart + (teamPart.endsWith('0') ? '' : '0');
-    const year = String(gameId).slice(0, 4);
-    const body = new URLSearchParams({ leId: '1', srId: '0', seasonId: year, gameId: kboGameId }).toString();
-    const r = await fetch('https://www.koreabaseball.com/ws/Schedule.asmx/GetLineUpAnalysis', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'X-Requested-With': 'XMLHttpRequest' },
-      body,
+    // fullcount.kr은 KIA 전용 URL 제공
+    // KIA가 홈이든 어웨이든 /data/teams/kia/lineup.json 사용
+    const r = await fetch('https://fullcount.kr/data/teams/kia/lineup.json', {
+      headers: { 'Accept': 'application/json' }
     });
-    if (!r.ok) throw new Error('KBO ' + r.status);
+    if (!r.ok) throw new Error('fullcount ' + r.status);
     const data = await r.json();
-    const isConfirmed = data?.[0]?.[0]?.LINEUP_CK === true;
-    const parseRows = (rawStr) => {
-      if (!rawStr) return [];
-      try {
-        const parsed = typeof rawStr === 'string' ? JSON.parse(rawStr) : rawStr;
-        return (parsed.rows || []).map(row => ({ batOrder: Number(row.row[0]?.Text || 0), posName: row.row[1]?.Text || '', name: row.row[2]?.Text || '' }));
-      } catch { return []; }
+
+    // gameId 일치 여부 확인 (오늘 경기인지)
+    const fcGameId = data?.meta?.kboGameId || data?.meta?.gameId || '';
+    const todayDate = String(gameId).slice(0, 8);
+    const fcDate = String(fcGameId).slice(0, 8);
+    if (fcDate !== todayDate) {
+      console.log('[fetchKboLineupDirect] date mismatch:', fcDate, '!=', todayDate);
+      return null;
+    }
+
+    const isConfirmed = data?.meta?.lineupVerification?.ours?.confirmed === true;
+
+    // KIA가 홈인지 어웨이인지 판단
+    // gameId 형식: 20260506HHHT02026 → 앞팀=원정(HH=한화), 뒤팀=홈(HT=KIA)
+    const teamPart = String(gameId).slice(8).replace(/\d{4}$/, ''); // HHHT0
+    const homeCode = teamPart.slice(2, 4); // HT = KIA
+    const isKiaHome = homeCode === 'HT';
+
+    const kiaBatters = (data.batters || []).map(p => ({
+      batOrder: p.order, posName: p.position, name: p.name,
+    }));
+    const oppBatters = (data.opponentBatters || []).map(p => ({
+      batOrder: p.order, posName: p.position, name: p.name,
+    }));
+
+    if (!kiaBatters.length && !oppBatters.length) return null;
+
+    const homeBatters = isKiaHome ? kiaBatters : oppBatters;
+    const awayBatters = isKiaHome ? oppBatters : kiaBatters;
+
+    console.log('[fetchKboLineupDirect] fullcount OK gameId:', fcGameId, 'confirmed:', isConfirmed, 'home:', homeBatters.length, 'away:', awayBatters.length);
+    return {
+      home: { batters: homeBatters, pitchers: [] },
+      away: { batters: awayBatters, pitchers: [] },
+      currentGameState: null,
+      pcodeMap: {},
+      _kboConfirmed: isConfirmed,
     };
-    const homeBatters = parseRows(data?.[3]?.[0]);
-    const awayBatters = parseRows(data?.[4]?.[0]);
-    if (!homeBatters.length && !awayBatters.length) return null;
-    console.log('[fetchKboLineupDirect] OK', kboGameId, 'confirmed:', isConfirmed, 'home:', homeBatters.length, 'away:', awayBatters.length);
-    return { home: { batters: homeBatters, pitchers: [] }, away: { batters: awayBatters, pitchers: [] }, currentGameState: null, pcodeMap: {}, _kboConfirmed: isConfirmed };
   } catch(e) {
     console.log('[fetchKboLineupDirect] failed:', e.message);
     return null;
