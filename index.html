@@ -4424,7 +4424,9 @@ function renderModal(d) {
         inlineBox.innerHTML = mc.innerHTML;
         // 닫기(X) 버튼 숨기기
         inlineBox.querySelectorAll('button').forEach(btn => {
-          if (btn.getAttribute('onclick') && btn.getAttribute('onclick').includes('closeModal')) btn.style.display = 'none';
+          const oc = btn.getAttribute('onclick') || '';
+          // 닫기(X), ← 일정으로 버튼만 숨기기 (중계 전체보기는 유지)
+          if (oc.includes('closeModal') && !oc.includes('openRelay')) btn.style.display = 'none';
         });
       }
     }
