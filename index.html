@@ -3852,7 +3852,7 @@ function renderModal(d) {
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             ${isLive?`<button onclick="refreshModalSituation('${g.gameId}','${g.date}','${g.away}','${g.home}')" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="경기 상황 새로고침">🔄</button>`:''}
-            ${(isLive||isFinal)?`<button onclick="closeModal();openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1})" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
+            ${(isLive||isFinal)?`<button onclick="openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1});closeModal();" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
           </div>
         </div>
         ${!hasLU?`<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:26px 20px;text-align:center">
@@ -4887,6 +4887,20 @@ function openModal(idx,date) {
 }
 
 function closeModal() {
+  // PC 인라인 모달 닫기
+  if (window.innerWidth >= 1080) {
+    const wrapper = document.getElementById('pc-modal-inline-wrapper');
+    if (wrapper) {
+      wrapper.parentElement && wrapper.parentElement.removeChild(wrapper);
+      const cal = document.getElementById('pc-cal-content');
+      if (cal) cal.style.display = '';
+      state.modalGame = null;
+      state.modalLt = 'away';
+      state.modalRecTab = null;
+      render();
+      return;
+    }
+  }
   const box=document.getElementById('modal-box');
   box.classList.add('closing');
   setTimeout(()=>{
