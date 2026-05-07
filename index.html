@@ -5602,6 +5602,7 @@ async function fetchScoresDirectByDate(targetDate='') {
 
   return {
     games: rawGames.map(game => convertBrowserGame(game, detailMap[game.gameId] || null)),
+    rawGames,  // BEFORE 게임 라인업 사전 fetch용
   };
 }
 
@@ -5712,6 +5713,46 @@ async function fetchTodayScores(targetDate='') {
       if (state.modalGame) {
         const mg = SCH.find(s => s.date===state.modalGame.date && s.away===state.modalGame.away && s.home===state.modalGame.home);
         if (mg) { state.modalGame = mg; renderModal(D()); }
+      }
+    }
+
+    // ── BEFORE(경기 시작 전) 상태 경기의 라인업을 미리 fetch ──
+    // 네이버 스포츠는 경기 시작 1~2시간 전부터 라인업을 공개하는데,
+    // 이를 30초 주기로 체크해서 올라오는 즉시 SCH에 반영
+    const beforeGames = games.filter(g => g.status === 'SCHEDULED' && g.gameId);
+    if (beforeGames.length) {
+      let lineupUpdated = false;
+      await Promise.all(beforeGames.map(async g => {
+        const idx = SCH.findIndex(s => s.date===g.date && s.away===g.away && s.home===g.home);
+        if (idx === -1) return;
+        // 이미 라인업 데이터가 있으면 스킵 (배터/투수 둘 중 하나라도 있으면 가져온 것)
+        const existing = SCH[idx].lineup;
+        const hasExisting = existing && (
+          (existing.away?.batters?.length || 0) > 0 ||
+          (existing.home?.batters?.length || 0) > 0
+        );
+        if (hasExisting) return;
+        try {
+          const lineup = await fetchLineupDirect(g.gameId, 1);
+          if (!lineup) return;
+          const hasBatters = (lineup.away?.batters?.length || 0) > 0
+                          || (lineup.home?.batters?.length || 0) > 0;
+          if (!hasBatters) return;
+          // SCH에 라인업 반영
+          SCH[idx].lineup = lineup;
+          if (lineup.currentGameState) SCH[idx].currentGameState = lineup.currentGameState;
+          lineupUpdated = true;
+          console.log(`[KBO] BEFORE 게임 라인업 사전 로드: ${g.away} vs ${g.home}`);
+        } catch(e) {
+          // 라인업이 아직 안 올라온 경우는 정상 (조용히 무시)
+        }
+      }));
+      if (lineupUpdated) {
+        render();
+        if (state.modalGame) {
+          const mg = SCH.find(s => s.date===state.modalGame.date && s.away===state.modalGame.away && s.home===state.modalGame.home);
+          if (mg) { state.modalGame = mg; renderModal(D()); }
+        }
       }
     }
   } catch(e) {
