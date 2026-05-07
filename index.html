@@ -4665,9 +4665,20 @@ window.refreshModalSituation = async function(gameId, date, away, home) {
           const _rmGs = lineupData.currentGameState;
           const _rmPName = _rmGs?.pitcherName || '';
           if (_rmPName && !/^\d+$/.test(_rmPName)) {
-            const _rmInfo = _rmGs?._inningInfo || SCH[idx2].inningInfo || '';
-            if (_rmInfo.includes('말')) { if (!SCH[idx2].awayPitcher) SCH[idx2].awayPitcher = _rmPName; }
-            else { if (!SCH[idx2].homePitcher) SCH[idx2].homePitcher = _rmPName; }
+            // ── lineup으로 어느 팀 투수인지 정확히 판별 ──
+            const _rmaps = (lineupData.away?.pitchers || []).map(p => p?.name).filter(Boolean);
+            const _rmhps = (lineupData.home?.pitchers || []).map(p => p?.name).filter(Boolean);
+            const _isAP = _rmaps.includes(_rmPName);
+            const _isHP = _rmhps.includes(_rmPName);
+            if (_isAP && !_isHP) {
+              if (!SCH[idx2].awayPitcher) SCH[idx2].awayPitcher = _rmPName;
+            } else if (_isHP && !_isAP) {
+              if (!SCH[idx2].homePitcher) SCH[idx2].homePitcher = _rmPName;
+            } else {
+              const _rmInfo = _rmGs?._inningInfo || SCH[idx2].inningInfo || '';
+              if (_rmInfo.includes('말')) { if (!SCH[idx2].awayPitcher) SCH[idx2].awayPitcher = _rmPName; }
+              else { if (!SCH[idx2].homePitcher) SCH[idx2].homePitcher = _rmPName; }
+            }
           }
         }
         // lineup 마지막 투수 보완 (해당 팀의 마지막 등판 투수, 이닝 구분 없이 항상 적용)
@@ -4791,9 +4802,20 @@ function openModal(idx,date) {
           const _omGs = lineup.currentGameState;
           const _omPName = _omGs?.pitcherName || '';
           if (_omPName && !/^\d+$/.test(_omPName)) {
-            const _omInfo = _omGs?._inningInfo || SCH[idx2].inningInfo || '';
-            if (_omInfo.includes('말')) { if (!SCH[idx2].awayPitcher) SCH[idx2].awayPitcher = _omPName; }
-            else { if (!SCH[idx2].homePitcher) SCH[idx2].homePitcher = _omPName; }
+            // ── lineup으로 어느 팀 투수인지 정확히 판별 ──
+            const _omaps = (lineup.away?.pitchers || []).map(p => p?.name).filter(Boolean);
+            const _omhps = (lineup.home?.pitchers || []).map(p => p?.name).filter(Boolean);
+            const _omIsA = _omaps.includes(_omPName);
+            const _omIsH = _omhps.includes(_omPName);
+            if (_omIsA && !_omIsH) {
+              if (!SCH[idx2].awayPitcher) SCH[idx2].awayPitcher = _omPName;
+            } else if (_omIsH && !_omIsA) {
+              if (!SCH[idx2].homePitcher) SCH[idx2].homePitcher = _omPName;
+            } else {
+              const _omInfo = _omGs?._inningInfo || SCH[idx2].inningInfo || '';
+              if (_omInfo.includes('말')) { if (!SCH[idx2].awayPitcher) SCH[idx2].awayPitcher = _omPName; }
+              else { if (!SCH[idx2].homePitcher) SCH[idx2].homePitcher = _omPName; }
+            }
           }
         }
         // lineup의 마지막 투수로도 보완 (해당 팀의 마지막 등판 투수, 이닝 구분 없이 항상 적용)
@@ -5686,9 +5708,22 @@ async function fetchTodayScores(targetDate='') {
       // (API가 awayCurrentPitcherName/homeCurrentPitcherName을 안 주는 경우 대비)
       if (!upd.awayPitcher && !upd.homePitcher && upd.currentGameState?.pitcherName) {
         const cPName = upd.currentGameState.pitcherName;
-        const cInfo  = upd.currentGameState._inningInfo || g.inningInfo || '';
-        if (cInfo.includes('말')) upd.awayPitcher = cPName;
-        else upd.homePitcher = cPName;
+        // ── lineup으로 어느 팀 소속인지 확인 ──
+        const _lu = SCH[idx].lineup;
+        const _awayPs = (_lu?.away?.pitchers || []).map(p => p?.name).filter(Boolean);
+        const _homePs = (_lu?.home?.pitchers || []).map(p => p?.name).filter(Boolean);
+        const _isAP = _awayPs.includes(cPName);
+        const _isHP = _homePs.includes(cPName);
+        if (_isAP && !_isHP) {
+          upd.awayPitcher = cPName;
+        } else if (_isHP && !_isAP) {
+          upd.homePitcher = cPName;
+        } else {
+          // lineup 판별 불가 → inningInfo 폴백
+          const cInfo = upd.currentGameState._inningInfo || g.inningInfo || '';
+          if (cInfo.includes('말')) upd.awayPitcher = cPName;
+          else upd.homePitcher = cPName;
+        }
       }
       Object.assign(SCH[idx], upd);
       // FINAL이거나 시간이 변경된 경우 localStorage에 영구 저장
@@ -6625,9 +6660,24 @@ window.openRelay = async function(gameId, away, home, inn) {
       const _gs3 = data.currentGameState;
       if (_gs3?.pitcherName || _gs3?.currentPitcherName) {
         const _pName = _gs3.pitcherName || _gs3.currentPitcherName;
-        const _infoS = data.inningInfo || '';
-        if (_infoS.includes('말')) SCH[_idx3].awayPitcher = _pName;
-        else SCH[_idx3].homePitcher = _pName;
+        // ── 투수 이름이 어느 팀 소속인지 lineup에서 확인 (가장 정확한 방법) ──
+        const _lu = SCH[_idx3].lineup;
+        const _awayPitchers = (_lu?.away?.pitchers || []).map(p => p?.name).filter(Boolean);
+        const _homePitchers = (_lu?.home?.pitchers || []).map(p => p?.name).filter(Boolean);
+        const _isAwayP = _awayPitchers.includes(_pName);
+        const _isHomeP = _homePitchers.includes(_pName);
+        if (_isAwayP && !_isHomeP) {
+          SCH[_idx3].awayPitcher = _pName;
+        } else if (_isHomeP && !_isAwayP) {
+          SCH[_idx3].homePitcher = _pName;
+        } else {
+          // lineup으로 판별 불가 → inningInfo 기반 폴백
+          // 초(말 아님): 원정 공격, 홈 수비 → 홈 투수가 던짐
+          // 말: 홈 공격, 원정 수비 → 원정 투수가 던짐
+          const _infoS = data.inningInfo || '';
+          if (_infoS.includes('말')) SCH[_idx3].awayPitcher = _pName;
+          else SCH[_idx3].homePitcher = _pName;
+        }
       }
       // 득점 상황 추출하여 저장
       SCH[_idx3]._scoringPlays = extractScoringPlays(data);
@@ -6654,9 +6704,20 @@ window.openRelay = async function(gameId, away, home, inn) {
         const _luGs = luData.currentGameState;
         const _luPName = _luGs?.pitcherName || _luGs?.currentPitcherName || '';
         if (_luPName && !/^\d+$/.test(_luPName)) {
-          const _luInfo = _luGs?._inningInfo || SCH[_idx3b].inningInfo || '';
-          if (_luInfo.includes('말')) { if (!SCH[_idx3b].awayPitcher) SCH[_idx3b].awayPitcher = _luPName; }
-          else { if (!SCH[_idx3b].homePitcher) SCH[_idx3b].homePitcher = _luPName; }
+          // ── lineup으로 어느 팀 투수인지 정확히 판별 ──
+          const _luaps = (luData.away?.pitchers || []).map(p => p?.name).filter(Boolean);
+          const _luhps = (luData.home?.pitchers || []).map(p => p?.name).filter(Boolean);
+          const _luIsA = _luaps.includes(_luPName);
+          const _luIsH = _luhps.includes(_luPName);
+          if (_luIsA && !_luIsH) {
+            if (!SCH[_idx3b].awayPitcher) SCH[_idx3b].awayPitcher = _luPName;
+          } else if (_luIsH && !_luIsA) {
+            if (!SCH[_idx3b].homePitcher) SCH[_idx3b].homePitcher = _luPName;
+          } else {
+            const _luInfo = _luGs?._inningInfo || SCH[_idx3b].inningInfo || '';
+            if (_luInfo.includes('말')) { if (!SCH[_idx3b].awayPitcher) SCH[_idx3b].awayPitcher = _luPName; }
+            else { if (!SCH[_idx3b].homePitcher) SCH[_idx3b].homePitcher = _luPName; }
+          }
         }
       }
     }
