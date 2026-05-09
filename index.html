@@ -914,6 +914,7 @@ let state = {
   recordTab: 'game', playerStats: null, playerStatsLoading: false, playerStatsError: null,
   grecOpen: {},
   batterOpen: {},
+  calView: 'list', // 'list' | 'cal'
 };
 // 중계 전체보기 전역 변수
 let _relayGameId = null, _relayAway = '', _relayHome = '', _relayInn = 1, _relayData = null, _relayInterval = null;
@@ -1489,8 +1490,7 @@ function renderCalSplit(d) {
     ${seasonCardHtml ? `<div style="flex:1;min-width:0;display:flex;flex-direction:column">${seasonCardHtml}</div>` : ''}
   </div>`;
 
-  const calHtml = `
-    ${topRowHtml}
+  const calBodyHtml = `
     <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:12px;height:36px">
       <div style="position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:4px;pointer-events:none">
         <button onclick="prevMo()" style="color:#E31837;font-size:22px;padding:4px 8px;line-height:1;pointer-events:auto">‹</button>
@@ -1505,12 +1505,15 @@ function renderCalSplit(d) {
       </div>
       <div class="cal-grid" id="cal-grid-body">${cells}</div>
     </div>`;
+  const calHtml = `
+    ${topRowHtml}
+    ${calBodyHtml}`;
   const listHtml = `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;padding-top:8px">
       <div style="font-size:14px;font-weight:900;color:${d.text}">${sm}월 ${sd}일 (${dw})</div>
       <span style="font-size:11px;color:${d.sub}">· ${selGs.length>0?selGs.length+'경기':'경기 없음'}</span>
     </div>
     ${gameList}`;
-  return {calHtml, listHtml};
+  return {calHtml, calBodyHtml, listHtml, topRowHtml};
 }
 
 
@@ -1583,7 +1586,7 @@ function renderSeasonCard(d) {
 }
 function renderCal(d) {
   const dark = state.dark;
-  const {calHtml, listHtml} = renderCalSplit(d);
+  const {calHtml, calBodyHtml, listHtml, topRowHtml} = renderCalSplit(d);
   const isPC = window.innerWidth >= 1080;
 
   const headerHtml = `<div style="
@@ -1906,9 +1909,42 @@ function renderCal(d) {
       </div>`;
   }
 
-  return `${headerHtml}<div id="cal-section">${calHtml}</div>
-    <hr id="cal-divider" style="display:none;border:none;border-top:1.5px solid rgba(127,127,127,0.2);margin:0 0 12px"/>
-    <div id="list-section">${listHtml}</div>`;
+  // ── 뷰 토글 (목록 / 달력) ──
+  const isCalView = state.calView === 'cal';
+  const toggleHtml = `<div style="
+    display:flex;gap:4px;
+    background:${dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)'};
+    border-radius:12px;padding:3px;
+    margin-bottom:14px;
+  ">
+    <button onclick="state.calView='list';render()" style="
+      flex:1;padding:7px 0;border-radius:9px;font-size:12px;font-weight:800;
+      font-family:'Noto Sans KR',sans-serif;
+      transition:all 0.18s;letter-spacing:-0.2px;
+      ${!isCalView
+        ? `background:${dark?'rgba(255,255,255,0.12)':'#fff'};color:${dark?'#fff':'#141925'};box-shadow:${dark?'0 2px 8px rgba(0,0,0,0.35)':'0 2px 8px rgba(163,177,198,0.4)'};`
+        : `background:transparent;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.38)'};`
+      }
+    ">⚾ 경기 목록</button>
+    <button onclick="state.calView='cal';render()" style="
+      flex:1;padding:7px 0;border-radius:9px;font-size:12px;font-weight:800;
+      font-family:'Noto Sans KR',sans-serif;
+      transition:all 0.18s;letter-spacing:-0.2px;
+      ${isCalView
+        ? `background:${dark?'rgba(255,255,255,0.12)':'#fff'};color:${dark?'#fff':'#141925'};box-shadow:${dark?'0 2px 8px rgba(0,0,0,0.35)':'0 2px 8px rgba(163,177,198,0.4)'};`
+        : `background:transparent;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.38)'};`
+      }
+    ">🗓️ 달력</button>
+  </div>`;
+
+  if (isCalView) {
+    // 달력 뷰: 배너+시즌카드 + 달력 + 선택일 경기카드
+    return `${headerHtml}${toggleHtml}${topRowHtml}<div id="cal-section">${calBodyHtml}</div>
+      <div id="list-section">${listHtml}</div>`;
+  } else {
+    // 목록 뷰: 배너+시즌카드 + 선택일 경기카드 (달력 없음)
+    return `${headerHtml}${toggleHtml}${topRowHtml}<div id="list-section">${listHtml}</div>`;
+  }
 }
 
 // ── 선수 기록 fetch (타자/투수) ──
@@ -4481,7 +4517,7 @@ function toggleDark(){
 }
 function prevMo(){if(state.mo===1){state.yr--;state.mo=12;}else state.mo--;render();}
 function nextMo(){if(state.mo===12){state.yr++;state.mo=1;}else state.mo++;render();}
-function selDate(ds){state.sel=ds;render();fetchTodayScores(ds);}
+function selDate(ds){state.sel=ds;if(state.calView==='cal')state.calView='list';render();fetchTodayScores(ds);}
 
 // 라인업+경기상황: 서버 프록시를 통해 호출 (CORS 방지)
 // 타자 배열 파싱 (배열 또는 객체)
