@@ -1333,38 +1333,11 @@ function renderCalSplit(d) {
       const lKey=isKia&&kiaHome?g.home:g.away;
       const rKey=isKia&&kiaHome?g.away:g.home;
       const isLive=g.status==='LIVE', isFinal=g.status==='FINAL', isCanceled=g.status==='CANCELED';
-      const cardKey = `${g.date}_${g.away}_${g.home}`;
-      const isExpanded = state.expandedCard === cardKey;
       const scoreHtml = (isLive||isFinal)?
         `<div style="font-size:18px;font-weight:900;color:${d.text}">${kiaHome?(g.homeScore??0):(g.awayScore??0)} <span style="font-size:12px;color:${d.sub}">:</span> ${kiaHome?(g.awayScore??0):(g.homeScore??0)}</div>`:
         isCanceled?`<div style="font-size:11px;font-weight:900;color:#2979FF;text-align:center;line-height:1.5">☔<br>우천취소</div>`:
         `<div style="font-size:12px;font-weight:800;color:#FFB300">VS</div>`;
-
-      // 확장 영역: 다이아몬드 + 중계 버튼
-      const hasLU = !!g.lineup;
-      const expandedHtml = isExpanded ? `
-        <div style="margin-top:12px;padding-top:12px;border-top:1px solid ${d.bgB}">
-          ${g.gameId ? `<div style="display:flex;justify-content:flex-end;margin-bottom:8px">
-            <button onclick="event.stopPropagation();openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1})" style="
-              display:flex;align-items:center;gap:5px;padding:5px 12px;
-              background:rgba(227,24,55,0.1);border:1.5px solid rgba(227,24,55,0.35);
-              border-radius:8px;font-size:11px;font-weight:800;color:#E31837;
-              font-family:'Noto Sans KR',sans-serif;cursor:pointer;">🔴 중계 전체보기</button>
-          </div>` : ''}
-          ${hasLU
-            ? `<div id="diamond-${cardKey}">${renderRelayDiamond(g.currentGameState, g.lineup, g.away, g.home)}</div>`
-            : (isLive||isFinal)
-              ? `<div style="text-align:center;padding:14px">
-                  <button onclick="event.stopPropagation();loadCardLineup('${g.date}','${g.away}','${g.home}')" style="
-                    padding:7px 16px;background:rgba(227,24,55,0.08);border:1.5px solid rgba(227,24,55,0.25);
-                    border-radius:8px;font-size:11px;font-weight:700;color:#E31837;
-                    font-family:'Noto Sans KR',sans-serif;cursor:pointer;">🔄 경기 상황 불러오기</button>
-                </div>`
-              : `<div style="text-align:center;padding:12px;font-size:11px;color:${d.sub}">경기 시작 전입니다</div>`
-          }
-        </div>` : '';
-
-      return `<div class="card${isKia?' kia':''}" style="${isCanceled?'opacity:0.6;':''};cursor:pointer" onclick="toggleCardExpand('${cardKey}','${g.date}','${g.away}','${g.home}')">
+      return `<div class="card${isKia?' kia':''}" style="${isCanceled?'opacity:0.6;':''}" onclick="openModal(${i},'${sel}')">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:5px">
             <button onclick="event.stopPropagation();toggleFavByKey('${g.date}','${g.away}','${g.home}')" style="font-size:16px;line-height:1;padding:0 2px">${isFav(g)?'⭐':'☆'}</button>
@@ -1375,12 +1348,9 @@ function renderCalSplit(d) {
             ${isKia?`<span class="tag-kia">🐯 KIA</span>`:''}
             ${formatInningBadge(g)?`<span class="tag-lu">${formatInningBadge(g)}</span>`:''}
           </div>
-          <div style="display:flex;align-items:center;gap:6px">
-            ${isKia
-              ? `<button onclick="event.stopPropagation();openTicketPanel('${g.stad}','${g.date}','${g.away}','${g.home}')" style="font-size:10px;color:#E31837;font-weight:700;background:rgba(227,24,55,0.08);border:1px solid rgba(227,24,55,0.25);border-radius:6px;padding:3px 7px;font-family:'Noto Sans KR',sans-serif">📍${g.stad} ›</button>`
-              : `<span style="font-size:10px;color:${d.sub}">📍${g.stad} ›</span>`}
-            <span style="font-size:14px;color:${d.muted};line-height:1">${isExpanded?'▲':'▼'}</span>
-          </div>
+          ${isKia
+            ? `<button onclick="event.stopPropagation();openTicketPanel('${g.stad}','${g.date}','${g.away}','${g.home}')" style="font-size:10px;color:#E31837;font-weight:700;background:rgba(227,24,55,0.08);border:1px solid rgba(227,24,55,0.25);border-radius:6px;padding:3px 7px;font-family:'Noto Sans KR',sans-serif">📍${g.stad} ›</button>`
+            : `<span style="font-size:10px;color:${d.sub}">📍${g.stad} ›</span>`}
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
           <div style="display:flex;align-items:center;gap:7px;flex:1">
@@ -1405,7 +1375,6 @@ function renderCalSplit(d) {
             <div style="font-size:10px;color:${d.sub}"><span style="font-weight:700;color:${rKey==='KIA'?'#ff6b6b':d.text}">${(rKey===g.away?g.awayStarter:g.homeStarter)||'미정'}</span> 선발</div>
           </div>
         </div>`:''}
-        ${expandedHtml}
       </div>`;
     }).join('');
   }
@@ -1983,8 +1952,10 @@ function renderCal(d) {
           border-radius:20px;padding:18px 16px;
           box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
           backdrop-filter:blur(16px);
+          position:relative;overflow:hidden;
         ">
           <div id="list-section">${listHtml}</div>
+          <div id="list-overlay" style="display:none;position:absolute;inset:0;border-radius:20px;overflow-y:auto;background:${dark?'rgba(22,27,39,0.98)':'rgba(245,247,252,0.99)'};animation:fadeIn 0.18s ease;z-index:10"></div>
         </div>`;
     }
   }
@@ -4502,18 +4473,28 @@ function renderModal(d) {
     saveMemoData(data);
   });
 
-  // ── PC 인라인 모드: modal-content 내용을 inlineBox에 동기화 ──
+  // ── PC 인라인 모드: modal-content 내용을 list-overlay-content에 동기화 ──
   if (window.innerWidth >= 1080) {
+    const oc = document.getElementById('list-overlay-content');
+    if (oc) {
+      const mc = document.getElementById('modal-content');
+      if (mc) {
+        oc.innerHTML = mc.innerHTML;
+        oc.querySelectorAll('button').forEach(btn => {
+          const onclick = btn.getAttribute('onclick') || '';
+          if (onclick.includes('closeModal') && !onclick.includes('openRelay')) btn.style.display = 'none';
+        });
+      }
+    }
+    // 구버전 inline-box 호환
     const inlineBox = document.getElementById('pc-modal-inline-box');
     if (inlineBox) {
       const mc = document.getElementById('modal-content');
       if (mc) {
         inlineBox.innerHTML = mc.innerHTML;
-        // 닫기(X) 버튼 숨기기
         inlineBox.querySelectorAll('button').forEach(btn => {
-          const oc = btn.getAttribute('onclick') || '';
-          // 닫기(X), ← 일정으로 버튼만 숨기기 (중계 전체보기는 유지)
-          if (oc.includes('closeModal') && !oc.includes('openRelay')) btn.style.display = 'none';
+          const oc2 = btn.getAttribute('onclick') || '';
+          if (oc2.includes('closeModal') && !oc2.includes('openRelay')) btn.style.display = 'none';
         });
       }
     }
@@ -4824,7 +4805,7 @@ window.refreshModalSituation = async function(gameId, date, away, home) {
 };
 
 function openModal(idx,date) {
-  // ── PC: 모달 내용을 pc-cal-relay-area에 인라인으로 표시 ──
+  // ── PC: list-section 컨테이너를 덮는 overlay에 표시 ──
   if (window.innerWidth >= 1080) {
     const dayGs2=SCH.filter(g=>g.date===date);
     const sorted2=[...dayGs2.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs2.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
@@ -4838,55 +4819,56 @@ function openModal(idx,date) {
       else if (gPc.away === 'KIA') state.modalRecTab = 'away';
       else state.modalRecTab = null;
 
-      const calRelayArea = document.getElementById('pc-cal-relay-area');
-      if (calRelayArea) {
-        // 기존 relay 패널 숨기기
-        const panel = document.getElementById('relay-panel');
-        if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
-
-        calRelayArea.innerHTML = '';
-        const wrapper = document.createElement('div');
-        wrapper.id = 'pc-modal-inline-wrapper';
-        wrapper.style.cssText = 'width:100%;';
-
-        // ← 일정으로 버튼
-        const backBtn = document.createElement('button');
-        backBtn.innerHTML = '← 일정으로';
+      const overlay = document.getElementById('list-overlay');
+      if (overlay) {
         const isDark = state.dark;
-        backBtn.style.cssText = 'margin-bottom:12px;padding:6px 14px;background:' + (isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)') + ';border:1px solid ' + (isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.12)') + ';border-radius:8px;font-size:12px;font-weight:700;color:' + (isDark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.5)') + ';cursor:pointer;font-family:"Noto Sans KR",sans-serif;display:inline-block;';
-        backBtn.onclick = () => {
-          calRelayArea.innerHTML = '';
-          const cal = document.getElementById('pc-cal-content');
-          if (cal) cal.style.display = '';
-        };
-        wrapper.appendChild(backBtn);
+        overlay.style.background = isDark ? 'rgba(14,19,30,0.98)' : 'rgba(245,247,252,0.99)';
+        overlay.style.display = 'block';
+        overlay.style.padding = '18px 16px';
 
-        // 모달 내용을 담을 div
-        const inlineBox = document.createElement('div');
-        inlineBox.id = 'pc-modal-inline-box';
-        inlineBox.style.cssText = 'width:100%;background:' + (isDark?'rgba(14,19,30,0.96)':'rgba(245,247,252,0.97)') + ';border-radius:20px;border:1px solid var(--glass-border);box-shadow:var(--nm-3);padding:0 0 24px 0;overflow:hidden;animation:fadeIn 0.2s ease;';
-        wrapper.appendChild(inlineBox);
-        calRelayArea.appendChild(wrapper);
+        // 닫기 버튼
+        overlay.innerHTML = `
+          <button onclick="closeListOverlay()" style="
+            margin-bottom:12px;padding:5px 12px;
+            background:${isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)'};
+            border:1px solid ${isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)'};
+            border-radius:8px;font-size:12px;font-weight:700;
+            color:${isDark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.45)'};
+            cursor:pointer;font-family:'Noto Sans KR',sans-serif;
+          ">← 목록으로</button>
+          <div id="list-overlay-content"></div>`;
 
-        // 달력 숨기기
-        const cal = document.getElementById('pc-cal-content');
-        if (cal) cal.style.display = 'none';
-
-        // 모달 내용 렌더링 (renderModal이 자동으로 inlineBox에 싱크)
+        // renderModal이 modal-content에 쓰는 걸 list-overlay-content에 미러링
         renderModal(D());
+        const mc = document.getElementById('modal-content');
+        const oc = document.getElementById('list-overlay-content');
+        if (mc && oc) {
+          oc.innerHTML = mc.innerHTML;
+          // 닫기 X 버튼 숨기기
+          oc.querySelectorAll('button').forEach(btn => {
+            if ((btn.getAttribute('onclick')||'').includes('closeModal')) btn.style.display='none';
+          });
+        }
 
         // 라인업 fetch
         if (gPc.gameId) {
-          const inn = gPc.inning || 1;
-          fetchLineupDirect(gPc.gameId, inn).then(lineup => {
+          fetchLineupDirect(gPc.gameId, gPc.inning||1).then(lineup => {
             if (!lineup) return;
             const idx3 = SCH.findIndex(s=>s.date===gPc.date&&s.away===gPc.away&&s.home===gPc.home);
             if (idx3 !== -1) {
-              if (lineup.home || lineup.away) SCH[idx3].lineup = lineup;
+              if (lineup.home||lineup.away) SCH[idx3].lineup = lineup;
               if (lineup.currentGameState) SCH[idx3].currentGameState = lineup.currentGameState;
               state.modalGame = SCH[idx3];
             }
             renderModal(D());
+            const mc2 = document.getElementById('modal-content');
+            const oc2 = document.getElementById('list-overlay-content');
+            if (mc2 && oc2) {
+              oc2.innerHTML = mc2.innerHTML;
+              oc2.querySelectorAll('button').forEach(btn => {
+                if ((btn.getAttribute('onclick')||'').includes('closeModal')) btn.style.display='none';
+              });
+            }
           });
         }
         return;
@@ -4993,9 +4975,22 @@ function openModal(idx,date) {
   };
 }
 
+function closeListOverlay() {
+  const overlay = document.getElementById('list-overlay');
+  if (overlay) overlay.style.display = 'none';
+  state.modalGame = null;
+  state.modalLt = 'away';
+  state.modalRecTab = null;
+}
+
 function closeModal() {
-  // PC 인라인 모달 닫기
+  // PC list-overlay 닫기
   if (window.innerWidth >= 1080) {
+    const overlay = document.getElementById('list-overlay');
+    if (overlay && overlay.style.display !== 'none') {
+      closeListOverlay();
+      return;
+    }
     const wrapper = document.getElementById('pc-modal-inline-wrapper');
     if (wrapper) {
       wrapper.parentElement && wrapper.parentElement.removeChild(wrapper);
