@@ -223,9 +223,6 @@
       }
       #relay-panel { align-items: center !important; }
       #relay-box {
-        max-width: 520px !important;
-        width: 100% !important;
-        height: 88vh !important;
         border-radius: var(--r-xl) !important;
         border-bottom: 1px solid var(--glass-border) !important;
       }
@@ -917,9 +914,6 @@ let state = {
   recordTab: 'game', playerStats: null, playerStatsLoading: false, playerStatsError: null,
   grecOpen: {},
   batterOpen: {},
-  calView: 'list', // 'list' | 'cal'
-  inlineGame: null, // 인라인으로 열린 경기 (팝업 대신 list-section에 표시)
-  expandedCard: null, // 확장된 경기 카드 키 "date_away_home"
 };
 // 중계 전체보기 전역 변수
 let _relayGameId = null, _relayAway = '', _relayHome = '', _relayInn = 1, _relayData = null, _relayInterval = null;
@@ -1495,7 +1489,8 @@ function renderCalSplit(d) {
     ${seasonCardHtml ? `<div style="flex:1;min-width:0;display:flex;flex-direction:column">${seasonCardHtml}</div>` : ''}
   </div>`;
 
-  const calBodyHtml = `
+  const calHtml = `
+    ${topRowHtml}
     <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:12px;height:36px">
       <div style="position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:4px;pointer-events:none">
         <button onclick="prevMo()" style="color:#E31837;font-size:22px;padding:4px 8px;line-height:1;pointer-events:auto">‹</button>
@@ -1510,17 +1505,12 @@ function renderCalSplit(d) {
       </div>
       <div class="cal-grid" id="cal-grid-body">${cells}</div>
     </div>`;
-  const calHtml = `
-    ${topRowHtml}
-    ${calBodyHtml}`;
-
-  // ── 인라인 경기 상세 뷰 ──
   const listHtml = `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;padding-top:8px">
       <div style="font-size:14px;font-weight:900;color:${d.text}">${sm}월 ${sd}일 (${dw})</div>
       <span style="font-size:11px;color:${d.sub}">· ${selGs.length>0?selGs.length+'경기':'경기 없음'}</span>
     </div>
     ${gameList}`;
-  return {calHtml, calBodyHtml, listHtml, topRowHtml};
+  return {calHtml, listHtml};
 }
 
 
@@ -1593,7 +1583,7 @@ function renderSeasonCard(d) {
 }
 function renderCal(d) {
   const dark = state.dark;
-  const {calHtml, calBodyHtml, listHtml, topRowHtml} = renderCalSplit(d);
+  const {calHtml, listHtml} = renderCalSplit(d);
   const isPC = window.innerWidth >= 1080;
 
   const headerHtml = `<div style="
@@ -1896,77 +1886,29 @@ function renderCal(d) {
     </div>`;
   })();
 
-  // ── 뷰 토글 (목록 / 달력) ── 공통
-  const isCalView = state.calView === 'cal';
-  const toggleHtml = `<div style="
-    display:flex;gap:4px;
-    background:${dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)'};
-    border-radius:12px;padding:3px;
-    margin-bottom:14px;
-  ">
-    <button onclick="state.calView='list';render()" style="
-      flex:1;padding:7px 0;border-radius:9px;font-size:12px;font-weight:800;
-      font-family:'Noto Sans KR',sans-serif;
-      transition:all 0.18s;letter-spacing:-0.2px;
-      ${!isCalView
-        ? `background:${dark?'rgba(255,255,255,0.12)':'#fff'};color:${dark?'#fff':'#141925'};box-shadow:${dark?'0 2px 8px rgba(0,0,0,0.35)':'0 2px 8px rgba(163,177,198,0.4)'};`
-        : `background:transparent;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.38)'};`
-      }
-    ">⚾ 경기 목록</button>
-    <button onclick="state.calView='cal';render()" style="
-      flex:1;padding:7px 0;border-radius:9px;font-size:12px;font-weight:800;
-      font-family:'Noto Sans KR',sans-serif;
-      transition:all 0.18s;letter-spacing:-0.2px;
-      ${isCalView
-        ? `background:${dark?'rgba(255,255,255,0.12)':'#fff'};color:${dark?'#fff':'#141925'};box-shadow:${dark?'0 2px 8px rgba(0,0,0,0.35)':'0 2px 8px rgba(163,177,198,0.4)'};`
-        : `background:transparent;color:${dark?'rgba(255,255,255,0.4)':'rgba(0,0,0,0.38)'};`
-      }
-    ">🗓️ 달력</button>
-  </div>`;
-
-  // PC: 좌측 사이드바 레이아웃 — 토글 포함
+  // PC: 캘린더 위, 경기목록 아래 (세로 배치), 모바일: 기존 세로
   if (isPC) {
-    if (isCalView) {
-      return `
-        ${pcHeroBanner}
-        ${toggleHtml}
-        <div id="pc-cal-relay-area">
-          <div id="cal-section">${calBodyHtml}</div>
-        </div>
-        <div style="
-          background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
-          border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
-          border-radius:20px;padding:18px 16px;margin-top:20px;
-          box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
-          backdrop-filter:blur(16px);
-        ">
-          <div id="list-section">${listHtml}</div>
-        </div>`;
-    } else {
-      return `
-        ${pcHeroBanner}
-        ${toggleHtml}
-        <div style="
-          background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
-          border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
-          border-radius:20px;padding:18px 16px;
-          box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
-          backdrop-filter:blur(16px);
-          position:relative;overflow:hidden;
-        ">
-          <div id="list-section">${listHtml}</div>
-          <div id="list-overlay" style="display:none;position:absolute;inset:0;border-radius:20px;overflow-y:auto;background:${dark?'rgba(22,27,39,0.98)':'rgba(245,247,252,0.99)'};animation:fadeIn 0.18s ease;z-index:10"></div>
-        </div>`;
-    }
+    return `
+      ${pcHeroBanner}
+      <div id="pc-cal-relay-area">
+        <div id="cal-section">${calHtml}</div>
+      </div>
+      <div style="
+        background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
+        border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
+        border-radius:20px;
+        padding:18px 16px;
+        margin-top:20px;
+        box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
+        backdrop-filter:blur(16px);
+      ">
+        <div id="list-section">${listHtml}</div>
+      </div>`;
   }
 
-  // 모바일
-  if (isCalView) {
-    return `${headerHtml}${toggleHtml}${topRowHtml}<div id="cal-section">${calBodyHtml}</div>
-      <div id="list-section">${listHtml}</div>`;
-  } else {
-    return `${headerHtml}${toggleHtml}${topRowHtml}<div id="list-section">${listHtml}</div>`;
-  }
+  return `${headerHtml}<div id="cal-section">${calHtml}</div>
+    <hr id="cal-divider" style="display:none;border:none;border-top:1.5px solid rgba(127,127,127,0.2);margin:0 0 12px"/>
+    <div id="list-section">${listHtml}</div>`;
 }
 
 // ── 선수 기록 fetch (타자/투수) ──
@@ -4473,28 +4415,18 @@ function renderModal(d) {
     saveMemoData(data);
   });
 
-  // ── PC 인라인 모드: modal-content 내용을 list-overlay-content에 동기화 ──
+  // ── PC 인라인 모드: modal-content 내용을 inlineBox에 동기화 ──
   if (window.innerWidth >= 1080) {
-    const oc = document.getElementById('list-overlay-content');
-    if (oc) {
-      const mc = document.getElementById('modal-content');
-      if (mc) {
-        oc.innerHTML = mc.innerHTML;
-        oc.querySelectorAll('button').forEach(btn => {
-          const onclick = btn.getAttribute('onclick') || '';
-          if (onclick.includes('closeModal') && !onclick.includes('openRelay')) btn.style.display = 'none';
-        });
-      }
-    }
-    // 구버전 inline-box 호환
     const inlineBox = document.getElementById('pc-modal-inline-box');
     if (inlineBox) {
       const mc = document.getElementById('modal-content');
       if (mc) {
         inlineBox.innerHTML = mc.innerHTML;
+        // 닫기(X) 버튼 숨기기
         inlineBox.querySelectorAll('button').forEach(btn => {
-          const oc2 = btn.getAttribute('onclick') || '';
-          if (oc2.includes('closeModal') && !oc2.includes('openRelay')) btn.style.display = 'none';
+          const oc = btn.getAttribute('onclick') || '';
+          // 닫기(X), ← 일정으로 버튼만 숨기기 (중계 전체보기는 유지)
+          if (oc.includes('closeModal') && !oc.includes('openRelay')) btn.style.display = 'none';
         });
       }
     }
@@ -4507,11 +4439,12 @@ function openGameByKey(el) {
   const away = el.dataset.away;
   const home = el.dataset.home;
   state.sel = date;
-  state.expandedCard = null;
   setTab('cal');
   setTimeout(() => {
-    const cardKey = `${date}_${away}_${home}`;
-    toggleCardExpand(cardKey, date, away, home);
+    const dayGs = SCH.filter(g => g.date === date);
+    const sorted = [...dayGs.filter(g => g.away==='KIA'||g.home==='KIA'), ...dayGs.filter(g => g.away!=='KIA'&&g.home!=='KIA')];
+    const idx = sorted.findIndex(g => g.away === away && g.home === home);
+    if(idx !== -1) openModal(idx, date);
   }, 100);
 }
 
@@ -4546,46 +4479,9 @@ function toggleDark(){
   _renderState.dark = null; // 강제 헤더·네비 재렌더
   render(); if(state.modalGame) renderModal(D());
 }
-function prevMo(){if(state.mo===1){state.yr--;state.mo=12;}else state.mo--;state.expandedCard=null;render();}
-function nextMo(){if(state.mo===12){state.yr++;state.mo=1;}else state.mo++;state.expandedCard=null;render();}
-function selDate(ds){state.sel=ds;state.expandedCard=null;if(state.calView==='cal')state.calView='list';render();fetchTodayScores(ds);}
-
-function toggleCardExpand(cardKey, date, away, home) {
-  if (state.expandedCard === cardKey) {
-    state.expandedCard = null;
-    render();
-    return;
-  }
-  state.expandedCard = cardKey;
-  render();
-  // 라인업 fetch
-  const g = SCH.find(s=>s.date===date&&s.away===away&&s.home===home);
-  if (g && g.gameId && !g.lineup) {
-    fetchLineupDirect(g.gameId, g.inning||1).then(lineup => {
-      if (!lineup) return;
-      const i2 = SCH.findIndex(s=>s.date===date&&s.away===away&&s.home===home);
-      if (i2 !== -1) {
-        if (lineup.home||lineup.away) SCH[i2].lineup = lineup;
-        if (lineup.currentGameState) SCH[i2].currentGameState = lineup.currentGameState;
-      }
-      render();
-    });
-  }
-}
-
-function loadCardLineup(date, away, home) {
-  const g = SCH.find(s=>s.date===date&&s.away===away&&s.home===home);
-  if (!g||!g.gameId) return;
-  fetchLineupDirect(g.gameId, g.inning||1).then(lineup => {
-    if (!lineup) return;
-    const i2 = SCH.findIndex(s=>s.date===date&&s.away===away&&s.home===home);
-    if (i2 !== -1) {
-      if (lineup.home||lineup.away) SCH[i2].lineup = lineup;
-      if (lineup.currentGameState) SCH[i2].currentGameState = lineup.currentGameState;
-    }
-    render();
-  });
-}
+function prevMo(){if(state.mo===1){state.yr--;state.mo=12;}else state.mo--;render();}
+function nextMo(){if(state.mo===12){state.yr++;state.mo=1;}else state.mo++;render();}
+function selDate(ds){state.sel=ds;render();fetchTodayScores(ds);}
 
 // 라인업+경기상황: 서버 프록시를 통해 호출 (CORS 방지)
 // 타자 배열 파싱 (배열 또는 객체)
@@ -4805,7 +4701,7 @@ window.refreshModalSituation = async function(gameId, date, away, home) {
 };
 
 function openModal(idx,date) {
-  // ── PC: list-section 컨테이너를 덮는 overlay에 표시 ──
+  // ── PC: 모달 내용을 pc-cal-relay-area에 인라인으로 표시 ──
   if (window.innerWidth >= 1080) {
     const dayGs2=SCH.filter(g=>g.date===date);
     const sorted2=[...dayGs2.filter(g=>g.away==='KIA'||g.home==='KIA'),...dayGs2.filter(g=>g.away!=='KIA'&&g.home!=='KIA')];
@@ -4819,56 +4715,55 @@ function openModal(idx,date) {
       else if (gPc.away === 'KIA') state.modalRecTab = 'away';
       else state.modalRecTab = null;
 
-      const overlay = document.getElementById('list-overlay');
-      if (overlay) {
+      const calRelayArea = document.getElementById('pc-cal-relay-area');
+      if (calRelayArea) {
+        // 기존 relay 패널 숨기기
+        const panel = document.getElementById('relay-panel');
+        if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
+
+        calRelayArea.innerHTML = '';
+        const wrapper = document.createElement('div');
+        wrapper.id = 'pc-modal-inline-wrapper';
+        wrapper.style.cssText = 'width:100%;';
+
+        // ← 일정으로 버튼
+        const backBtn = document.createElement('button');
+        backBtn.innerHTML = '← 일정으로';
         const isDark = state.dark;
-        overlay.style.background = isDark ? 'rgba(14,19,30,0.98)' : 'rgba(245,247,252,0.99)';
-        overlay.style.display = 'block';
-        overlay.style.padding = '18px 16px';
+        backBtn.style.cssText = 'margin-bottom:12px;padding:6px 14px;background:' + (isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.07)') + ';border:1px solid ' + (isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.12)') + ';border-radius:8px;font-size:12px;font-weight:700;color:' + (isDark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.5)') + ';cursor:pointer;font-family:"Noto Sans KR",sans-serif;display:inline-block;';
+        backBtn.onclick = () => {
+          calRelayArea.innerHTML = '';
+          const cal = document.getElementById('pc-cal-content');
+          if (cal) cal.style.display = '';
+        };
+        wrapper.appendChild(backBtn);
 
-        // 닫기 버튼
-        overlay.innerHTML = `
-          <button onclick="closeListOverlay()" style="
-            margin-bottom:12px;padding:5px 12px;
-            background:${isDark?'rgba(255,255,255,0.07)':'rgba(0,0,0,0.06)'};
-            border:1px solid ${isDark?'rgba(255,255,255,0.12)':'rgba(0,0,0,0.1)'};
-            border-radius:8px;font-size:12px;font-weight:700;
-            color:${isDark?'rgba(255,255,255,0.5)':'rgba(0,0,0,0.45)'};
-            cursor:pointer;font-family:'Noto Sans KR',sans-serif;
-          ">← 목록으로</button>
-          <div id="list-overlay-content"></div>`;
+        // 모달 내용을 담을 div
+        const inlineBox = document.createElement('div');
+        inlineBox.id = 'pc-modal-inline-box';
+        inlineBox.style.cssText = 'width:100%;background:' + (isDark?'rgba(14,19,30,0.96)':'rgba(245,247,252,0.97)') + ';border-radius:20px;border:1px solid var(--glass-border);box-shadow:var(--nm-3);padding:0 0 24px 0;overflow:hidden;animation:fadeIn 0.2s ease;';
+        wrapper.appendChild(inlineBox);
+        calRelayArea.appendChild(wrapper);
 
-        // renderModal이 modal-content에 쓰는 걸 list-overlay-content에 미러링
+        // 달력 숨기기
+        const cal = document.getElementById('pc-cal-content');
+        if (cal) cal.style.display = 'none';
+
+        // 모달 내용 렌더링 (renderModal이 자동으로 inlineBox에 싱크)
         renderModal(D());
-        const mc = document.getElementById('modal-content');
-        const oc = document.getElementById('list-overlay-content');
-        if (mc && oc) {
-          oc.innerHTML = mc.innerHTML;
-          // 닫기 X 버튼 숨기기
-          oc.querySelectorAll('button').forEach(btn => {
-            if ((btn.getAttribute('onclick')||'').includes('closeModal')) btn.style.display='none';
-          });
-        }
 
         // 라인업 fetch
         if (gPc.gameId) {
-          fetchLineupDirect(gPc.gameId, gPc.inning||1).then(lineup => {
+          const inn = gPc.inning || 1;
+          fetchLineupDirect(gPc.gameId, inn).then(lineup => {
             if (!lineup) return;
             const idx3 = SCH.findIndex(s=>s.date===gPc.date&&s.away===gPc.away&&s.home===gPc.home);
             if (idx3 !== -1) {
-              if (lineup.home||lineup.away) SCH[idx3].lineup = lineup;
+              if (lineup.home || lineup.away) SCH[idx3].lineup = lineup;
               if (lineup.currentGameState) SCH[idx3].currentGameState = lineup.currentGameState;
               state.modalGame = SCH[idx3];
             }
             renderModal(D());
-            const mc2 = document.getElementById('modal-content');
-            const oc2 = document.getElementById('list-overlay-content');
-            if (mc2 && oc2) {
-              oc2.innerHTML = mc2.innerHTML;
-              oc2.querySelectorAll('button').forEach(btn => {
-                if ((btn.getAttribute('onclick')||'').includes('closeModal')) btn.style.display='none';
-              });
-            }
           });
         }
         return;
@@ -4975,22 +4870,9 @@ function openModal(idx,date) {
   };
 }
 
-function closeListOverlay() {
-  const overlay = document.getElementById('list-overlay');
-  if (overlay) overlay.style.display = 'none';
-  state.modalGame = null;
-  state.modalLt = 'away';
-  state.modalRecTab = null;
-}
-
 function closeModal() {
-  // PC list-overlay 닫기
+  // PC 인라인 모달 닫기
   if (window.innerWidth >= 1080) {
-    const overlay = document.getElementById('list-overlay');
-    if (overlay && overlay.style.display !== 'none') {
-      closeListOverlay();
-      return;
-    }
     const wrapper = document.getElementById('pc-modal-inline-wrapper');
     if (wrapper) {
       wrapper.parentElement && wrapper.parentElement.removeChild(wrapper);
@@ -6708,33 +6590,6 @@ window.openRelay = async function(gameId, away, home, inn) {
   const box = document.getElementById('relay-box');
 
   if (window.innerWidth >= 1080) {
-    // PC + 카드 확장 상태 → 팝업 오버레이로 표시
-    if (state.expandedCard) {
-      if (panel) {
-        panel.classList.remove('pc-inline');
-        panel.style.display = 'flex';
-        panel.style.alignItems = 'center';
-      }
-      if (box) {
-        box.classList.remove('closing');
-        box.style.cssText = '';
-        if (state.dark) box.classList.add('dark-relay'); else box.classList.remove('dark-relay');
-      }
-      const relayBody = document.getElementById('relay-body');
-      if (relayBody) relayBody.style.cssText = '';
-      document.body.style.overflow = 'hidden';
-      history.pushState({relay:true},'');
-      updateRelayUI();
-      // 중계 데이터 fetch
-      const needLineup2 = !schGame?.lineup;
-      const [data2, luData2] = await Promise.all([
-        fetchRelayData(gameId, _relayInn),
-        needLineup2 ? fetchLineupDirect(gameId, _relayInn) : Promise.resolve(null),
-      ]);
-      if (data2) { _relayData = data2; updateRelayUI(); }
-      if (luData2) { const _i2=SCH.findIndex(s=>String(s.gameId)===String(gameId)); if(_i2!==-1){if(luData2.home||luData2.away)SCH[_i2].lineup=luData2;if(luData2.currentGameState)SCH[_i2].currentGameState=luData2.currentGameState;} updateRelayUI(); }
-      return;
-    }
     // PC: 달력 영역(#pc-cal-relay-area)에 relay-box 인라인으로 표시
     const calRelayArea = document.getElementById('pc-cal-relay-area');
     if (calRelayArea) {
