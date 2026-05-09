@@ -1600,6 +1600,7 @@ function renderCalSplit(d) {
         border-radius:20px;border:1px solid ${d.bgB};
         box-shadow:${dark?'0 6px 28px rgba(0,0,0,0.45)':'0 4px 20px rgba(163,177,198,0.35)'};
         overflow:hidden;
+        max-width:680px;
       ">
         <!-- 상단: 날짜·장소·상태 -->
         <div style="padding:14px 16px 10px;border-bottom:1px solid ${d.bgB};display:flex;justify-content:space-between;align-items:center">
@@ -1654,7 +1655,7 @@ function renderCalSplit(d) {
         <!-- 다이아몬드 / 라인업 -->
         ${hasLU ? `<div style="padding:0 16px 16px">
           <div style="font-size:10px;font-weight:800;color:${d.sub};margin-bottom:8px">🔴 실시간 경기 상황</div>
-          <div style="background:${dark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.02)'};border-radius:14px;border:1px solid ${d.bgB};padding:10px;overflow:hidden">
+          <div style="background:${dark?'rgba(255,255,255,0.03)':'rgba(0,0,0,0.02)'};border-radius:14px;border:1px solid ${d.bgB};padding:10px;overflow:hidden;max-width:520px;margin:0 auto">
             ${diamondHtml}
           </div>
         </div>` : (isSch ? `<div style="text-align:center;padding:20px 16px;color:${d.sub};font-size:12px">라인업은 경기 시작 전 공개됩니다</div>` : `<div style="text-align:center;padding:20px 16px">
