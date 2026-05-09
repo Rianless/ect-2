@@ -223,6 +223,9 @@
       }
       #relay-panel { align-items: center !important; }
       #relay-box {
+        max-width: 520px !important;
+        width: 100% !important;
+        height: 88vh !important;
         border-radius: var(--r-xl) !important;
         border-bottom: 1px solid var(--glass-border) !important;
       }
@@ -6832,6 +6835,33 @@ window.openRelay = async function(gameId, away, home, inn) {
   const box = document.getElementById('relay-box');
 
   if (window.innerWidth >= 1080) {
+    // PC + 인라인 상세 뷰 활성화 상태 → 팝업 오버레이로 표시
+    if (state.inlineGame) {
+      if (panel) {
+        panel.classList.remove('pc-inline');
+        panel.style.display = 'flex';
+        panel.style.alignItems = 'center';
+      }
+      if (box) {
+        box.classList.remove('closing');
+        box.style.cssText = '';
+        if (state.dark) box.classList.add('dark-relay'); else box.classList.remove('dark-relay');
+      }
+      const relayBody = document.getElementById('relay-body');
+      if (relayBody) relayBody.style.cssText = '';
+      document.body.style.overflow = 'hidden';
+      history.pushState({relay:true},'');
+      updateRelayUI();
+      // 중계 데이터 fetch
+      const needLineup2 = !schGame?.lineup;
+      const [data2, luData2] = await Promise.all([
+        fetchRelayData(gameId, _relayInn),
+        needLineup2 ? fetchLineupDirect(gameId, _relayInn) : Promise.resolve(null),
+      ]);
+      if (data2) { _relayData = data2; updateRelayUI(); }
+      if (luData2) { const _i2=SCH.findIndex(s=>String(s.gameId)===String(gameId)); if(_i2!==-1){if(luData2.home||luData2.away)SCH[_i2].lineup=luData2;if(luData2.currentGameState)SCH[_i2].currentGameState=luData2.currentGameState;} updateRelayUI(); }
+      return;
+    }
     // PC: 달력 영역(#pc-cal-relay-area)에 relay-box 인라인으로 표시
     const calRelayArea = document.getElementById('pc-cal-relay-area');
     if (calRelayArea) {
