@@ -110,7 +110,7 @@
     .cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
     .cal-sticky{position:sticky;top:0;z-index:10;background:inherit;backdrop-filter:blur(10px)}
     .cal-week-only .cal-grid#cal-grid-body .cal-cell:not(.current-week){display:none}
-    .cal-cell{min-height:68px;padding:3px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:opacity 0.25s var(--ease-soft),max-height 0.3s var(--ease-soft),padding 0.3s var(--ease-soft),min-height 0.3s var(--ease-soft),background 0.2s var(--ease-soft);border-radius:12px;position:relative}
+    .cal-cell{min-height:86px;padding:3px 2px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px;transition:opacity 0.25s var(--ease-soft),max-height 0.3s var(--ease-soft),padding 0.3s var(--ease-soft),min-height 0.3s var(--ease-soft),background 0.2s var(--ease-soft);border-radius:12px;position:relative}
     .cal-cell.sel{background:linear-gradient(135deg,rgba(227,24,55,0.14),rgba(227,24,55,0.06));box-shadow:var(--nm-inset)}
     body.dark .cal-cell.sel{background:linear-gradient(135deg,rgba(255,51,85,0.2),rgba(255,51,85,0.08));box-shadow:inset 0 2px 6px rgba(0,0,0,0.3)}
     .cal-cell.past{opacity:0.38}
@@ -908,7 +908,7 @@ const STAND=[
 const _kst0=new Date(new Date().toLocaleString('en-US',{timeZone:'Asia/Seoul'}));
 const _today0=_kst0.getFullYear()+'-'+String(_kst0.getMonth()+1).padStart(2,'0')+'-'+String(_kst0.getDate()).padStart(2,'0');
 let state = {
-  tab:'cal', dark:false, yr:_kst0.getFullYear(), mo:_kst0.getMonth()+1, sel:_today0,
+  tab:'cal', calView:'game', dark:false, yr:_kst0.getFullYear(), mo:_kst0.getMonth()+1, sel:_today0,
   lcat:'batting', modalGame:null, modalLt:'away', clock:new Date(),
   memoTab: false, myTab: null, myTabInitialized: false,
   recordTab: 'game', playerStats: null, playerStatsLoading: false, playerStatsError: null,
@@ -1489,8 +1489,8 @@ function renderCalSplit(d) {
     ${seasonCardHtml ? `<div style="flex:1;min-width:0;display:flex;flex-direction:column">${seasonCardHtml}</div>` : ''}
   </div>`;
 
-  const calHtml = `
-    ${topRowHtml}
+  const bannerHtml = topRowHtml;
+  const gridHtml = `
     <div style="position:relative;display:flex;align-items:center;justify-content:center;margin-bottom:12px;height:36px">
       <div style="position:absolute;left:0;right:0;display:flex;align-items:center;justify-content:center;gap:4px;pointer-events:none">
         <button onclick="prevMo()" style="color:#E31837;font-size:22px;padding:4px 8px;line-height:1;pointer-events:auto">‹</button>
@@ -1510,7 +1510,7 @@ function renderCalSplit(d) {
       <span style="font-size:11px;color:${d.sub}">· ${selGs.length>0?selGs.length+'경기':'경기 없음'}</span>
     </div>
     ${gameList}`;
-  return {calHtml, listHtml};
+  return {bannerHtml, gridHtml, listHtml};
 }
 
 
@@ -1583,7 +1583,7 @@ function renderSeasonCard(d) {
 }
 function renderCal(d) {
   const dark = state.dark;
-  const {calHtml, listHtml} = renderCalSplit(d);
+  const {bannerHtml, gridHtml, listHtml} = renderCalSplit(d);
   const isPC = window.innerWidth >= 1080;
 
   const headerHtml = `<div style="
@@ -1886,29 +1886,48 @@ function renderCal(d) {
     </div>`;
   })();
 
-  // PC: 캘린더 위, 경기목록 아래 (세로 배치), 모바일: 기존 세로
+  // 경기/달력 전환 버튼
+  const cv = state.calView || 'game';
+  const viewToggleHtml = `<div style="
+      display:flex;gap:6px;
+      background:${dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)'};
+      border-radius:14px;padding:4px;margin-bottom:14px;
+    ">
+    <button onclick="state.calView='game';render()" style="
+      flex:1;padding:7px 0;font-size:13px;font-weight:700;border-radius:10px;
+      font-family:'Noto Sans KR',sans-serif;transition:all 0.18s;
+      ${cv==='game'
+        ? `background:${dark?'rgba(227,24,55,0.85)':'#E31837'};color:#fff;box-shadow:0 2px 8px rgba(227,24,55,0.35);`
+        : `background:transparent;color:${d.sub};`}
+    ">⚾ 경기</button>
+    <button onclick="state.calView='cal';render()" style="
+      flex:1;padding:7px 0;font-size:13px;font-weight:700;border-radius:10px;
+      font-family:'Noto Sans KR',sans-serif;transition:all 0.18s;
+      ${cv==='cal'
+        ? `background:${dark?'rgba(227,24,55,0.85)':'#E31837'};color:#fff;box-shadow:0 2px 8px rgba(227,24,55,0.35);`
+        : `background:transparent;color:${d.sub};`}
+    ">📅 달력</button>
+  </div>`;
+
   if (isPC) {
     return `
       ${pcHeroBanner}
-      <div id="pc-cal-relay-area">
-        <div id="cal-section">${calHtml}</div>
-      </div>
-      <div style="
+      ${bannerHtml}
+      ${viewToggleHtml}
+      ${cv==='cal' ? `<div id="pc-cal-relay-area"><div id="cal-section">${gridHtml}</div></div>` : ''}
+      ${cv==='game' ? `<div style="
         background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
         border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
-        border-radius:20px;
-        padding:18px 16px;
-        margin-top:20px;
+        border-radius:20px;padding:18px 16px;
         box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
         backdrop-filter:blur(16px);
-      ">
-        <div id="list-section">${listHtml}</div>
-      </div>`;
+      "><div id="list-section">${listHtml}</div></div>` : ''}`;
   }
 
-  return `${headerHtml}<div id="cal-section">${calHtml}</div>
-    <hr id="cal-divider" style="display:none;border:none;border-top:1.5px solid rgba(127,127,127,0.2);margin:0 0 12px"/>
-    <div id="list-section">${listHtml}</div>`;
+  // 모바일: 헤더 → 빨간배너 → 버튼 → 경기카드 or 달력
+  return `${headerHtml}${bannerHtml}${viewToggleHtml}
+    ${cv==='cal' ? `<div id="cal-section">${gridHtml}</div>` : ''}
+    ${cv==='game' ? `<div id="list-section">${listHtml}</div>` : ''}`;
 }
 
 // ── 선수 기록 fetch (타자/투수) ──
@@ -4481,7 +4500,7 @@ function toggleDark(){
 }
 function prevMo(){if(state.mo===1){state.yr--;state.mo=12;}else state.mo--;render();}
 function nextMo(){if(state.mo===12){state.yr++;state.mo=1;}else state.mo++;render();}
-function selDate(ds){state.sel=ds;render();fetchTodayScores(ds);}
+function selDate(ds){state.sel=ds;state.calView='game';render();fetchTodayScores(ds);}
 
 // 라인업+경기상황: 서버 프록시를 통해 호출 (CORS 방지)
 // 타자 배열 파싱 (배열 또는 객체)
