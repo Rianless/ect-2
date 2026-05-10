@@ -1914,7 +1914,9 @@ function renderCal(d) {
       ${pcHeroBanner}
       ${bannerHtml}
       ${viewToggleHtml}
-      ${cv==='cal' ? `<div id="pc-cal-relay-area"><div id="cal-section">${gridHtml}</div></div>` : ''}
+      <div id="pc-cal-relay-area"${cv!=='cal' ? ' style="display:none"' : ''}>
+        <div id="cal-section">${gridHtml}</div>
+      </div>
       ${cv==='game' ? `<div style="
         background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
         border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
@@ -4736,6 +4738,7 @@ function openModal(idx,date) {
 
       const calRelayArea = document.getElementById('pc-cal-relay-area');
       if (calRelayArea) {
+        calRelayArea.style.display = '';
         // 기존 relay 패널 숨기기
         const panel = document.getElementById('relay-panel');
         if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
@@ -6612,6 +6615,7 @@ window.openRelay = async function(gameId, away, home, inn) {
     // PC: 달력 영역(#pc-cal-relay-area)에 relay-box 인라인으로 표시
     const calRelayArea = document.getElementById('pc-cal-relay-area');
     if (calRelayArea) {
+      calRelayArea.style.display = '';
       if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
       calRelayArea.innerHTML = '';
       const wrapper = document.createElement('div');
