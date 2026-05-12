@@ -3845,13 +3845,14 @@ function renderModal(d) {
             const _isBottom = (g.inningInfo||'').includes('말');
             let _curP = pitcher || '';
             if (isAway) {
-              // 초: 원정팀 공격 → 홈팀 투수가 던짐. 말: 홈팀 공격 → 원정팀 투수가 던짐
-              // 원정팀 현재 투수 = 말(홈공격)이 아닐 때(=초) → !_isBottom
-              if (!_curP && !_isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
+              // 초(원정팀 공격): 홈팀이 던짐 → 원정팀 칸에는 _cgs 사용 안 함
+              // 말(홈팀 공격): 원정팀이 던짐 → _isBottom일 때만 _cgs 사용
+              if (!_curP && _isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
               if (!_curP) { const _pl = g.lineup?.away?.pitchers||[]; if (_pl.length) _curP = _pl[_pl.length-1]?.name||''; }
             } else {
-              // 홈팀 현재 투수 = 말(홈공격)일 때 → _isBottom
-              if (!_curP && _isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
+              // 초(원정팀 공격): 홈팀이 던짐 → !_isBottom일 때 _cgs 사용
+              // 말(홈팀 공격): 원정팀이 던짐 → 홈팀 칸에는 _cgs 사용 안 함
+              if (!_curP && !_isBottom && _cgs?.pitcherName && !_isNum(_cgs.pitcherName)) _curP = _cgs.pitcherName;
               if (!_curP) { const _pl = g.lineup?.home?.pitchers||[]; if (_pl.length) _curP = _pl[_pl.length-1]?.name||''; }
             }
             return `<div style="background:${d.bg};border:1.5px solid ${d.bgB};border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:8px">
