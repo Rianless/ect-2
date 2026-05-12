@@ -1909,6 +1909,15 @@ function renderCal(d) {
     ">📅 달력</button>
   </div>`;
 
+  // 달력 뷰에서 경기카드 패널 (달력 아래 인라인 표시)
+  const calGamePanel = `<div style="
+    background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
+    border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
+    border-radius:20px;padding:16px 16px;margin-top:8px;
+    box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
+    backdrop-filter:blur(16px);
+  "><div id="cal-game-list">${listHtml}</div></div>`;
+
   if (isPC) {
     return `
       ${pcHeroBanner}
@@ -1916,6 +1925,7 @@ function renderCal(d) {
       ${viewToggleHtml}
       <div id="pc-cal-relay-area"${cv!=='cal' ? ' style="display:none"' : ''}>
         <div id="cal-section">${gridHtml}</div>
+        ${cv==='cal' ? calGamePanel : ''}
       </div>
       ${cv==='game' ? `<div style="
         background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
@@ -1926,9 +1936,9 @@ function renderCal(d) {
       "><div id="list-section">${listHtml}</div></div>` : ''}`;
   }
 
-  // 모바일: 헤더 → 빨간배너 → 버튼 → 경기카드 or 달력
+  // 모바일: 헤더 → 빨간배너 → 버튼 → (달력+경기카드) or 경기카드만
   return `${headerHtml}${bannerHtml}${viewToggleHtml}
-    ${cv==='cal' ? `<div id="cal-section">${gridHtml}</div>` : ''}
+    ${cv==='cal' ? `<div id="cal-section">${gridHtml}</div>${calGamePanel}` : ''}
     ${cv==='game' ? `<div id="list-section">${listHtml}</div>` : ''}`;
 }
 
@@ -4502,7 +4512,13 @@ function toggleDark(){
 }
 function prevMo(){if(state.mo===1){state.yr--;state.mo=12;}else state.mo--;render();}
 function nextMo(){if(state.mo===12){state.yr++;state.mo=1;}else state.mo++;render();}
-function selDate(ds){state.sel=ds;state.calView='game';render();fetchTodayScores(ds);}
+function selDate(ds){
+  state.sel=ds;
+  // 달력 뷰에서 날짜 클릭 시: 달력은 그대로 유지하고 하단 경기카드만 업데이트
+  if(state.calView!=='cal') state.calView='game';
+  render();
+  fetchTodayScores(ds);
+}
 
 // 라인업+경기상황: 서버 프록시를 통해 호출 (CORS 방지)
 // 타자 배열 파싱 (배열 또는 객체)
