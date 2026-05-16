@@ -1910,13 +1910,7 @@ function renderCal(d) {
   </div>`;
 
   // 달력 뷰에서 경기카드 패널 (달력 아래 인라인 표시)
-  const calGamePanel = `<div style="
-    background:${dark?'rgba(22,27,39,0.7)':'rgba(255,255,255,0.6)'};
-    border:1px solid ${dark?'rgba(255,255,255,0.08)':'rgba(255,255,255,0.9)'};
-    border-radius:20px;padding:16px 16px;margin-top:8px;
-    box-shadow:${dark?'0 4px 24px rgba(0,0,0,0.4)':'4px 4px 14px rgba(166,180,200,0.4),-4px -4px 14px rgba(255,255,255,0.9)'};
-    backdrop-filter:blur(16px);
-  "><div id="cal-game-list">${listHtml}</div></div>`;
+  const calGamePanel = `<div style="margin-top:8px;"><div id="cal-game-list">${listHtml}</div></div>`;
 
   if (isPC) {
     return `
