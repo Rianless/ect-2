@@ -7383,9 +7383,13 @@ function _checkKiaHitNotify(relayData, away, home) {
   const isKiaGame = away === 'KIA' || home === 'KIA';
   if (!isKiaGame) return;
   const kiaIsHome = home === 'KIA';
-  // 현재 공격 팀이 KIA인지: 홈팀 공격=말공(inning contains '말'), 원정팀 공격=초공(inning contains '초')
-  const inningInfo = relayData.inningInfo || '';
-  const isKiaAtBatInning = kiaIsHome ? /말/.test(inningInfo) : /초/.test(inningInfo);
+
+  // currentGameState.half 로 공격팀 판별 ('T'/'초' = 원정팀 공격, 'B'/'말' = 홈팀 공격)
+  const gs = relayData.currentGameState || {};
+  const half = gs.half || gs.tbCode || gs.inningHalf || '';
+  const isBottom = half === 'B' || half === '말' || /말/.test(relayData.inningInfo || '');
+  // KIA가 지금 공격 중인지
+  const kiaAttacking = kiaIsHome ? isBottom : !isBottom;
 
   const relays = relayData.textRelays || [];
   relays.forEach(item => {
@@ -7399,13 +7403,16 @@ function _checkKiaHitNotify(relayData, away, home) {
       const isBB  = !isHR && !isHit && /(볼넷|사구|고의사구)/.test(title);
       if (!isHR && !isHit && !isBB) return;
 
-      // 이닝 공격 방향으로 KIA 타자 여부 판별
-      if (!isKiaAtBatInning) return;
-
       const key = it.title || it.text || '';
       if (_notifiedRelayKeys.has(key)) return;
-      _notifiedRelayKeys.add(key);
 
+      // relay 항목 자체의 half 필드로 재확인 (항목별로 이닝이 다를 수 있음)
+      const itemHalf = it.half || it.tbCode || item.half || item.tbCode || half;
+      const itemIsBottom = itemHalf === 'B' || itemHalf === '말' || (!itemHalf && isBottom);
+      const kiaAtBatItem = kiaIsHome ? itemIsBottom : !itemIsBottom;
+      if (!kiaAtBatItem) return;
+
+      _notifiedRelayKeys.add(key);
       const emoji = isHR ? '🏠💥' : isHit ? '⚾' : '🟡';
       const type  = isHR ? '홈런!' : isHit ? '안타!' : '볼넷';
       sendLocalNotify(`KIA ${type} ${emoji}`, title, key);
