@@ -7343,6 +7343,10 @@ async function requestNotificationPermission() {
 
 // ── 알림 켜기/끄기 ──
 window._notifyEnabled = localStorage.getItem('notifyEnabled') === 'true';
+if (window._notifyEnabled && Notification.permission === 'granted') {
+  // 앱 로드 시 이미 알림 켜져 있으면 백그라운드 폴링 바로 시작
+  setTimeout(_startNotifyPoll, 3000);
+}
 
 async function toggleNotify() {
   const granted = await requestNotificationPermission();
@@ -7352,12 +7356,14 @@ async function toggleNotify() {
   }
   window._notifyEnabled = true;
   localStorage.setItem('notifyEnabled', 'true');
+  _startNotifyPoll();
   render();
 }
 
 function disableNotify() {
   window._notifyEnabled = false;
   localStorage.setItem('notifyEnabled', 'false');
+  _stopNotifyPoll();
   render();
 }
 
@@ -7378,18 +7384,30 @@ async function sendLocalNotify(title, body, tag) {
 // 이미 알림 보낸 relay 항목 추적 (중복 방지)
 const _notifiedRelayKeys = new Set();
 
+// KIA 타자 이름 목록 추출 (라인업 기반)
+function _getKiaPlayerNames(relayData, kiaIsHome) {
+  const side = kiaIsHome ? 'home' : 'away';
+  const lineup = relayData.lineup || relayData[side + 'Lineup'] || relayData[side] || null;
+  const names = new Set();
+  if (lineup) {
+    const batters = Array.isArray(lineup) ? lineup : (lineup.batter || lineup.batters || []);
+    const pitchers = lineup.pitcher || lineup.pitchers || [];
+    [...batters, ...pitchers].forEach(p => {
+      const n = p.name || p.playerName || '';
+      if (n) names.add(n);
+    });
+  }
+  return names;
+}
+
 function _checkKiaHitNotify(relayData, away, home) {
   if (!relayData || !window._notifyEnabled || Notification.permission !== 'granted') return;
   const isKiaGame = away === 'KIA' || home === 'KIA';
   if (!isKiaGame) return;
   const kiaIsHome = home === 'KIA';
 
-  // currentGameState.half 로 공격팀 판별 ('T'/'초' = 원정팀 공격, 'B'/'말' = 홈팀 공격)
-  const gs = relayData.currentGameState || {};
-  const half = gs.half || gs.tbCode || gs.inningHalf || '';
-  const isBottom = half === 'B' || half === '말' || /말/.test(relayData.inningInfo || '');
-  // KIA가 지금 공격 중인지
-  const kiaAttacking = kiaIsHome ? isBottom : !isBottom;
+  // KIA 선수 이름 목록 (라인업 기반 — 가장 정확한 판별)
+  const kiaNames = _getKiaPlayerNames(relayData, kiaIsHome);
 
   const relays = relayData.textRelays || [];
   relays.forEach(item => {
@@ -7403,14 +7421,22 @@ function _checkKiaHitNotify(relayData, away, home) {
       const isBB  = !isHR && !isHit && /(볼넷|사구|고의사구)/.test(title);
       if (!isHR && !isHit && !isBB) return;
 
-      const key = it.title || it.text || '';
+      const key = title + (it.seqno || item.seqno || '');
       if (_notifiedRelayKeys.has(key)) return;
 
-      // relay 항목 자체의 half 필드로 재확인 (항목별로 이닝이 다를 수 있음)
-      const itemHalf = it.half || it.tbCode || item.half || item.tbCode || half;
-      const itemIsBottom = itemHalf === 'B' || itemHalf === '말' || (!itemHalf && isBottom);
-      const kiaAtBatItem = kiaIsHome ? itemIsBottom : !itemIsBottom;
-      if (!kiaAtBatItem) return;
+      // KIA 선수 이름이 텍스트에 포함되는지 확인
+      let isKiaPlayer = false;
+      if (kiaNames.size > 0) {
+        // 라인업 있으면 이름으로 판별 (가장 정확)
+        isKiaPlayer = [...kiaNames].some(name => title.includes(name));
+      } else {
+        // 라인업 없으면 이닝 초/말로 fallback
+        const itemHalf = it.half || it.tbCode || item.half || item.tbCode ||
+                         relayData.currentGameState?.half || relayData.currentGameState?.tbCode || '';
+        const itemIsBottom = itemHalf === 'B' || itemHalf === '말';
+        isKiaPlayer = kiaIsHome ? itemIsBottom : !itemIsBottom;
+      }
+      if (!isKiaPlayer) return;
 
       _notifiedRelayKeys.add(key);
       const emoji = isHR ? '🏠💥' : isHit ? '⚾' : '🟡';
@@ -7418,6 +7444,34 @@ function _checkKiaHitNotify(relayData, away, home) {
       sendLocalNotify(`KIA ${type} ${emoji}`, title, key);
     });
   });
+}
+
+// ── 백그라운드 알림 폴링 (중계창 닫혀있어도 동작) ──
+let _notifyPollInterval = null;
+
+async function _startNotifyPoll() {
+  if (_notifyPollInterval) return; // 이미 실행 중
+  _notifyPollInterval = setInterval(async () => {
+    if (!window._notifyEnabled || Notification.permission !== 'granted') return;
+    // LIVE 중인 KIA 경기 찾기
+    const kiaGame = (window.SCH || []).find(g =>
+      g.status === 'LIVE' && (g.away === 'KIA' || g.home === 'KIA')
+    );
+    if (!kiaGame) return;
+    try {
+      const res = await fetch(`/api/kboScores?action=relay&gameId=${kiaGame.gameId}&inning=${_relayInn||1}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data) {
+        _relayData = data;
+        _checkKiaHitNotify(data, kiaGame.away, kiaGame.home);
+      }
+    } catch(e) {}
+  }, 15000); // 15초마다 체크
+}
+
+function _stopNotifyPoll() {
+  if (_notifyPollInterval) { clearInterval(_notifyPollInterval); _notifyPollInterval = null; }
 }
 </script>
 </body>
