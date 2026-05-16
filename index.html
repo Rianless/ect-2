@@ -1347,19 +1347,19 @@ function renderCalSplit(d) {
             : `<span style="font-size:10px;color:${d.sub}">📍${g.stad} ›</span>`}
         </div>
         <div style="display:flex;align-items:center;justify-content:space-between">
-          <div style="display:flex;align-items:center;gap:7px;flex:1">
+          <div style="display:flex;align-items:center;gap:7px;flex:1;min-width:0">
             ${logo(lKey,36)}
-            <div>
-              <div style="font-size:12px;font-weight:700;color:${lKey==='KIA'?'#ff6b6b':d.text}">${T[lKey]?.name||lKey}</div>
-              <div style="font-size:9px;color:${d.sub}">${isKia&&kiaHome?'HOME':'AWAY'}</div>
+            <div style="min-width:0;overflow:hidden">
+              <div style="font-size:12px;font-weight:700;color:${lKey==='KIA'?'#ff6b6b':d.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${T[lKey]?.name||lKey}</div>
+              <div style="font-size:9px;color:${d.sub};white-space:nowrap">${isKia&&kiaHome?'HOME':'AWAY'}</div>
             </div>
           </div>
-          <div style="padding:0 8px;text-align:center">${scoreHtml}</div>
-          <div style="display:flex;align-items:center;gap:7px;flex:1;flex-direction:row-reverse">
+          <div style="padding:0 8px;text-align:center;flex-shrink:0">${scoreHtml}</div>
+          <div style="display:flex;align-items:center;gap:7px;flex:1;flex-direction:row-reverse;min-width:0">
             ${logo(rKey,36)}
-            <div style="text-align:right">
-              <div style="font-size:12px;font-weight:700;color:${rKey==='KIA'?'#ff6b6b':d.text}">${T[rKey]?.name||rKey}</div>
-              <div style="font-size:9px;color:${d.sub}">${isKia&&kiaHome?'AWAY':'HOME'}</div>
+            <div style="text-align:right;min-width:0;overflow:hidden">
+              <div style="font-size:12px;font-weight:700;color:${rKey==='KIA'?'#ff6b6b':d.text};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${T[rKey]?.name||rKey}</div>
+              <div style="font-size:9px;color:${d.sub};white-space:nowrap">${isKia&&kiaHome?'AWAY':'HOME'}</div>
             </div>
           </div>
         </div>
