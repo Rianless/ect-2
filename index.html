@@ -7379,11 +7379,13 @@ async function sendLocalNotify(title, body, tag) {
 const _notifiedRelayKeys = new Set();
 
 function _checkKiaHitNotify(relayData, away, home) {
-  if (!relayData || Notification.permission !== 'granted') return;
+  if (!relayData || !window._notifyEnabled || Notification.permission !== 'granted') return;
   const isKiaGame = away === 'KIA' || home === 'KIA';
   if (!isKiaGame) return;
   const kiaIsHome = home === 'KIA';
-  console.log('[알림체크] KIA홈?', kiaIsHome, '전체이닝정보:', relayData.inningInfo);
+  // 현재 공격 팀이 KIA인지: 홈팀 공격=말공(inning contains '말'), 원정팀 공격=초공(inning contains '초')
+  const inningInfo = relayData.inningInfo || '';
+  const isKiaAtBatInning = kiaIsHome ? /말/.test(inningInfo) : /초/.test(inningInfo);
 
   const relays = relayData.textRelays || [];
   relays.forEach(item => {
@@ -7392,18 +7394,13 @@ function _checkKiaHitNotify(relayData, away, home) {
       const title = it.title || it.text || '';
       if (!title) return;
 
-      // 안타/홈런 키워드 먼저 체크 (불필요한 연산 방지)
-      const isHR   = /홈런/.test(title);
-      const isHit  = !isHR && /(1루타|안타|2루타|3루타)/.test(title);
-      const isBB   = !isHR && !isHit && /(볼넷|사구|고의사구)/.test(title);
+      const isHR  = /홈런/.test(title);
+      const isHit = !isHR && /(1루타|안타|2루타|3루타)/.test(title);
+      const isBB  = !isHR && !isHit && /(볼넷|사구|고의사구)/.test(title);
       if (!isHR && !isHit && !isBB) return;
 
-      // KIA 타자인지 확인
-      const kiaAtBat = kiaIsHome
-        ? /^[1-9]번타자/.test(title) && !/(NC|KT|LG|SSG|두산|롯데|삼성|한화|키움)/.test(title)
-        : /^[1-9]번타자/.test(title);
-
-      if (!kiaAtBat) return;
+      // 이닝 공격 방향으로 KIA 타자 여부 판별
+      if (!isKiaAtBatInning) return;
 
       const key = it.title || it.text || '';
       if (_notifiedRelayKeys.has(key)) return;
@@ -7411,11 +7408,7 @@ function _checkKiaHitNotify(relayData, away, home) {
 
       const emoji = isHR ? '🏠💥' : isHit ? '⚾' : '🟡';
       const type  = isHR ? '홈런!' : isHit ? '안타!' : '볼넷';
-      new Notification(`KIA ${type} ${emoji}`, {
-        body: title,
-        icon: '/icon-192.png',
-        tag: key,
-      });
+      sendLocalNotify(`KIA ${type} ${emoji}`, title, key);
     });
   });
 }
