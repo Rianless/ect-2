@@ -7341,6 +7341,26 @@ async function requestNotificationPermission() {
   return result === 'granted';
 }
 
+// ── 알림 켜기/끄기 ──
+window._notifyEnabled = localStorage.getItem('notifyEnabled') === 'true';
+
+async function toggleNotify() {
+  const granted = await requestNotificationPermission();
+  if (!granted) {
+    render();
+    return;
+  }
+  window._notifyEnabled = true;
+  localStorage.setItem('notifyEnabled', 'true');
+  render();
+}
+
+function disableNotify() {
+  window._notifyEnabled = false;
+  localStorage.setItem('notifyEnabled', 'false');
+  render();
+}
+
 // ── SW에 로컬 알림 전송 ──
 async function sendLocalNotify(title, body, tag) {
   // SW 경유 알림 (백그라운드에서도 동작)
