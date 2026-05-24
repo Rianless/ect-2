@@ -5759,10 +5759,10 @@ async function fetchTodayScores(targetDate='') {
         }
       }
       Object.assign(SCH[idx], upd);
-      // FINAL이거나 시간이 변경된 경우 localStorage에 영구 저장
-      if (g.status === 'FINAL' || (g.time && g.time !== SCH[idx]._origTime)) {
+      // FINAL, CANCELED이거나 시간이 변경된 경우 localStorage에 영구 저장
+      if (g.status === 'FINAL' || g.status === 'CANCELED' || (g.time && g.time !== SCH[idx]._origTime)) {
         const cacheData = {};
-        if (g.status === 'FINAL') Object.assign(cacheData, upd);
+        if (g.status === 'FINAL' || g.status === 'CANCELED') Object.assign(cacheData, upd);
         else if (g.time) cacheData.time = g.time; // 시간 변경만 저장
         if (Object.keys(cacheData).length) saveGameCache(g.date+'_'+g.away+'_'+g.home, cacheData);
       }
