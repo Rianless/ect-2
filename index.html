@@ -3575,11 +3575,17 @@ function calcStandingFromSCH() {
 
 function _calcStreakForTeam(tkey) {
   const finished = SCH.filter(g =>
-    g.status === 'FINAL' && (g.away === tkey || g.home === tkey)
+    g.status === 'FINAL' && (g.away === tkey || g.home === tkey) &&
+    g.awayScore != null && g.homeScore != null
   ).sort((a,b) => a.date < b.date ? 1 : -1);
   let cnt = 0, typ = '';
   for (const g of finished) {
-    const res = g.winner === tkey ? 'W' : (g.winner && g.winner !== tkey) ? 'L' : 'D';
+    const as = Number(g.awayScore), hs = Number(g.homeScore);
+    const isAway = g.away === tkey;
+    let res;
+    if (as === hs) res = 'D';
+    else if ((isAway && as > hs) || (!isAway && hs > as)) res = 'W';
+    else res = 'L';
     if (!typ) { if (res === 'D') continue; typ = res; cnt = 1; }
     else if (res === typ) cnt++;
     else break;
