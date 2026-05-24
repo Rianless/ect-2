@@ -7448,24 +7448,42 @@ function _checkKiaHitNotify(relayData, away, home) {
 
 // ── 백그라운드 알림 폴링 (중계창 닫혀있어도 동작) ──
 let _notifyPollInterval = null;
+let _notifyPollFirstRun = true;
 
 async function _startNotifyPoll() {
   if (_notifyPollInterval) return; // 이미 실행 중
+  _notifyPollFirstRun = true;
   _notifyPollInterval = setInterval(async () => {
     if (!window._notifyEnabled || Notification.permission !== 'granted') return;
     // LIVE 중인 KIA 경기 찾기
     const kiaGame = (window.SCH || []).find(g =>
       g.status === 'LIVE' && (g.away === 'KIA' || g.home === 'KIA')
     );
-    if (!kiaGame) return;
+    if (!kiaGame || !kiaGame.gameId) return;
     try {
-      const res = await fetch(`/api/kboScores?action=relay&gameId=${kiaGame.gameId}&inning=${_relayInn||1}`);
+      // 현재 이닝: SCH의 inning 값 우선, 없으면 _relayInn, 기본값 1
+      const curInn = kiaGame.inning || _relayInn || 1;
+      const res = await fetch(`/api/kboScores?action=relay&gameId=${kiaGame.gameId}&inning=${curInn}`);
       if (!res.ok) return;
       const data = await res.json();
-      if (data) {
-        _relayData = data;
-        _checkKiaHitNotify(data, kiaGame.away, kiaGame.home);
+      if (!data) return;
+      _relayData = data;
+
+      // 첫 실행 시 기존 중계 항목을 미리 등록 → 이미 지난 타석 알림 방지
+      if (_notifyPollFirstRun) {
+        _notifyPollFirstRun = false;
+        const relays = data.textRelays || [];
+        relays.forEach(item => {
+          [item, ...(item.textOptions || [])].forEach(it => {
+            const title = it.title || it.text || '';
+            const key = title + (it.seqno || item.seqno || '');
+            if (key) _notifiedRelayKeys.add(key);
+          });
+        });
+        return; // 첫 실행은 키 등록만 하고 알림 안 보냄
       }
+
+      _checkKiaHitNotify(data, kiaGame.away, kiaGame.home);
     } catch(e) {}
   }, 15000); // 15초마다 체크
 }
