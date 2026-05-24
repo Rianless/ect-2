@@ -5289,15 +5289,30 @@ function renderPcPanels() {
   // 3) 순위 스냅샷 (SCH 데이터 기반 승률 계산)
   const standEl = document.getElementById('rp-standings');
   if (standEl) {
+    const _nickMap = {
+      KIA:'타이거즈', 삼성:'라이온즈', LG:'트윈스', 두산:'베어스',
+      KT:'위즈', SSG:'랜더스', 롯데:'자이언츠', 한화:'이글스',
+      NC:'다이노스', 키움:'히어로즈'
+    };
+    const _streakMap = {}; // tkey → {n, type} 연승/연패 정보, fetchStanding 후 채움
     const renderPcStand = (rows) => {
       standEl.innerHTML = rows.map((s) => {
         const isKia = s.tkey === 'KIA';
         const color = isKia ? '#E31837' : 'var(--c-text)';
         const bg = isKia ? 'background:rgba(227,24,55,0.07);' : '';
         const pctStr = s.pct && s.pct !== '-' ? String(s.pct).replace(/^0/,'') : '---';
+        const nick = _nickMap[s.tkey] || s.tkey;
+        const streakInfo = _streakMap[s.tkey];
+        const streakHtml = streakInfo
+          ? `<span style="font-size:9px;font-weight:800;color:${streakInfo.type==='W'?'#E31837':'#3B9EF5'};margin-left:2px">${streakInfo.n}${streakInfo.type==='W'?'연승':'연패'}</span>`
+          : '';
         return `<div style="${bg}display:flex;align-items:center;padding:4px 8px;border-radius:6px;gap:4px">
           <span style="font-size:10px;font-weight:700;color:var(--c-muted);width:14px;text-align:center">${s.rank}</span>
-          <span style="font-size:11px;font-weight:${isKia?900:700};color:${color};flex:1">${s.tkey}</span>
+          <span style="display:inline-flex;align-items:center;gap:3px;flex:1">
+            ${logo(s.tkey,18)}
+            <span style="font-size:11px;font-weight:${isKia?900:700};color:${color}">${nick}</span>
+            ${streakHtml}
+          </span>
           <span style="font-size:10px;color:var(--c-sub)">${s.win}승 ${s.lose}패</span>
           <span style="font-size:10px;font-weight:700;color:${color};width:38px;text-align:right">${pctStr}</span>
         </div>`;
@@ -5315,8 +5330,32 @@ function renderPcPanels() {
         lose: Number(t.lose||t.loss||0),
         draw: Number(t.drawn||t.draw||0),
         pct:  t.wra || t.winRate || t.pct || '-',
+        streak: t.streak || t.currentStreak || '',
+        streakType: t.streakType || t.currentStreakType || '',
       })).filter(r => r.tkey).sort((a,b) => a.rank - b.rank);
-      if (rows.length) renderPcStand(rows);
+      if (!rows.length) return;
+      // 연승/연패 계산: API에 streak 있으면 사용, 없으면 SCH 기반으로 직접 계산
+      rows.forEach(r => {
+        if (r.streak && r.streakType) {
+          const n = parseInt(r.streak);
+          if (n >= 2) _streakMap[r.tkey] = { n, type: r.streakType };
+        } else {
+          // SCH 기반 연승/연패 계산
+          const finished = SCH.filter(g =>
+            g.status === 'FINAL' && (g.away === r.tkey || g.home === r.tkey)
+          ).sort((a,b) => a.date < b.date ? 1 : -1);
+          let cnt = 0, typ = '';
+          for (const g of finished) {
+            const isAway = g.away === r.tkey;
+            const res = g.winner === r.tkey ? 'W' : (g.winner && g.winner !== r.tkey) ? 'L' : 'D';
+            if (!typ) { if (res === 'D') continue; typ = res; cnt = 1; }
+            else if (res === typ) cnt++;
+            else break;
+          }
+          if (cnt >= 2 && (typ === 'W' || typ === 'L')) _streakMap[r.tkey] = { n: cnt, type: typ };
+        }
+      });
+      renderPcStand(rows);
     });
   }
 
