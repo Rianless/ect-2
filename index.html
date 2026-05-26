@@ -7414,8 +7414,10 @@ async function requestNotificationPermission() {
 // ── 알림 켜기/끄기 ──
 window._notifyEnabled = localStorage.getItem('notifyEnabled') === 'true';
 if (window._notifyEnabled && Notification.permission === 'granted') {
-  // 앱 로드 시 이미 알림 켜져 있으면 백그라운드 폴링 바로 시작
+  // 앱 로드 시 이미 알림 켜져 있으면 백그라운드 폴링 + periodicSync 등록
   setTimeout(_startNotifyPoll, 3000);
+  setTimeout(_registerPeriodicSync, 4000);
+  setTimeout(() => _syncNotifyStateToSW(true), 4000);
 }
 
 async function toggleNotify() {
@@ -7427,6 +7429,8 @@ async function toggleNotify() {
   window._notifyEnabled = true;
   localStorage.setItem('notifyEnabled', 'true');
   _startNotifyPoll();
+  _registerPeriodicSync();
+  _syncNotifyStateToSW(true);
   render();
 }
 
@@ -7434,6 +7438,8 @@ function disableNotify() {
   window._notifyEnabled = false;
   localStorage.setItem('notifyEnabled', 'false');
   _stopNotifyPoll();
+  _syncNotifyStateToSW(false);
+  _unregisterPeriodicSync();
   render();
 }
 
@@ -7560,6 +7566,38 @@ async function _startNotifyPoll() {
 
 function _stopNotifyPoll() {
   if (_notifyPollInterval) { clearInterval(_notifyPollInterval); _notifyPollInterval = null; }
+}
+
+// ── SW에 알림 설정 상태 동기화 ──
+function _syncNotifyStateToSW(enabled) {
+  if (!('serviceWorker' in navigator) || !navigator.serviceWorker.controller) return;
+  navigator.serviceWorker.controller.postMessage({ type: 'SYNC_NOTIFY_ENABLED', enabled });
+  // 현재까지 알림 보낸 키도 동기화 (중복 방지)
+  navigator.serviceWorker.controller.postMessage({
+    type: 'SYNC_NOTIFIED_KEYS',
+    keys: [..._notifiedRelayKeys]
+  });
+}
+
+// ── Periodic Background Sync 등록/해제 ──
+async function _registerPeriodicSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (!('periodicSync' in reg)) return; // 미지원 브라우저
+    const status = await navigator.permissions.query({ name: 'periodic-background-sync' });
+    if (status.state !== 'granted') return;
+    await reg.periodicSync.register('kia-hit-check', { minInterval: 15 * 60 * 1000 }); // 최소 15분
+  } catch(e) {}
+}
+
+async function _unregisterPeriodicSync() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const reg = await navigator.serviceWorker.ready;
+    if (!('periodicSync' in reg)) return;
+    await reg.periodicSync.unregister('kia-hit-check');
+  } catch(e) {}
 }
 </script>
 </body>
