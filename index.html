@@ -6583,11 +6583,9 @@ async function fetchAllScoringPlays(gameId, maxInn) {
         // 타격 결과 판별
         const fullText = allItems.map(it => it.title || it.text || '').join(' ');
         const isHR = /홈런/.test(fullText);
-        // 만루 볼넷(밀어내기 득점) 감지: 볼넷/사구 + 만루 or 밀어내기 키워드
-        const isBasesLoadedWalk = !isHR && (
-          /밀어내기/.test(fullText) ||
-          (/볼넷|사사구|포볼|고의사구/.test(fullText) && /만루/.test(fullText))
-        );
+        // 밀어내기 득점 감지: 볼넷이 있고 실제로 득점이 발생한 경우
+        const hasWalkKeyword = /볼넷|사사구|포볼|고의사구/.test(fullText);
+        const isBasesLoadedWalk = !isHR && (hasWalkKeyword && scored || /밀어내기/.test(fullText));
         const hitType = isHR ? '홈런'
           : isBasesLoadedWalk ? '밀득'
           : /3루타/.test(fullText) ? '3루타'
