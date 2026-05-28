@@ -6494,6 +6494,7 @@ function renderScoringPlays(plays, dark) {
 
     // 타격 결과 배지
     const hitBadge = p.isHR ? '홈런'
+      : p.hitType === '밀득' ? '밀득'
       : p.hitType === '3루타' ? '3루타'
       : p.hitType === '2루타' ? '2루타'
       : p.hitType === '안타' ? '안타'
@@ -6501,6 +6502,7 @@ function renderScoringPlays(plays, dark) {
       : p.hitType === '희생번트' ? '희생번트'
       : '득점';
     const hitColor = p.isHR ? '#E31837'
+      : hitBadge === '밀득' ? '#7B68EE'
       : /루타|안타/.test(hitBadge) ? '#FF9500'
       : sub;
 
@@ -6581,7 +6583,13 @@ async function fetchAllScoringPlays(gameId, maxInn) {
         // 타격 결과 판별
         const fullText = allItems.map(it => it.title || it.text || '').join(' ');
         const isHR = /홈런/.test(fullText);
+        // 만루 볼넷(밀어내기 득점) 감지: 볼넷/사구 + 만루 or 밀어내기 키워드
+        const isBasesLoadedWalk = !isHR && (
+          /밀어내기/.test(fullText) ||
+          (/볼넷|사사구|포볼|고의사구/.test(fullText) && /만루/.test(fullText))
+        );
         const hitType = isHR ? '홈런'
+          : isBasesLoadedWalk ? '밀득'
           : /3루타/.test(fullText) ? '3루타'
           : /2루타/.test(fullText) ? '2루타'
           : /안타/.test(fullText) ? '안타'
