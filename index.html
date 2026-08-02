@@ -1585,9 +1585,39 @@ function getKiaSeasonStats() {
     if (res !== 'D') { lastNonDrawType = res; lastNonDrawStreak = streak; }
   });
 
-  const total = wins + losses + draws;
-  const pct = total > 0 ? (wins / (total - draws)).toFixed(3).replace(/^0/, '') : '—';
-  return { wins, losses, draws, total, pct, streak, streakType, lastNonDrawType, lastNonDrawStreak };
+  const localTotal = wins + losses + draws;
+  const localPct = wins + losses > 0 ? (wins / (wins + losses)).toFixed(3).replace(/^0/, '') : '—';
+
+  // 승률·승패·무는 네이버 스포츠 순위 API가 있으면 그 값을 최우선으로 사용한다.
+  // SCH는 방문한 날짜의 경기 결과만 캐시될 수 있어 전체 시즌 승률의 기준으로 쓰지 않는다.
+  const official = Array.isArray(_standCache)
+    ? _standCache.find(row => row.tkey === 'KIA')
+    : null;
+  if (official) {
+    const officialWins = Number(official.win);
+    const officialLosses = Number(official.lose);
+    const officialDraws = Number(official.draw);
+    if ([officialWins, officialLosses, officialDraws].every(Number.isFinite)) {
+      const decisions = officialWins + officialLosses;
+      const pctNumber = Number(official.pct);
+      const officialPct = Number.isFinite(pctNumber)
+        ? pctNumber.toFixed(3).replace(/^0/, '')
+        : decisions > 0 ? (officialWins / decisions).toFixed(3).replace(/^0/, '') : '—';
+      return {
+        wins: officialWins,
+        losses: officialLosses,
+        draws: officialDraws,
+        total: officialWins + officialLosses + officialDraws,
+        pct: officialPct,
+        streak, streakType, lastNonDrawType, lastNonDrawStreak,
+      };
+    }
+  }
+
+  return {
+    wins, losses, draws, total: localTotal, pct: localPct,
+    streak, streakType, lastNonDrawType, lastNonDrawStreak,
+  };
 }
 
 function renderSeasonCard(d) {
@@ -3578,6 +3608,7 @@ function renderMyPage(d) {
 // 순위 캐시
 let _standCache = null;
 let _standCacheTime = 0;
+let _standFetchPromise = null;
 
 function calcStandingFromSCH() {
   // SCH 배열의 FINAL 경기 결과로 순위 직접 계산
@@ -3640,26 +3671,38 @@ function _calcStreakForTeam(tkey) {
 async function fetchStanding() {
   // 10분 캐시
   if (_standCache && Date.now() - _standCacheTime < 600000) return _standCache;
-  try {
-    const r = await fetch('/api/kboScores?action=standings');
-    if (!r.ok) throw new Error(r.status);
-    const data = await r.json();
-    const list = (data?.standings || []).map(s => {
-      const st = _calcStreakForTeam(s.team);
-      return {
-        rank: s.rank, tkey: s.team,
-        win: s.wins, lose: s.losses, draw: s.draws,
-        pct: s.pct || '---',
-        streak: st.streak, streakType: st.streakType,
-      };
-    });
-    if (!list.length) throw new Error('empty');
-    _standCache = list;
-    _standCacheTime = Date.now();
-    return list;
-  } catch(e) {
-    return null;
-  }
+  if (_standFetchPromise) return _standFetchPromise;
+
+  _standFetchPromise = (async () => {
+    try {
+      const r = await fetch('/api/kboScores?action=standings');
+      if (!r.ok) throw new Error(r.status);
+      const data = await r.json();
+      const list = (data?.standings || []).map(s => {
+        const tkey = normalizeApiTeam(s.teamCode || s.team || '', s.teamName || '');
+        const st = _calcStreakForTeam(tkey);
+        const pctNumber = Number(s.pct ?? s.wra ?? s.winRate);
+        return {
+          rank: Number(s.rank ?? s.rankNo), tkey,
+          win: Number(s.wins ?? s.win ?? 0),
+          lose: Number(s.losses ?? s.lose ?? s.loss ?? 0),
+          draw: Number(s.draws ?? s.draw ?? s.drawn ?? 0),
+          pct: Number.isFinite(pctNumber) ? pctNumber.toFixed(3) : '---',
+          streak: st.streak, streakType: st.streakType,
+        };
+      }).filter(s => s.tkey);
+      if (!list.length) throw new Error('empty');
+      _standCache = list;
+      _standCacheTime = Date.now();
+      return list;
+    } catch(e) {
+      return null;
+    } finally {
+      _standFetchPromise = null;
+    }
+  })();
+
+  return _standFetchPromise;
 }
 
 // 2026 KBO 시즌 하드코딩 순위 (API 실패 시 폴백)
@@ -3677,8 +3720,11 @@ const KBO_2026_FALLBACK = [
 ];
 
 function renderStand(d) {
-  // SCH 경기 결과로 실시간 순위 계산 (가장 정확)
-  const rows = calcStandingFromSCH();
+  // 네이버 스포츠 시즌 전체 전적을 우선 표시하고, 로딩 전에만 SCH를 폴백으로 사용한다.
+  const hasOfficialStanding = Array.isArray(_standCache) && _standCache.length > 0;
+  const rows = hasOfficialStanding
+    ? _standCache.map(row => ({ ...row }))
+    : calcStandingFromSCH();
   // SCH 기반 연승/연패 계산 (공통 함수 사용)
   rows.forEach(row => {
     const st = _calcStreakForTeam(row.tkey);
@@ -3686,7 +3732,9 @@ function renderStand(d) {
     row.streakType = st.streakType;
   });
   const finalGames = SCH.filter(g => g.status === 'FINAL');
-  const label = finalGames.length > 0
+  const label = hasOfficialStanding
+    ? '네이버 스포츠 기준 · 10분마다 갱신'
+    : finalGames.length > 0
     ? finalGames[finalGames.length-1].date + ' 기준'
     : '경기 결과 집계 중';
   return renderStandRows(d, rows, label);
@@ -3696,7 +3744,7 @@ function renderStandRows(d, rows, footerLabel) {
   return `
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
       <div style="font-size:12px;font-weight:700;color:${d.sub}">2026 KBO 실시간 순위</div>
-      <button onclick="_standCache=null;fetchStanding().then(r=>{if(r){render();}});return false" style="font-size:10px;color:#E31837;border:1px solid rgba(227,24,55,0.3);border-radius:6px;padding:2px 8px;background:transparent;cursor:pointer">새로고침</button>
+      <button onclick="_standCache=null;_standCacheTime=0;fetchStanding().then(r=>{if(r){render();renderPcPanels();}});return false" style="font-size:10px;color:#E31837;border:1px solid rgba(227,24,55,0.3);border-radius:6px;padding:2px 8px;background:transparent;cursor:pointer">새로고침</button>
     </div>
     <div style="background:${d.card};border:1px solid ${d.cardB};border-radius:18px;overflow:hidden;box-shadow:${d.shadowSm}">
       <div style="display:grid;grid-template-columns:30px 1fr 28px 28px 28px 44px;padding:8px 8px;border-bottom:1px solid ${d.cardB};font-size:9px;font-weight:700;color:${d.sub};letter-spacing:0.05em">
@@ -5366,7 +5414,7 @@ function renderPcPanels() {
     }
   }
 
-  // 3) 순위 스냅샷 (SCH 데이터 기반 승률 계산)
+  // 3) 순위 스냅샷 (네이버 스포츠 시즌 전체 전적 우선)
   const standEl = document.getElementById('rp-standings');
   if (standEl) {
     const _nickMap = {
@@ -5398,24 +5446,13 @@ function renderPcPanels() {
         </div>`;
       }).join('');
     };
-    // SCH 기반 즉시 렌더
-    renderPcStand(calcStandingFromSCH());
+    // 네이버 전적 캐시가 있으면 즉시 사용하고, 첫 로드 중에만 SCH를 폴백으로 표시
+    renderPcStand(_standCache?.length ? _standCache : calcStandingFromSCH());
     // 네이버 API로 갱신 시도
     fetchStanding().then(list => {
       if (!list?.length) return;
-      const rows = list.map((t,i) => ({
-        rank: t.rank || t.rankNo || i+1,
-        tkey: normalizeApiTeam(t.teamCode||t.team||'', t.teamName||'') || t.teamName || '',
-        win:  Number(t.win||t.wins||0),
-        lose: Number(t.lose||t.loss||0),
-        draw: Number(t.drawn||t.draw||0),
-        pct:  t.wra || t.winRate || t.pct || '-',
-        streak: t.streak || t.currentStreak || '',
-        streakType: t.streakType || t.currentStreakType || '',
-      })).filter(r => r.tkey).sort((a,b) => a.rank - b.rank);
-      if (!rows.length) return;
-      // 연승/연패 계산: API에 streak 있으면 사용, 없으면 SCH 기반으로 직접 계산
-      rows.forEach(r => {
+      // 연승/연패는 API에 있으면 그 값을 사용하고, 없으면 SCH로 보완
+      list.forEach(r => {
         if (r.streak && r.streakType) {
           const n = parseInt(r.streak);
           if (n >= 2) _streakMap[r.tkey] = { n, type: r.streakType };
@@ -5435,7 +5472,7 @@ function renderPcPanels() {
           if (cnt >= 2 && (typ === 'W' || typ === 'L')) _streakMap[r.tkey] = { n: cnt, type: typ };
         }
       });
-      renderPcStand(rows);
+      renderPcStand(list);
     });
   }
 
@@ -7363,6 +7400,12 @@ async function _initApp() {
   try { await initServerSync(); } catch(e) {}  // 서버 sync (실패해도 진행)
   render();                  // 첫 화면
   renderPcPanels();          // PC 우측 패널 초기 렌더
+  // 네이버 스포츠 시즌 전체 전적으로 승률·순위 갱신
+  fetchStanding().then(list => {
+    if (!list?.length) return;
+    render();
+    renderPcPanels();
+  }).catch(() => {});
   fetchTodayScores().then(() => { render(); renderPcPanels(); }).catch(() => {});
   // 내 기록 탭 데이터 보완 (이닝/투수 없는 경기)
   setTimeout(() => _fetchMissingMemoData(), 1500);
