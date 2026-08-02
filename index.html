@@ -3755,8 +3755,8 @@ function renderStandRows(d, rows, footerLabel) {
           <span style="font-size:13px;font-weight:800;color:${row.rank===1?'#FFD700':row.rank===2?'#C0C0C0':row.rank===3?'#CD7F32':d.sub}">${row.rank}</span>
           <div style="display:flex;align-items:center;gap:5px">
             ${logo(row.tkey,20)}
-            <span style="font-size:12px;font-weight:${row.tkey==='KIA'?800:500};color:${row.tkey==='KIA'?'#E31837':d.text};white-space:nowrap">${({KIA:'타이거즈',삼성:'라이온즈',LG:'트윈스',두산:'베어스',KT:'위즈',SSG:'랜더스',롯데:'자이언츠',한화:'이글스',NC:'다이노스',키움:'히어로즈'})[row.tkey]||row.tkey}</span>
-            ${row.streak>=2?`<span style="font-size:9px;font-weight:800;color:${row.streakType==='W'?'#E31837':'#3B9EF5'}">${row.streak}${row.streakType==='W'?'연승':'연패'}</span>`:''}
+            <span style="font-size:12px;font-weight:${row.tkey==='KIA'?800:500};color:${row.tkey==='KIA'?'#E31837':d.text};white-space:nowrap;flex-shrink:0">${({KIA:'타이거즈',삼성:'라이온즈',LG:'트윈스',두산:'베어스',KT:'위즈',SSG:'랜더스',롯데:'자이언츠',한화:'이글스',NC:'다이노스',키움:'히어로즈'})[row.tkey]||row.tkey}</span>
+            ${row.streak>=2?`<span title="${row.streak}${row.streakType==='W'?'연승':'연패'}" aria-label="${row.streak}${row.streakType==='W'?'연승':'연패'}" style="font-size:9px;font-weight:900;color:${row.streakType==='W'?'#E31837':'#3B9EF5'};white-space:nowrap;flex-shrink:0">${row.streak}</span>`:''}
           </div>
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.win}</span>
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.lose}</span>
@@ -5432,13 +5432,13 @@ function renderPcPanels() {
         const nick = _nickMap[s.tkey] || s.tkey;
         const streakInfo = _streakMap[s.tkey];
         const streakHtml = streakInfo
-          ? `<span style="font-size:9px;font-weight:800;color:${streakInfo.type==='W'?'#E31837':'#3B9EF5'};margin-left:2px">${streakInfo.n}${streakInfo.type==='W'?'연승':'연패'}</span>`
+          ? `<span title="${streakInfo.n}${streakInfo.type==='W'?'연승':'연패'}" aria-label="${streakInfo.n}${streakInfo.type==='W'?'연승':'연패'}" style="font-size:9px;font-weight:900;color:${streakInfo.type==='W'?'#E31837':'#3B9EF5'};margin-left:2px;white-space:nowrap;flex-shrink:0">${streakInfo.n}</span>`
           : '';
         return `<div style="${bg}display:flex;align-items:center;padding:4px 8px;border-radius:6px;gap:4px">
           <span style="font-size:10px;font-weight:700;color:var(--c-muted);width:14px;text-align:center">${s.rank}</span>
-          <span style="display:inline-flex;align-items:center;gap:3px;flex:1">
+          <span style="display:inline-flex;align-items:center;gap:3px;flex:1;min-width:0;white-space:nowrap">
             ${logo(s.tkey,18)}
-            <span style="font-size:11px;font-weight:${isKia?900:700};color:${color}">${nick}</span>
+            <span style="font-size:11px;font-weight:${isKia?900:700};color:${color};white-space:nowrap;flex-shrink:0">${nick}</span>
             ${streakHtml}
           </span>
           <span style="font-size:10px;color:var(--c-sub)">${s.win}승 ${s.lose}패</span>
