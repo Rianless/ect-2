@@ -3680,7 +3680,9 @@ async function fetchStanding() {
       const data = await r.json();
       const list = (data?.standings || []).map(s => {
         const tkey = normalizeApiTeam(s.teamCode || s.team || '', s.teamName || '');
-        const st = _calcStreakForTeam(tkey);
+        const apiStreak = Number(s.streak || 0);
+        const apiStreakType = s.streakType === 'W' || s.streakType === 'L' ? s.streakType : '';
+        const localStreak = _calcStreakForTeam(tkey);
         const pctNumber = Number(s.pct ?? s.wra ?? s.winRate);
         return {
           rank: Number(s.rank ?? s.rankNo), tkey,
@@ -3688,7 +3690,8 @@ async function fetchStanding() {
           lose: Number(s.losses ?? s.lose ?? s.loss ?? 0),
           draw: Number(s.draws ?? s.draw ?? s.drawn ?? 0),
           pct: Number.isFinite(pctNumber) ? pctNumber.toFixed(3) : '---',
-          streak: st.streak, streakType: st.streakType,
+          streak: apiStreak >= 2 && apiStreakType ? apiStreak : localStreak.streak,
+          streakType: apiStreak >= 2 && apiStreakType ? apiStreakType : localStreak.streakType,
         };
       }).filter(s => s.tkey);
       if (!list.length) throw new Error('empty');
@@ -3725,11 +3728,13 @@ function renderStand(d) {
   const rows = hasOfficialStanding
     ? _standCache.map(row => ({ ...row }))
     : calcStandingFromSCH();
-  // SCH 기반 연승/연패 계산 (공통 함수 사용)
+  // API가 내려준 전체 팀 연승/연패를 유지하고, 없을 때만 SCH로 보완한다.
   rows.forEach(row => {
-    const st = _calcStreakForTeam(row.tkey);
-    row.streak = st.streak;
-    row.streakType = st.streakType;
+    if (!(row.streak >= 2 && (row.streakType === 'W' || row.streakType === 'L'))) {
+      const st = _calcStreakForTeam(row.tkey);
+      row.streak = st.streak;
+      row.streakType = st.streakType;
+    }
   });
   const finalGames = SCH.filter(g => g.status === 'FINAL');
   const label = hasOfficialStanding
@@ -5422,7 +5427,13 @@ function renderPcPanels() {
       KT:'위즈', SSG:'랜더스', 롯데:'자이언츠', 한화:'이글스',
       NC:'다이노스', 키움:'히어로즈'
     };
-    const _streakMap = {}; // tkey → {n, type} 연승/연패 정보, fetchStanding 후 채움
+    const _streakMap = {}; // tkey → {n, type} 연승/연패 정보
+    const seedStreakMap = (rows) => rows.forEach(r => {
+      const n = Number(r.streak || 0);
+      if (n >= 2 && (r.streakType === 'W' || r.streakType === 'L')) {
+        _streakMap[r.tkey] = { n, type: r.streakType };
+      }
+    });
     const renderPcStand = (rows) => {
       standEl.innerHTML = rows.map((s) => {
         const isKia = s.tkey === 'KIA';
@@ -5447,7 +5458,9 @@ function renderPcPanels() {
       }).join('');
     };
     // 네이버 전적 캐시가 있으면 즉시 사용하고, 첫 로드 중에만 SCH를 폴백으로 표시
-    renderPcStand(_standCache?.length ? _standCache : calcStandingFromSCH());
+    const initialStandings = _standCache?.length ? _standCache : calcStandingFromSCH();
+    seedStreakMap(initialStandings);
+    renderPcStand(initialStandings);
     // 네이버 API로 갱신 시도
     fetchStanding().then(list => {
       if (!list?.length) return;
