@@ -17,7 +17,21 @@ export default async function handler(req, res) {
     'HT':'KIA','KT':'KT','LG':'LG','SK':'SSG','NC':'NC',
     'OB':'두산','LT':'롯데','SS':'삼성','HH':'한화','WO':'키움',
   };
-  const mapTeam = code => TEAM_CODE[code] || code;
+  const mapTeam = value => {
+    const team = String(value || '').trim();
+    if (TEAM_CODE[team]) return TEAM_CODE[team];
+    if (/KIA|기아|타이거즈/i.test(team)) return 'KIA';
+    if (/(^|\s)KT|위즈/i.test(team)) return 'KT';
+    if (/(^|\s)LG|트윈스/i.test(team)) return 'LG';
+    if (/SSG|랜더스/i.test(team)) return 'SSG';
+    if (/(^|\s)NC|다이노스/i.test(team)) return 'NC';
+    if (/두산|베어스/i.test(team)) return '두산';
+    if (/롯데|자이언츠/i.test(team)) return '롯데';
+    if (/삼성|라이온즈/i.test(team)) return '삼성';
+    if (/한화|이글스/i.test(team)) return '한화';
+    if (/키움|히어로즈/i.test(team)) return '키움';
+    return team;
+  };
   const TEAM_FULL = {
     'KIA': 'KIA 타이거즈',
     'KT': 'KT 위즈',
@@ -508,26 +522,57 @@ export default async function handler(req, res) {
           return (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
         } catch { return []; }
       }));
-      const allGames = allResults.flat();
+      // 월별 요청 경계나 네이버 응답 중복으로 같은 경기가 두 번 집계되지 않게 한다.
+      const uniqueGames = new Map();
+      allResults.flat().forEach((g, index) => {
+        const key = String(
+          g.gameId || g.gameCode || g.scheduleId ||
+          `${g.gameDate || ''}-${g.awayTeamCode || g.awayTeamName || ''}-${g.homeTeamCode || g.homeTeamName || ''}-${g.awayTeamScore ?? ''}-${g.homeTeamScore ?? ''}`
+        );
+        if (!uniqueGames.has(key)) uniqueGames.set(key, g);
+      });
+      const allGames = [...uniqueGames.values()].sort((a, b) =>
+        String(a.gameDate || '').localeCompare(String(b.gameDate || ''))
+      );
       const TEAMS = ['KIA','KT','LG','SSG','NC','두산','롯데','삼성','한화','키움'];
       const stats = {};
-      TEAMS.forEach(t => { stats[t] = {w:0,l:0,d:0}; });
+      TEAMS.forEach(t => { stats[t] = {w:0,l:0,d:0,results:[]}; });
       allGames.forEach(g => {
         const sc = g.statusCode || '';
         if (sc !== 'RESULT' && sc !== 'FINAL') return;
-        const away = mapTeam(g.awayTeamCode);
-        const home = mapTeam(g.homeTeamCode);
+        // 코드가 누락되거나 변경돼도 팀 이름으로 올바른 행에 연결한다.
+        const awayByCode = mapTeam(g.awayTeamCode);
+        const homeByCode = mapTeam(g.homeTeamCode);
+        const away = stats[awayByCode] ? awayByCode : mapTeam(g.awayTeamName);
+        const home = stats[homeByCode] ? homeByCode : mapTeam(g.homeTeamName);
         const aw = Number(g.awayTeamScore), hw = Number(g.homeTeamScore);
-        if (isNaN(aw) || isNaN(hw) || (aw===0 && hw===0)) return;
-        if (aw > hw) { if(stats[away]) stats[away].w++; if(stats[home]) stats[home].l++; }
-        else if (hw > aw) { if(stats[home]) stats[home].w++; if(stats[away]) stats[away].l++; }
-        else { if(stats[away]) stats[away].d++; if(stats[home]) stats[home].d++; }
+        if (!stats[away] || !stats[home] || isNaN(aw) || isNaN(hw) || (aw===0 && hw===0)) return;
+        if (aw > hw) {
+          stats[away].w++; stats[home].l++;
+          stats[away].results.push('W'); stats[home].results.push('L');
+        } else if (hw > aw) {
+          stats[home].w++; stats[away].l++;
+          stats[home].results.push('W'); stats[away].results.push('L');
+        } else {
+          stats[away].d++; stats[home].d++;
+          stats[away].results.push('D'); stats[home].results.push('D');
+        }
       });
       const rows = TEAMS.map(t => {
         const s = stats[t];
         const dec = s.w + s.l;
         const pct = dec > 0 ? (s.w / dec).toFixed(3) : null;
-        return { team: t, wins: s.w, losses: s.l, draws: s.d, pct };
+        // 무승부는 연승/연패를 끊지 않으므로 최근 승패 결과만 연속 계산한다.
+        const decisions = s.results.filter(result => result !== 'D');
+        const streakType = decisions.at(-1) || '';
+        let streak = 0;
+        for (let i = decisions.length - 1; i >= 0 && decisions[i] === streakType; i--) streak++;
+        return {
+          team: t, teamCode: t, teamName: TEAM_FULL[t],
+          wins: s.w, losses: s.l, draws: s.d, pct,
+          streak: streak >= 2 ? streak : 0,
+          streakType: streak >= 2 ? streakType : '',
+        };
       }).sort((a,b) => Number(b.pct||0) - Number(a.pct||0) || b.wins - a.wins)
         .map((r,i) => ({ ...r, rank: i+1 }));
       console.log('[standings] computed from schedule, total games:', allGames.length, 'KIA:', JSON.stringify(stats['KIA']));
