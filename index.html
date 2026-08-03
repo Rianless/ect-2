@@ -3665,7 +3665,29 @@ function _calcStreakForTeam(tkey) {
     else if (res === typ) cnt++;
     else break;
   }
-  return (cnt >= 2 && (typ === 'W' || typ === 'L')) ? {streak: cnt, streakType: typ} : {streak: 0, streakType: ''};
+  return (cnt >= 1 && (typ === 'W' || typ === 'L')) ? {streak: cnt, streakType: typ} : {streak: 0, streakType: ''};
+}
+
+function _readStandingStreak(row) {
+  const rawType = String(row?.streakType ?? row?.consecutiveType ?? '').toUpperCase();
+  const rawText = String(row?.streakText ?? row?.streakName ?? row?.consecutive ?? '');
+  const rawCount = Number(row?.streak ?? row?.streakCount ?? row?.consecutiveCount);
+  let streakType = rawType === 'W' || rawType === 'L' ? rawType : '';
+  let streak = Number.isFinite(rawCount) ? rawCount : 0;
+  const enMatch = rawText.toUpperCase().match(/([WL])\s*(\d+)|(\d+)\s*([WL])/);
+  const koMatch = rawText.match(/(\d+)\s*연?([승패])/);
+  if ((!streakType || !streak) && enMatch) {
+    streakType = enMatch[1] || enMatch[4] || '';
+    streak = Number(enMatch[2] || enMatch[3] || 0);
+  } else if ((!streakType || !streak) && koMatch) {
+    streakType = koMatch[2] === '승' ? 'W' : 'L';
+    streak = Number(koMatch[1]);
+  }
+  return {
+    known: row && ['streak','streakCount','streakType','streakText','streakName','consecutive','consecutiveCount','consecutiveType'].some(key => row[key] != null),
+    streak: streakType === 'W' || streakType === 'L' ? streak : 0,
+    streakType,
+  };
 }
 
 async function fetchStanding() {
@@ -3680,9 +3702,8 @@ async function fetchStanding() {
       const data = await r.json();
       const list = (data?.standings || []).map(s => {
         const tkey = normalizeApiTeam(s.teamCode || s.team || '', s.teamName || '');
-        const apiStreak = Number(s.streak || 0);
-        const apiStreakType = s.streakType === 'W' || s.streakType === 'L' ? s.streakType : '';
-        const localStreak = _calcStreakForTeam(tkey);
+        const apiStreak = _readStandingStreak(s);
+        const st = apiStreak.known ? apiStreak : _calcStreakForTeam(tkey);
         const pctNumber = Number(s.pct ?? s.wra ?? s.winRate);
         return {
           rank: Number(s.rank ?? s.rankNo), tkey,
@@ -3690,8 +3711,7 @@ async function fetchStanding() {
           lose: Number(s.losses ?? s.lose ?? s.loss ?? 0),
           draw: Number(s.draws ?? s.draw ?? s.drawn ?? 0),
           pct: Number.isFinite(pctNumber) ? pctNumber.toFixed(3) : '---',
-          streak: apiStreak >= 2 && apiStreakType ? apiStreak : localStreak.streak,
-          streakType: apiStreak >= 2 && apiStreakType ? apiStreakType : localStreak.streakType,
+          streak: st.streak, streakType: st.streakType,
         };
       }).filter(s => s.tkey);
       if (!list.length) throw new Error('empty');
@@ -3728,9 +3748,10 @@ function renderStand(d) {
   const rows = hasOfficialStanding
     ? _standCache.map(row => ({ ...row }))
     : calcStandingFromSCH();
-  // API가 내려준 전체 팀 연승/연패를 유지하고, 없을 때만 SCH로 보완한다.
+  // API 연속 기록을 우선 사용하고, API 로딩 전에는 SCH를 폴백으로 사용한다.
   rows.forEach(row => {
-    if (!(row.streak >= 2 && (row.streakType === 'W' || row.streakType === 'L'))) {
+    const apiStreak = _readStandingStreak(row);
+    if (!apiStreak.known) {
       const st = _calcStreakForTeam(row.tkey);
       row.streak = st.streak;
       row.streakType = st.streakType;
@@ -3761,7 +3782,7 @@ function renderStandRows(d, rows, footerLabel) {
           <div style="display:flex;align-items:center;gap:5px">
             ${logo(row.tkey,20)}
             <span style="font-size:12px;font-weight:${row.tkey==='KIA'?800:500};color:${row.tkey==='KIA'?'#E31837':d.text};white-space:nowrap;flex-shrink:0">${({KIA:'타이거즈',삼성:'라이온즈',LG:'트윈스',두산:'베어스',KT:'위즈',SSG:'랜더스',롯데:'자이언츠',한화:'이글스',NC:'다이노스',키움:'히어로즈'})[row.tkey]||row.tkey}</span>
-            ${row.streak>=2?`<span title="${row.streak}${row.streakType==='W'?'연승':'연패'}" aria-label="${row.streak}${row.streakType==='W'?'연승':'연패'}" style="font-size:9px;font-weight:900;color:${row.streakType==='W'?'#E31837':'#3B9EF5'};white-space:nowrap;flex-shrink:0">${row.streak}</span>`:''}
+            ${row.streak>=1?`<span title="${row.streak}${row.streakType==='W'?'연승':'연패'}" aria-label="${row.streak}${row.streakType==='W'?'연승':'연패'}" style="font-size:9px;font-weight:900;color:${row.streakType==='W'?'#E31837':'#3B9EF5'};white-space:nowrap;flex-shrink:0">${row.streak}</span>`:''}
           </div>
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.win}</span>
           <span style="font-size:12px;text-align:center;color:${d.text}">${row.lose}</span>
@@ -5427,13 +5448,6 @@ function renderPcPanels() {
       KT:'위즈', SSG:'랜더스', 롯데:'자이언츠', 한화:'이글스',
       NC:'다이노스', 키움:'히어로즈'
     };
-    const _streakMap = {}; // tkey → {n, type} 연승/연패 정보
-    const seedStreakMap = (rows) => rows.forEach(r => {
-      const n = Number(r.streak || 0);
-      if (n >= 2 && (r.streakType === 'W' || r.streakType === 'L')) {
-        _streakMap[r.tkey] = { n, type: r.streakType };
-      }
-    });
     const renderPcStand = (rows) => {
       standEl.innerHTML = rows.map((s) => {
         const isKia = s.tkey === 'KIA';
@@ -5441,7 +5455,13 @@ function renderPcPanels() {
         const bg = isKia ? 'background:rgba(227,24,55,0.07);' : '';
         const pctStr = s.pct && s.pct !== '-' ? String(s.pct).replace(/^0/,'') : '---';
         const nick = _nickMap[s.tkey] || s.tkey;
-        const streakInfo = _streakMap[s.tkey];
+        const apiStreak = _readStandingStreak(s);
+        const streakInfo = apiStreak.known
+          ? (apiStreak.streak >= 1 ? {n:apiStreak.streak, type:apiStreak.streakType} : null)
+          : (() => {
+              const local = _calcStreakForTeam(s.tkey);
+              return local.streak >= 1 ? {n:local.streak, type:local.streakType} : null;
+            })();
         const streakHtml = streakInfo
           ? `<span title="${streakInfo.n}${streakInfo.type==='W'?'연승':'연패'}" aria-label="${streakInfo.n}${streakInfo.type==='W'?'연승':'연패'}" style="font-size:9px;font-weight:900;color:${streakInfo.type==='W'?'#E31837':'#3B9EF5'};margin-left:2px;white-space:nowrap;flex-shrink:0">${streakInfo.n}</span>`
           : '';
@@ -5458,33 +5478,10 @@ function renderPcPanels() {
       }).join('');
     };
     // 네이버 전적 캐시가 있으면 즉시 사용하고, 첫 로드 중에만 SCH를 폴백으로 표시
-    const initialStandings = _standCache?.length ? _standCache : calcStandingFromSCH();
-    seedStreakMap(initialStandings);
-    renderPcStand(initialStandings);
+    renderPcStand(_standCache?.length ? _standCache : calcStandingFromSCH());
     // 네이버 API로 갱신 시도
     fetchStanding().then(list => {
       if (!list?.length) return;
-      // 연승/연패는 API에 있으면 그 값을 사용하고, 없으면 SCH로 보완
-      list.forEach(r => {
-        if (r.streak && r.streakType) {
-          const n = parseInt(r.streak);
-          if (n >= 2) _streakMap[r.tkey] = { n, type: r.streakType };
-        } else {
-          // SCH 기반 연승/연패 계산
-          const finished = SCH.filter(g =>
-            g.status === 'FINAL' && (g.away === r.tkey || g.home === r.tkey)
-          ).sort((a,b) => a.date < b.date ? 1 : -1);
-          let cnt = 0, typ = '';
-          for (const g of finished) {
-            const isAway = g.away === r.tkey;
-            const res = g.winner === r.tkey ? 'W' : (g.winner && g.winner !== r.tkey) ? 'L' : 'D';
-            if (!typ) { if (res === 'D') continue; typ = res; cnt = 1; }
-            else if (res === typ) cnt++;
-            else break;
-          }
-          if (cnt >= 2 && (typ === 'W' || typ === 'L')) _streakMap[r.tkey] = { n: cnt, type: typ };
-        }
-      });
       renderPcStand(list);
     });
   }
@@ -5581,18 +5578,21 @@ function saveGameCache(key, data) {
 }
 
 function normalizeApiTeam(code, name) {
-  if (code === 'HT') return 'KIA';
-  if (code === 'KT') return 'KT';
-  if (code === 'LG') return 'LG';
-  if (code === 'SK') return 'SSG';
-  if (code === 'NC') return 'NC';
-  if (/두산|Bears/i.test(name || '')) return '두산';
-  if (/롯데|Giants/i.test(name || '')) return '롯데';
-  if (/삼성|Lions/i.test(name || '')) return '삼성';
-  if (/한화|Eagles/i.test(name || '')) return '한화';
-  if (/키움|Heroes/i.test(name || '')) return '키움';
-  if (/SSG|Landers/i.test(name || '')) return 'SSG';
-  return name || code || '';
+  const rawCode = String(code || '').trim();
+  const rawName = String(name || '').trim();
+  const upperCode = rawCode.toUpperCase();
+  const teamText = `${rawCode} ${rawName}`;
+  if (upperCode === 'HT' || upperCode === 'KIA' || /KIA|타이거즈|Tigers/i.test(teamText)) return 'KIA';
+  if (upperCode === 'KT' || /KT\s*위즈|KT\s*Wiz/i.test(teamText)) return 'KT';
+  if (upperCode === 'LG' || /LG\s*트윈스|LG\s*Twins/i.test(teamText)) return 'LG';
+  if (upperCode === 'SK' || upperCode === 'SSG' || /SSG|랜더스|Landers/i.test(teamText)) return 'SSG';
+  if (upperCode === 'NC' || /NC\s*다이노스|NC\s*Dinos/i.test(teamText)) return 'NC';
+  if (upperCode === 'OB' || /두산|Bears/i.test(teamText)) return '두산';
+  if (upperCode === 'LT' || /롯데|Giants/i.test(teamText)) return '롯데';
+  if (upperCode === 'SS' || /삼성|Lions/i.test(teamText)) return '삼성';
+  if (upperCode === 'HH' || /한화|Eagles/i.test(teamText)) return '한화';
+  if (upperCode === 'WO' || /키움|Heroes/i.test(teamText)) return '키움';
+  return rawName || rawCode;
 }
 
 function parseBrowserBatters(batters) {
