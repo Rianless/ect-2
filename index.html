@@ -1350,18 +1350,10 @@ function renderCalSplit(d) {
     // 날짜 스타일: 홈경기=빨간동그라미, 원정=기본, 선택=배경만
     const dayExtraStyle = isKiaGame&&isKiaHome ? 'background:rgba(227,24,55,0.15);border-color:#E31837;' : '';
     const logoGrayStyle = kiaLose?'filter:grayscale(1);opacity:0.72;':'';
-    // 연전(1박2일/2박3일 등): 같은 상대·같은 구장의 연속 경기를 띠로 연결 (주 경계에서는 끊음)
-    const sameSeries = n => { const o=kmap[n]; return !!o && !!kg && o.home===kg.home && o.away===kg.away; };
-    const linkPrev = isKiaGame && dow!==0 && i>1 && sameSeries(i-1);
-    const linkNext = isKiaGame && dow!==6 && i<days && sameSeries(i+1);
-    const bandColor = (typeof T!=='undefined' && oppKey && T[oppKey] && T[oppKey].color) || '#888';
-    const seriesBand = (linkPrev||linkNext)
-      ? `<div style="position:absolute;top:50%;height:10px;margin-top:-5px;left:${linkPrev?'-2px':'3px'};right:${linkNext?'-2px':'3px'};background:${bandColor};opacity:${d.dark?0.3:0.22};border-radius:${linkPrev?'0':'5px'} ${linkNext?'0':'5px'} ${linkNext?'0':'5px'} ${linkPrev?'0':'5px'}"></div>`
-      : '';
     cells+=`<div class="cal-cell${isSel?' sel':''}${isPast?' past':''}${isCurrentWeek?' current-week':''}" onclick="selDate('${ds}')">
       <div class="cal-day${isToday?' today':''}${dow===5?' sat':dow===6?' sun':''}" style="color:${dayColor};${dayExtraStyle}">${i}</div>
-      ${isKiaGame?`<div style="display:flex;flex-direction:column;align-items:center;gap:1px;align-self:stretch">
-        <div style="position:relative;display:flex;justify-content:center;${logoGrayStyle}">${seriesBand}<span style="position:relative;z-index:1;display:flex">${logo(oppKey,22)}</span></div>
+      ${isKiaGame?`<div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+        <div style="${logoGrayStyle}">${logo(oppKey,22)}</div>
         ${statusBadge||calTimeLabel}
       </div>`:''}
     </div>`;
