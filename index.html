@@ -7421,6 +7421,37 @@ function _compressAll(files, cb) {
 
 // ── 앱 초기화 순서 ──
 // 1) schedule.json 로드 → 2) 게임 캐시 적용 → 3) 서버 동기화 → 4) 첫 render → 5) 오늘 스코어 fetch
+// 시즌 전체 결과(승패)를 서버에서 받아 SCH에 반영한다.
+// 과거 경기는 앱을 연 날에만 결과가 저장되던 한계를 없애기 위한 것. 이미 FINAL인 경기는 건드리지 않는다.
+async function fetchSeasonResults() {
+  const base = window.KBO_SCORES_API_URL || (location.protocol !== 'file:' ? '/api/kboScores' : '');
+  if (!base) return false;
+  const r = await fetch(base + (base.includes('?') ? '&' : '?') + 'action=results');
+  if (!r.ok) return false;
+  const data = await r.json();
+  const results = data?.results;
+  if (!Array.isArray(results) || !results.length) return false;
+
+  const byKey = new Map(SCH.map(s => [s.date + '|' + s.away + '|' + s.home, s]));
+  let changed = false;
+  results.forEach(res => {
+    const s = byKey.get(res.date + '|' + res.away + '|' + res.home);
+    if (!s) return;
+    if (res.status === 'FINAL') {
+      if (s.status === 'FINAL' && s.awayScore != null && s.homeScore != null) return;
+      s.status = 'FINAL';
+      s.awayScore = res.awayScore;
+      s.homeScore = res.homeScore;
+      changed = true;
+    } else if (res.status === 'CANCELED' && s.status !== 'CANCELED') {
+      s.status = 'CANCELED';
+      if (res.cancelReason) s.cancelReason = res.cancelReason;
+      changed = true;
+    }
+  });
+  return changed;
+}
+
 async function _initApp() {
   await _loadSchedule();     // SCH 채우기
   initGameCache();           // localStorage 캐시 SCH에 반영
@@ -7433,6 +7464,8 @@ async function _initApp() {
     render();
     renderPcPanels();
   }).catch(() => {});
+  // 시즌 전체 경기 결과(승패) 자동 반영
+  fetchSeasonResults().then(changed => { if (changed) { render(); renderPcPanels(); } }).catch(() => {});
   fetchTodayScores().then(() => { render(); renderPcPanels(); }).catch(() => {});
   // 내 기록 탭 데이터 보완 (이닝/투수 없는 경기)
   setTimeout(() => _fetchMissingMemoData(), 1500);

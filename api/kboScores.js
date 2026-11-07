@@ -417,6 +417,117 @@ export default async function handler(req, res) {
     const inning = req.query.inning ? parseInt(req.query.inning) : null;
     const action = req.query.action || '';
 
+    // ── 시즌 전체 경기 결과 (승패 자동 반영용) ──
+    // KBO 공식 일정을 우선 사용하고, 전부 실패하면 네이버 일정으로 폴백한다.
+    // 끝난 경기(FINAL)와 취소된 경기(CANCELED)만 반환한다. 예정/진행 중 경기는 기존 실시간 조회가 담당.
+    if (action === 'results') {
+      const year = kst.getUTCFullYear();
+      const lastMonth = Math.min(kst.getUTCMonth() + 1, 11);
+      const strip = s => String(s || '').replace(/<[^>]*>/g, '').trim();
+      const KBO_REASON = { '우천취소': '우천', '폭염취소': '폭염', '그라운드사정': '그라운드 사정' };
+      const KBO_HEADERS = {
+        'User-Agent': 'Mozilla/5.0',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Referer': 'https://www.koreabaseball.com/Schedule/Schedule.aspx',
+        'X-Requested-With': 'XMLHttpRequest',
+      };
+
+      async function fetchKboMonth(srIdList, m) {
+        const body = new URLSearchParams({
+          leId: '1', srIdList, seasonId: String(year), gameMonth: pad(m), teamId: '',
+        }).toString();
+        const r = await fetchWithTimeout(
+          'https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList',
+          { method: 'POST', headers: KBO_HEADERS, body }, 10000);
+        if (!r.ok) throw new Error('kbo ' + r.status);
+        const j = JSON.parse((await r.text()).replace(/^﻿/, ''));
+        const out = [];
+        let date = null;
+        for (const row of (j.rows || [])) {
+          const cells = row.row || [];
+          const dayCell = cells.find(c => c.Class === 'day');
+          if (dayCell) {
+            const dm = strip(dayCell.Text).match(/(\d\d)\.(\d\d)/);
+            if (dm) date = `${year}-${dm[1]}-${dm[2]}`;
+          }
+          const play = cells.find(c => c.Class === 'play');
+          if (!play || !date) continue;
+          const spans = [...String(play.Text).matchAll(/<span[^>]*>([^<]*)<\/span>/g)].map(x => x[1]);
+          if (spans.length < 3) continue;
+          const away = spans[0], home = spans[spans.length - 1];
+          const mid = spans.slice(1, -1); // 끝난 경기: ['3','vs','1'] / 아직 안 한 경기: ['vs']
+          const note = strip(cells[cells.length - 1] && cells[cells.length - 1].Text);
+          const relay = cells.find(c => c.Class === 'relay');
+          const hasReview = /리뷰|하이라이트/.test(String(relay && relay.Text || ''));
+          if (KBO_REASON[note]) {
+            out.push({ date, away, home, status: 'CANCELED', cancelReason: KBO_REASON[note] });
+          } else if (mid.length === 3 && /^\d+$/.test(mid[0]) && /^\d+$/.test(mid[2]) && hasReview) {
+            out.push({ date, away, home, status: 'FINAL', awayScore: Number(mid[0]), homeScore: Number(mid[2]) });
+          }
+        }
+        return out;
+      }
+
+      async function fetchNaverMonth(m) {
+        const from = `${year}-${pad(m)}-01`;
+        const to = `${year}-${pad(m)}-${pad(new Date(year, m, 0).getDate())}`;
+        const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule&upperCategoryId=kbaseball&fromDate=${from}&toDate=${to}&size=500`;
+        const r = await fetchWithTimeout(url, { headers: HEADERS });
+        if (!r.ok) throw new Error('naver ' + r.status);
+        const data = await r.json();
+        const out = [];
+        for (const g of (data?.result?.games || [])) {
+          if (g.categoryId !== 'kbo') continue;
+          const sc = g.statusCode || '', si = g.statusInfo || '';
+          const date = (g.gameDate || '').slice(0, 10);
+          const away = mapTeam(g.awayTeamCode) || g.awayTeamName;
+          const home = mapTeam(g.homeTeamCode) || g.homeTeamName;
+          const canceled = /CANCEL|PPD|RAINOUT|POSTPONE|SUSPEND/i.test(sc) || /취소|우천|연기|PPD|CANCEL/i.test(si);
+          if (canceled) {
+            const raw = String(g.cancelReasonName || g.cancelReason || si || '');
+            const reason = /우천|강우|비/.test(raw) ? '우천' : /폭염|더위|고온/.test(raw) ? '폭염' : /그라운드/.test(raw) ? '그라운드 사정' : raw;
+            out.push({ date, away, home, status: 'CANCELED', cancelReason: reason });
+          } else if ((sc === 'RESULT' || sc === 'FINAL') && g.awayTeamScore != null && g.homeTeamScore != null) {
+            out.push({ date, away, home, status: 'FINAL', awayScore: Number(g.awayTeamScore), homeScore: Number(g.homeTeamScore) });
+          }
+        }
+        return out;
+      }
+
+      const dedupe = list => {
+        const map = new Map();
+        list.forEach(g => map.set(`${g.date}|${g.away}|${g.home}`, g));
+        return [...map.values()];
+      };
+
+      // 정규시즌(0,9,6) + 3월 시범(1) + 7월 올스타(9) + 10~11월 포스트시즌(3,4,5,7)
+      const kboJobs = [];
+      for (let m = 3; m <= lastMonth; m++) {
+        kboJobs.push(fetchKboMonth('0,9,6', m));
+        if (m === 3) kboJobs.push(fetchKboMonth('1', m));
+        if (m === 7) kboJobs.push(fetchKboMonth('9', m));
+        if (m >= 10) kboJobs.push(fetchKboMonth('3,4,5,7', m));
+      }
+      const kboSettled = await Promise.allSettled(kboJobs);
+      let results = dedupe(kboSettled.flatMap(s => s.status === 'fulfilled' ? s.value : []));
+      let source = 'kbo';
+      const kboFailed = kboSettled.filter(s => s.status === 'rejected').length;
+
+      // KBO 공식이 전부 실패했거나 결과가 비었으면 네이버로 폴백
+      if (!results.length || kboFailed === kboJobs.length) {
+        const nvJobs = [];
+        for (let m = 3; m <= lastMonth; m++) nvJobs.push(fetchNaverMonth(m));
+        const nvSettled = await Promise.allSettled(nvJobs);
+        const nv = dedupe(nvSettled.flatMap(s => s.status === 'fulfilled' ? s.value : []));
+        if (nv.length) { results = nv; source = 'naver'; }
+      }
+
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      // 5분 CDN 캐시 (경기 결과는 자주 바뀌지 않음)
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+      return res.status(200).json({ results, source, count: results.length, updatedAt: new Date().toISOString() });
+    }
+
     // ── 시즌 성적 액션 ──
     if (action === 'seasonStats') {
       const currentYear = kst.getUTCFullYear();
