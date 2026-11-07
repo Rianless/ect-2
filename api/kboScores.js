@@ -417,6 +417,122 @@ export default async function handler(req, res) {
     const inning = req.query.inning ? parseInt(req.query.inning) : null;
     const action = req.query.action || '';
 
+    // ── 경기 리뷰: KBO 공식 경기센터(스코어보드 + 박스스코어) ──
+    // ?action=review&date=YYYY-MM-DD&away=KIA&home=두산[&round=WC 1차전]
+    // 이닝별 점수, H/E/B, 타자(타순·포지션·이닝별 타석 결과·타수/안타/타점/득점), 투수 기록, 결승타·홈런 등 경기 요약을 돌려준다.
+    if (action === 'review') {
+      const rDate = String(req.query.date || '');
+      const rAway = String(req.query.away || '');
+      const rHome = String(req.query.home || '');
+      const rRound = String(req.query.round || '').split(' ')[0];
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(rDate) || !rAway || !rHome) {
+        return res.status(400).json({ error: 'date, away, home required' });
+      }
+      // KBO 시리즈 ID: 1 시범, 9 올스타, 4 와일드카드, 3 준플레이오프, 5 플레이오프, 7 한국시리즈
+      const SR_BY_ROUND = { '시범경기': '1', '올스타전': '9', 'WC': '4', '준PO': '3', 'PO': '5', 'KS': '7' };
+      const srId = SR_BY_ROUND[rRound] || '0';
+      const rYear = rDate.slice(0, 4);
+      const stripR = s => String(s == null ? '' : s).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, '').trim();
+      const KBO_H = {
+        'User-Agent': 'Mozilla/5.0',
+        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+        'Referer': 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx',
+        'X-Requested-With': 'XMLHttpRequest',
+      };
+      async function kboWs(method, params) {
+        const r = await fetchWithTimeout(`https://www.koreabaseball.com/ws/${method}`,
+          { method: 'POST', headers: KBO_H, body: new URLSearchParams(params).toString() }, 10000);
+        if (!r.ok) throw new Error(method + ' ' + r.status);
+        return JSON.parse((await r.text()).replace(/^﻿/, ''));
+      }
+      // KBO가 주는 표(JSON 문자열)를 텍스트 2차원 배열로 바꾼다.
+      const tbl = s => {
+        if (!s) return [];
+        const j = typeof s === 'string' ? JSON.parse(s) : s;
+        return (j.rows || []).map(r => (r.row || []).map(c => stripR(c.Text)));
+      };
+      const POS = { '二': '2B', '중': 'CF', '지': 'DH', '좌': 'LF', '三': '3B', '一': '1B', '유': 'SS', '포': 'C', '우': 'RF', '투': 'P' };
+      const num = v => { const n = Number(String(v).replace(/[^\d.-]/g, '')); return isFinite(n) ? n : 0; };
+
+      try {
+        // 1) 그날 일정에서 gameId 찾기 (올스타·포스트시즌 등 어떤 시리즈든 링크에 gameId가 들어 있음)
+        const sched = await kboWs('Schedule.asmx/GetScheduleList', {
+          leId: '1', srIdList: srId === '0' ? '0,9,6' : srId, seasonId: rYear, gameMonth: rDate.slice(5, 7), teamId: '',
+        });
+        let curDate = null, gameId = '';
+        for (const row of (sched.rows || [])) {
+          const cells = row.row || [];
+          const dc = cells.find(c => c.Class === 'day');
+          if (dc) { const m = stripR(dc.Text).match(/(\d\d)\.(\d\d)/); if (m) curDate = `${rYear}-${m[1]}-${m[2]}`; }
+          const play = cells.find(c => c.Class === 'play');
+          if (!play || curDate !== rDate) continue;
+          const sp = [...String(play.Text).matchAll(/<span[^>]*>([^<]*)<\/span>/g)].map(x => x[1]);
+          if (sp.length < 3 || sp[0] !== rAway || sp[sp.length - 1] !== rHome) continue;
+          const relay = cells.find(c => c.Class === 'relay');
+          const gm = String(relay && relay.Text || '').match(/gameId=([0-9A-Z]+)/);
+          if (gm) { gameId = gm[1]; break; }
+        }
+        if (!gameId) return res.status(200).json({ available: false, reason: 'game not found' });
+
+        // 2) 스코어보드 + 박스스코어
+        const p = { leId: '1', srId, seasonId: rYear, gameId };
+        const [sb, bx] = await Promise.all([kboWs('Schedule.asmx/GetScoreBoardScroll', p), kboWs('Schedule.asmx/GetBoxScoreScroll', p)]);
+
+        const inn = tbl(sb.table2);   // [원정 이닝들, 홈 이닝들] ('-'는 없는 이닝)
+        const rheb = tbl(sb.table3);  // [[R,H,E,B],[R,H,E,B]]
+        if (inn.length < 2 || rheb.length < 2 || !(bx.arrHitter || []).length) {
+          return res.status(200).json({ available: false, reason: 'no data yet' });
+        }
+        const toInn = row => row.map(v => (/^\d+$/.test(v) ? Number(v) : -1));
+
+        const parseHitters = obj => {
+          const t1 = tbl(obj.table1), t2 = tbl(obj.table2), t3 = tbl(obj.table3);
+          return t1.map((r, k) => {
+            const pa = (t2[k] || []).map(x => x || '');
+            const st = t3[k] || [];
+            return {
+              order: num(r[0]), name: r[2] || '', pos: POS[r[1]] || '', posRaw: r[1] || '',
+              ab: num(st[0]), h: num(st[1]), rbi: num(st[2]), r: num(st[3]), avg: st[4] || '',
+              bb: pa.filter(x => /^(4구|고4)/.test(x)).length,
+              pa,
+            };
+          });
+        };
+        const parsePitchers = obj => {
+          const rows = tbl(obj.table);
+          return rows.map(r => ({
+            name: r[0], role: r[1], result: r[2], inn: r[6] || '0', pc: num(r[8]), hit: num(r[10]),
+            hr: num(r[11]), bb: num(r[12]), kk: num(r[13]), r: num(r[14]), er: num(r[15]), era: r[16] || '',
+          }));
+        };
+        const awayP = parsePitchers((bx.arrPitcher || [])[0] || {});
+        const homeP = parsePitchers((bx.arrPitcher || [])[1] || {});
+        const allP = [...awayP, ...homeP];
+        const pitcherBy = res0 => (allP.find(x => x.result === res0) || {}).name || null;
+
+        const out = {
+          available: true,
+          gameId, srId,
+          stadium: sb.S_NM || '', crowd: sb.CROWD_CN || '',
+          startTime: sb.START_TM || '', endTime: sb.END_TM || '', useTime: sb.USE_TM || '',
+          awayInnings: toInn(inn[0]), homeInnings: toInn(inn[1]),
+          away: { r: num(rheb[0][0]), h: num(rheb[0][1]), e: num(rheb[0][2]), b: num(rheb[0][3]) },
+          home: { r: num(rheb[1][0]), h: num(rheb[1][1]), e: num(rheb[1][2]), b: num(rheb[1][3]) },
+          summary: tbl(bx.tableEtc).filter(r => r[0] && r[1]).map(r => ({ label: r[0], text: r[1] })),
+          awayBatters: parseHitters((bx.arrHitter || [])[0] || {}),
+          homeBatters: parseHitters((bx.arrHitter || [])[1] || {}),
+          awayPitchers: awayP, homePitchers: homeP,
+          winPitcher: pitcherBy('승'), losePitcher: pitcherBy('패'), savePitcher: pitcherBy('세'),
+        };
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        // 끝난 경기의 기록은 거의 바뀌지 않으므로 1시간 캐시
+        res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate=7200');
+        return res.status(200).json(out);
+      } catch (e) {
+        return res.status(200).json({ available: false, reason: String(e && e.message || e) });
+      }
+    }
+
     // ── 시즌 전체 경기 결과 (승패 자동 반영용) ──
     // KBO 공식 일정을 우선 사용하고, 전부 실패하면 네이버 일정으로 폴백한다.
     // 끝난 경기(FINAL)와 취소된 경기(CANCELED)만 반환한다. 예정/진행 중 경기는 기존 실시간 조회가 담당.
@@ -501,12 +617,13 @@ export default async function handler(req, res) {
       };
 
       // 정규시즌(0,9,6) + 3월 시범(1) + 7월 올스타(9) + 10~11월 포스트시즌(3,4,5,7)
+      // 포스트시즌은 묶어서 조회하면 우천취소 경기가 빠지므로 시리즈별로 따로 조회한다.
       const kboJobs = [];
       for (let m = 3; m <= lastMonth; m++) {
         kboJobs.push(fetchKboMonth('0,9,6', m));
         if (m === 3) kboJobs.push(fetchKboMonth('1', m));
         if (m === 7) kboJobs.push(fetchKboMonth('9', m));
-        if (m >= 10) kboJobs.push(fetchKboMonth('3,4,5,7', m));
+        if (m >= 10) ['3', '4', '5', '7'].forEach(sr => kboJobs.push(fetchKboMonth(sr, m)));
       }
       const kboSettled = await Promise.allSettled(kboJobs);
       let results = dedupe(kboSettled.flatMap(s => s.status === 'fulfilled' ? s.value : []));
