@@ -412,6 +412,115 @@ export default async function handler(req, res) {
     };
   }
 
+  // 시즌 전체 경기 결과를 모은다 (결과 반영 · 순위 계산 공용).
+  // KBO 공식 일정을 우선 사용하고, 전부 실패하면 네이버 일정으로 폴백한다.
+  // 반환: { results: [{date, away, home, status:'FINAL'|'CANCELED', awayScore?, homeScore?, cancelReason?, series}], source }
+  // series: regular(정규) | pre(시범) | allstar(올스타) | post(포스트시즌)
+  async function loadSeasonResults() {
+    const year = kst.getUTCFullYear();
+    const lastMonth = Math.min(kst.getUTCMonth() + 1, 11);
+    const strip = s => String(s || '').replace(/<[^>]*>/g, '').trim();
+    const KBO_REASON = { '우천취소': '우천', '폭염취소': '폭염', '그라운드사정': '그라운드 사정' };
+    const KBO_HEADERS = {
+      'User-Agent': 'Mozilla/5.0',
+      'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+      'Referer': 'https://www.koreabaseball.com/Schedule/Schedule.aspx',
+      'X-Requested-With': 'XMLHttpRequest',
+    };
+
+    async function fetchKboMonth(srIdList, m, series) {
+      const body = new URLSearchParams({
+        leId: '1', srIdList, seasonId: String(year), gameMonth: pad(m), teamId: '',
+      }).toString();
+      const r = await fetchWithTimeout(
+        'https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList',
+        { method: 'POST', headers: KBO_HEADERS, body }, 10000);
+      if (!r.ok) throw new Error('kbo ' + r.status);
+      const j = JSON.parse((await r.text()).replace(/^﻿/, ''));
+      const out = [];
+      let date = null;
+      for (const row of (j.rows || [])) {
+        const cells = row.row || [];
+        const dayCell = cells.find(c => c.Class === 'day');
+        if (dayCell) {
+          const dm = strip(dayCell.Text).match(/(\d\d)\.(\d\d)/);
+          if (dm) date = `${year}-${dm[1]}-${dm[2]}`;
+        }
+        const play = cells.find(c => c.Class === 'play');
+        if (!play || !date) continue;
+        const spans = [...String(play.Text).matchAll(/<span[^>]*>([^<]*)<\/span>/g)].map(x => x[1]);
+        if (spans.length < 3) continue;
+        const away = spans[0], home = spans[spans.length - 1];
+        const mid = spans.slice(1, -1); // 끝난 경기: ['3','vs','1'] / 아직 안 한 경기: ['vs']
+        const note = strip(cells[cells.length - 1] && cells[cells.length - 1].Text);
+        const relay = cells.find(c => c.Class === 'relay');
+        const hasReview = /리뷰|하이라이트/.test(String(relay && relay.Text || ''));
+        if (KBO_REASON[note]) {
+          out.push({ date, away, home, status: 'CANCELED', cancelReason: KBO_REASON[note], series });
+        } else if (mid.length === 3 && /^\d+$/.test(mid[0]) && /^\d+$/.test(mid[2]) && hasReview) {
+          out.push({ date, away, home, status: 'FINAL', awayScore: Number(mid[0]), homeScore: Number(mid[2]), series });
+        }
+      }
+      return out;
+    }
+
+    async function fetchNaverMonth(m) {
+      const from = `${year}-${pad(m)}-01`;
+      const to = `${year}-${pad(m)}-${pad(new Date(year, m, 0).getDate())}`;
+      const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule&upperCategoryId=kbaseball&fromDate=${from}&toDate=${to}&size=500`;
+      const r = await fetchWithTimeout(url, { headers: HEADERS });
+      if (!r.ok) throw new Error('naver ' + r.status);
+      const data = await r.json();
+      const out = [];
+      for (const g of (data?.result?.games || [])) {
+        if (g.categoryId !== 'kbo') continue;
+        const sc = g.statusCode || '', si = g.statusInfo || '';
+        const date = (g.gameDate || '').slice(0, 10);
+        const away = mapTeam(g.awayTeamCode) || g.awayTeamName;
+        const home = mapTeam(g.homeTeamCode) || g.homeTeamName;
+        const canceled = /CANCEL|PPD|RAINOUT|POSTPONE|SUSPEND/i.test(sc) || /취소|우천|연기|PPD|CANCEL/i.test(si);
+        if (canceled) {
+          const raw = String(g.cancelReasonName || g.cancelReason || si || '');
+          const reason = /우천|강우|비/.test(raw) ? '우천' : /폭염|더위|고온/.test(raw) ? '폭염' : /그라운드/.test(raw) ? '그라운드 사정' : raw;
+          out.push({ date, away, home, status: 'CANCELED', cancelReason: reason, series: 'regular' });
+        } else if ((sc === 'RESULT' || sc === 'FINAL') && g.awayTeamScore != null && g.homeTeamScore != null) {
+          out.push({ date, away, home, status: 'FINAL', awayScore: Number(g.awayTeamScore), homeScore: Number(g.homeTeamScore), series: 'regular' });
+        }
+      }
+      return out;
+    }
+
+    const dedupe = list => {
+      const map = new Map();
+      list.forEach(g => map.set(`${g.date}|${g.away}|${g.home}`, g));
+      return [...map.values()];
+    };
+
+    // 정규시즌(0,9,6) + 3월 시범(1) + 7월 올스타(9) + 10~11월 포스트시즌(3,4,5,7)
+    // 포스트시즌은 묶어서 조회하면 우천취소 경기가 빠지므로 시리즈별로 따로 조회한다.
+    const kboJobs = [];
+    for (let m = 3; m <= lastMonth; m++) {
+      kboJobs.push(fetchKboMonth('0,9,6', m, 'regular'));
+      if (m === 3) kboJobs.push(fetchKboMonth('1', m, 'pre'));
+      if (m === 7) kboJobs.push(fetchKboMonth('9', m, 'allstar'));
+      if (m >= 10) ['3', '4', '5', '7'].forEach(sr => kboJobs.push(fetchKboMonth(sr, m, 'post')));
+    }
+    const kboSettled = await Promise.allSettled(kboJobs);
+    let results = dedupe(kboSettled.flatMap(s => s.status === 'fulfilled' ? s.value : []));
+    let source = 'kbo';
+    const kboFailed = kboSettled.filter(s => s.status === 'rejected').length;
+
+    // KBO 공식이 전부 실패했거나 결과가 비었으면 네이버로 폴백
+    if (!results.length || kboFailed === kboJobs.length) {
+      const nvJobs = [];
+      for (let m = 3; m <= lastMonth; m++) nvJobs.push(fetchNaverMonth(m));
+      const nvSettled = await Promise.allSettled(nvJobs);
+      const nv = dedupe(nvSettled.flatMap(s => s.status === 'fulfilled' ? s.value : []));
+      if (nv.length) { results = nv; source = 'naver'; }
+    }
+    return { results, source };
+  }
+
   try {
     const gameId = req.query.gameId;
     const inning = req.query.inning ? parseInt(req.query.inning) : null;
@@ -534,111 +643,9 @@ export default async function handler(req, res) {
     }
 
     // ── 시즌 전체 경기 결과 (승패 자동 반영용) ──
-    // KBO 공식 일정을 우선 사용하고, 전부 실패하면 네이버 일정으로 폴백한다.
     // 끝난 경기(FINAL)와 취소된 경기(CANCELED)만 반환한다. 예정/진행 중 경기는 기존 실시간 조회가 담당.
     if (action === 'results') {
-      const year = kst.getUTCFullYear();
-      const lastMonth = Math.min(kst.getUTCMonth() + 1, 11);
-      const strip = s => String(s || '').replace(/<[^>]*>/g, '').trim();
-      const KBO_REASON = { '우천취소': '우천', '폭염취소': '폭염', '그라운드사정': '그라운드 사정' };
-      const KBO_HEADERS = {
-        'User-Agent': 'Mozilla/5.0',
-        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-        'Referer': 'https://www.koreabaseball.com/Schedule/Schedule.aspx',
-        'X-Requested-With': 'XMLHttpRequest',
-      };
-
-      async function fetchKboMonth(srIdList, m) {
-        const body = new URLSearchParams({
-          leId: '1', srIdList, seasonId: String(year), gameMonth: pad(m), teamId: '',
-        }).toString();
-        const r = await fetchWithTimeout(
-          'https://www.koreabaseball.com/ws/Schedule.asmx/GetScheduleList',
-          { method: 'POST', headers: KBO_HEADERS, body }, 10000);
-        if (!r.ok) throw new Error('kbo ' + r.status);
-        const j = JSON.parse((await r.text()).replace(/^﻿/, ''));
-        const out = [];
-        let date = null;
-        for (const row of (j.rows || [])) {
-          const cells = row.row || [];
-          const dayCell = cells.find(c => c.Class === 'day');
-          if (dayCell) {
-            const dm = strip(dayCell.Text).match(/(\d\d)\.(\d\d)/);
-            if (dm) date = `${year}-${dm[1]}-${dm[2]}`;
-          }
-          const play = cells.find(c => c.Class === 'play');
-          if (!play || !date) continue;
-          const spans = [...String(play.Text).matchAll(/<span[^>]*>([^<]*)<\/span>/g)].map(x => x[1]);
-          if (spans.length < 3) continue;
-          const away = spans[0], home = spans[spans.length - 1];
-          const mid = spans.slice(1, -1); // 끝난 경기: ['3','vs','1'] / 아직 안 한 경기: ['vs']
-          const note = strip(cells[cells.length - 1] && cells[cells.length - 1].Text);
-          const relay = cells.find(c => c.Class === 'relay');
-          const hasReview = /리뷰|하이라이트/.test(String(relay && relay.Text || ''));
-          if (KBO_REASON[note]) {
-            out.push({ date, away, home, status: 'CANCELED', cancelReason: KBO_REASON[note] });
-          } else if (mid.length === 3 && /^\d+$/.test(mid[0]) && /^\d+$/.test(mid[2]) && hasReview) {
-            out.push({ date, away, home, status: 'FINAL', awayScore: Number(mid[0]), homeScore: Number(mid[2]) });
-          }
-        }
-        return out;
-      }
-
-      async function fetchNaverMonth(m) {
-        const from = `${year}-${pad(m)}-01`;
-        const to = `${year}-${pad(m)}-${pad(new Date(year, m, 0).getDate())}`;
-        const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule&upperCategoryId=kbaseball&fromDate=${from}&toDate=${to}&size=500`;
-        const r = await fetchWithTimeout(url, { headers: HEADERS });
-        if (!r.ok) throw new Error('naver ' + r.status);
-        const data = await r.json();
-        const out = [];
-        for (const g of (data?.result?.games || [])) {
-          if (g.categoryId !== 'kbo') continue;
-          const sc = g.statusCode || '', si = g.statusInfo || '';
-          const date = (g.gameDate || '').slice(0, 10);
-          const away = mapTeam(g.awayTeamCode) || g.awayTeamName;
-          const home = mapTeam(g.homeTeamCode) || g.homeTeamName;
-          const canceled = /CANCEL|PPD|RAINOUT|POSTPONE|SUSPEND/i.test(sc) || /취소|우천|연기|PPD|CANCEL/i.test(si);
-          if (canceled) {
-            const raw = String(g.cancelReasonName || g.cancelReason || si || '');
-            const reason = /우천|강우|비/.test(raw) ? '우천' : /폭염|더위|고온/.test(raw) ? '폭염' : /그라운드/.test(raw) ? '그라운드 사정' : raw;
-            out.push({ date, away, home, status: 'CANCELED', cancelReason: reason });
-          } else if ((sc === 'RESULT' || sc === 'FINAL') && g.awayTeamScore != null && g.homeTeamScore != null) {
-            out.push({ date, away, home, status: 'FINAL', awayScore: Number(g.awayTeamScore), homeScore: Number(g.homeTeamScore) });
-          }
-        }
-        return out;
-      }
-
-      const dedupe = list => {
-        const map = new Map();
-        list.forEach(g => map.set(`${g.date}|${g.away}|${g.home}`, g));
-        return [...map.values()];
-      };
-
-      // 정규시즌(0,9,6) + 3월 시범(1) + 7월 올스타(9) + 10~11월 포스트시즌(3,4,5,7)
-      // 포스트시즌은 묶어서 조회하면 우천취소 경기가 빠지므로 시리즈별로 따로 조회한다.
-      const kboJobs = [];
-      for (let m = 3; m <= lastMonth; m++) {
-        kboJobs.push(fetchKboMonth('0,9,6', m));
-        if (m === 3) kboJobs.push(fetchKboMonth('1', m));
-        if (m === 7) kboJobs.push(fetchKboMonth('9', m));
-        if (m >= 10) ['3', '4', '5', '7'].forEach(sr => kboJobs.push(fetchKboMonth(sr, m)));
-      }
-      const kboSettled = await Promise.allSettled(kboJobs);
-      let results = dedupe(kboSettled.flatMap(s => s.status === 'fulfilled' ? s.value : []));
-      let source = 'kbo';
-      const kboFailed = kboSettled.filter(s => s.status === 'rejected').length;
-
-      // KBO 공식이 전부 실패했거나 결과가 비었으면 네이버로 폴백
-      if (!results.length || kboFailed === kboJobs.length) {
-        const nvJobs = [];
-        for (let m = 3; m <= lastMonth; m++) nvJobs.push(fetchNaverMonth(m));
-        const nvSettled = await Promise.allSettled(nvJobs);
-        const nv = dedupe(nvSettled.flatMap(s => s.status === 'fulfilled' ? s.value : []));
-        if (nv.length) { results = nv; source = 'naver'; }
-      }
-
+      const { results, source } = await loadSeasonResults();
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       // 5분 CDN 캐시 (경기 결과는 자주 바뀌지 않음)
       res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
@@ -730,51 +737,21 @@ export default async function handler(req, res) {
     // ── action=lineup: 라인업 + currentGameState ──
     // ── 순위 액션: 시즌 전체 일정 기반 계산 ──
     if (action === 'standings') {
-      const year = kst.getUTCFullYear();
-      const months = [];
-      const seasonStart = `${year}-03-28`;
-      for (let m = 3; m <= kst.getUTCMonth() + 1; m++) {
-        const from = m === 3 ? seasonStart : `${year}-${String(m).padStart(2,'0')}-01`;
-        const lastDay = new Date(year, m, 0).getDate();
-        const to = m === kst.getUTCMonth() + 1
-          ? todayDash
-          : `${year}-${String(m).padStart(2,'0')}-${lastDay}`;
-        months.push({ from, to });
-      }
-      const allResults = await Promise.all(months.map(async ({ from, to }) => {
-        try {
-          const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule&upperCategoryId=kbaseball&fromDate=${from}&toDate=${to}&size=500`;
-          const r = await fetchWithTimeout(url, { headers: HEADERS }, 7000);
-          if (!r.ok) return [];
-          const data = await r.json();
-          return (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
-        } catch { return []; }
-      }));
-      // 월별 요청 경계나 네이버 응답 중복으로 같은 경기가 두 번 집계되지 않게 한다.
-      const uniqueGames = new Map();
-      allResults.flat().forEach((g, index) => {
-        const key = String(
-          g.gameId || g.gameCode || g.scheduleId ||
-          `${g.gameDate || ''}-${g.awayTeamCode || g.awayTeamName || ''}-${g.homeTeamCode || g.homeTeamName || ''}-${g.awayTeamScore ?? ''}-${g.homeTeamScore ?? ''}`
-        );
-        if (!uniqueGames.has(key)) uniqueGames.set(key, g);
-      });
-      const allGames = [...uniqueGames.values()].sort((a, b) =>
-        String(a.gameDate || '').localeCompare(String(b.gameDate || ''))
-      );
+      // KBO 공식 일정 기반 결과로 계산한다 (네이버는 폴백). 정규시즌 경기만 집계한다.
+      const { results, source } = await loadSeasonResults();
       const TEAMS = ['KIA','KT','LG','SSG','NC','두산','롯데','삼성','한화','키움'];
       const stats = {};
       TEAMS.forEach(t => { stats[t] = {w:0,l:0,d:0,results:[]}; });
-      allGames.forEach(g => {
-        const sc = g.statusCode || '';
-        if (sc !== 'RESULT' && sc !== 'FINAL') return;
-        // 코드가 누락되거나 변경돼도 팀 이름으로 올바른 행에 연결한다.
-        const awayByCode = mapTeam(g.awayTeamCode);
-        const homeByCode = mapTeam(g.homeTeamCode);
-        const away = stats[awayByCode] ? awayByCode : mapTeam(g.awayTeamName);
-        const home = stats[homeByCode] ? homeByCode : mapTeam(g.homeTeamName);
-        const aw = Number(g.awayTeamScore), hw = Number(g.homeTeamScore);
-        if (!stats[away] || !stats[home] || isNaN(aw) || isNaN(hw) || (aw===0 && hw===0)) return;
+      const finals = results
+        .filter(g => g.status === 'FINAL' && (g.series === 'regular' || source === 'naver'))
+        .sort((a, b) => String(a.date).localeCompare(String(b.date)));
+      let counted = 0;
+      finals.forEach(g => {
+        const away = stats[g.away] ? g.away : mapTeam(g.away);
+        const home = stats[g.home] ? g.home : mapTeam(g.home);
+        const aw = Number(g.awayScore), hw = Number(g.homeScore);
+        if (!stats[away] || !stats[home] || isNaN(aw) || isNaN(hw)) return;
+        counted++;
         if (aw > hw) {
           stats[away].w++; stats[home].l++;
           stats[away].results.push('W'); stats[home].results.push('L');
@@ -786,10 +763,12 @@ export default async function handler(req, res) {
           stats[away].results.push('D'); stats[home].results.push('D');
         }
       });
+      // 경기를 하나도 못 가져왔으면 0승 0패 표를 주지 말고 빈 목록을 준다 (클라이언트가 폴백 계산)
+      if (!counted) return res.status(200).json({ standings: [], source });
       const rows = TEAMS.map(t => {
         const s = stats[t];
         const dec = s.w + s.l;
-        const pct = dec > 0 ? (s.w / dec).toFixed(3) : null;
+        const pctNum = dec > 0 ? s.w / dec : null;
         // 무승부는 연승/연패를 끊지 않으므로 최근 승패 결과만 연속 계산한다.
         const decisions = s.results.filter(result => result !== 'D');
         const streakType = decisions.at(-1) || '';
@@ -797,14 +776,19 @@ export default async function handler(req, res) {
         for (let i = decisions.length - 1; i >= 0 && decisions[i] === streakType; i--) streak++;
         return {
           team: t, teamCode: t, teamName: TEAM_FULL[t],
-          wins: s.w, losses: s.l, draws: s.d, pct,
+          wins: s.w, losses: s.l, draws: s.d,
+          pct: pctNum == null ? null : pctNum.toFixed(3), pctNum,
           streak: streak >= 2 ? streak : 0,
           streakType: streak >= 2 ? streakType : '',
         };
-      }).sort((a,b) => Number(b.pct||0) - Number(a.pct||0) || b.wins - a.wins)
-        .map((r,i) => ({ ...r, rank: i+1 }));
-      console.log('[standings] computed from schedule, total games:', allGames.length, 'KIA:', JSON.stringify(stats['KIA']));
-      return res.status(200).json({ standings: rows });
+      }).sort((a, b) => (b.pctNum ?? -1) - (a.pctNum ?? -1) || b.wins - a.wins);
+      // 승률이 같으면 공동 순위
+      rows.forEach((r, i) => {
+        r.rank = i > 0 && r.pctNum === rows[i - 1].pctNum && r.wins === rows[i - 1].wins ? rows[i - 1].rank : i + 1;
+      });
+      rows.forEach(r => { delete r.pctNum; });
+      res.setHeader('Cache-Control', 's-maxage=300, stale-while-revalidate=600');
+      return res.status(200).json({ standings: rows, source });
     }
 
     if (gameId && action === 'lineup') {

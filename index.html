@@ -3728,7 +3728,8 @@ async function fetchStanding() {
           streak: st.streak, streakType: st.streakType,
         };
       }).filter(s => s.tkey);
-      if (!list.length) throw new Error('empty');
+      // 경기를 하나도 못 가져와서 전부 0승 0패인 응답은 믿지 않고 SCH 계산으로 폴백한다
+      if (!list.length || list.every(s => !(s.win + s.lose + s.draw))) throw new Error('empty');
       _standCache = list;
       _standCacheTime = Date.now();
       return list;
@@ -3773,7 +3774,7 @@ function renderStand(d) {
   });
   const finalGames = SCH.filter(g => g.status === 'FINAL' && !g.round);
   const label = hasOfficialStanding
-    ? '네이버 스포츠 기준 · 10분마다 갱신'
+    ? 'KBO 경기 결과 기준 · 10분마다 갱신'
     : finalGames.length > 0
     ? finalGames[finalGames.length-1].date + ' 기준'
     : '경기 결과 집계 중';
