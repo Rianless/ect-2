@@ -1976,19 +1976,19 @@ function renderCal(d) {
 
   // 경기/달력 전환 버튼
   const cv = state.calView || 'game';
-  const viewToggleHtml = `<div style="
+  const viewToggleHtml = `<div id="view-toggle" style="
       display:flex;gap:6px;
       background:${dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)'};
       border-radius:14px;padding:4px;margin-bottom:14px;
     ">
-    <button onclick="state.calView='game';state.sel=_today0;render()" style="
+    <button onclick="if(state.modalGame)closeModal();state.calView='game';state.sel=_today0;render()" style="
       flex:1;padding:7px 0;font-size:13px;font-weight:700;border-radius:10px;
       font-family:'Noto Sans KR',sans-serif;transition:all 0.18s;
       ${cv==='game'
         ? `background:${dark?'rgba(227,24,55,0.85)':'#E31837'};color:#fff;box-shadow:0 2px 8px rgba(227,24,55,0.35);`
         : `background:transparent;color:${d.sub};`}
     ">⚾ 경기</button>
-    <button onclick="state.calView='cal';render()" style="
+    <button onclick="if(state.modalGame)closeModal();state.calView='cal';render()" style="
       flex:1;padding:7px 0;font-size:13px;font-weight:700;border-radius:10px;
       font-family:'Noto Sans KR',sans-serif;transition:all 0.18s;
       ${cv==='cal'
@@ -4902,6 +4902,27 @@ window.refreshModalSituation = async function(gameId, date, away, home) {
   }
 };
 
+// 상황판(모달)이 화면 전체를 덮으면 위쪽 "경기/달력" 버튼을 누를 수 없다.
+// 그 버튼 바로 아래에서 오버레이가 시작하도록 위치를 잡는다. (버튼이 없거나 공간이 부족하면 기존처럼 전체를 덮음)
+function _positionModalBelowToggle(overlay, box) {
+  overlay.style.top = '';
+  box.style.height = '';
+  if (window.innerWidth >= 1080) return; // PC는 모달이 인라인으로 표시됨
+  const tg = document.getElementById('view-toggle');
+  if (!tg || tg.offsetParent === null) return;
+  const vh = window.innerHeight;
+  let r = tg.getBoundingClientRect();
+  if (r.top < 0 || r.bottom > vh * 0.45) {
+    // 스크롤 때문에 버튼이 화면 밖이면 버튼이 보이도록 먼저 올려준다
+    tg.scrollIntoView({ block: 'start', behavior: 'instant' });
+    r = tg.getBoundingClientRect();
+  }
+  const top = Math.max(0, Math.round(r.bottom + 8));
+  if (top > vh * 0.5) return;
+  overlay.style.top = top + 'px';
+  box.style.height = (vh - top) + 'px';
+}
+
 function openModal(idx,date) {
   // ── PC: 모달 내용을 pc-cal-relay-area에 인라인으로 표시 ──
   if (window.innerWidth >= 1080) {
@@ -4988,6 +5009,7 @@ function openModal(idx,date) {
   else state.modalRecTab = null;
   const overlay=document.getElementById('modal-overlay');
   const box=document.getElementById('modal-box');
+  _positionModalBelowToggle(overlay, box); // 경기/달력 버튼이 가려지지 않게 그 아래에서 시작
   box.classList.remove('closing'); overlay.classList.add('open');
   box.scrollTop = 0;
   renderModal(D()); history.pushState({modal:true},'');
@@ -5097,7 +5119,9 @@ function closeModal() {
   const box=document.getElementById('modal-box');
   box.classList.add('closing');
   setTimeout(()=>{
-    document.getElementById('modal-overlay').classList.remove('open');
+    const ov=document.getElementById('modal-overlay');
+    ov.classList.remove('open');
+    ov.style.top=''; box.style.height=''; // _positionModalBelowToggle 로 준 값 되돌리기
     box.classList.remove('closing');
     state.modalGame=null;
     state.modalLt='away';
