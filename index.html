@@ -960,6 +960,14 @@ let state = {
 // 중계 전체보기 전역 변수
 let _relayGameId = null, _relayAway = '', _relayHome = '', _relayInn = 1, _relayData = null, _relayInterval = null;
 let _relayTab = 'inn'; // 'inn' | 'score'
+let _relayReturn = null; // 중계 전체보기를 연 경기 팝업 (닫으면 그 팝업으로 돌아간다)
+function reopenModalFor(r) {
+  if (!r) return;
+  const dayGs = SCH.filter(g => g.date === r.date);
+  const sorted = [...dayGs.filter(g => g.away==='KIA'||g.home==='KIA'), ...dayGs.filter(g => g.away!=='KIA'&&g.home!=='KIA')];
+  const idx = sorted.findIndex(g => g.away === r.away && g.home === r.home);
+  if (idx !== -1) openModal(idx, r.date);
+}
 let _scoringCache = null; // { gameId, plays[] }
 
 // 용여찾기 로드
@@ -4222,7 +4230,7 @@ function renderModal(d) {
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             ${(isLive&&g.gameId)?`<button onclick="refreshModalSituation('${g.gameId}','${g.date}','${g.away}','${g.home}')" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="경기 상황 새로고침">🔄</button>`:''}
-            ${((isLive||isFinal)&&g.gameId)?`<button onclick="openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1});closeModal();" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
+            ${((isLive||isFinal)&&g.gameId)?`<button onclick="_relayReturn={date:'${g.date}',away:'${g.away}',home:'${g.home}'};openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1});if(window.innerWidth>=1080)closeModal();" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
           </div>
         </div>
         ${((isLive||isFinal)&&!g.gameId&&!(g._lt&&g._lt.d&&g._lt.d.available))?`<div style="font-size:11px;color:${d.sub};margin:-4px 2px 10px;line-height:1.5">문자중계를 불러오는 중이에요${window._nvDirectErr?' (네이버: '+window._nvDirectErr+')':''} · 안 나오면 아래 '진행 기록'(앱이 직접 기록한 추정)을 보세요</div>`:''}
@@ -5574,8 +5582,9 @@ window.addEventListener('popstate', e => {
   const panel = document.getElementById('relay-panel');
   if (panel && panel.style.display === 'flex') {
     panel.style.display = 'none';
-    document.body.style.overflow = '';
+    document.body.style.overflow = state.modalGame ? 'hidden' : '';
     clearInterval(_relayInterval); _relayInterval = null;
+    if (state.modalGame) _relayReturn = null; // 팝업이 아래에 그대로 열려 있다
     return;
   }
   // 그 외엔 모달 닫기
@@ -7606,10 +7615,14 @@ window.closePcRelay = function() {
   } else {
     if (panel) { panel.classList.remove('pc-inline'); panel.style.display = 'none'; }
   }
+  // 경기 팝업에서 열었다면 그 팝업으로 돌아간다
+  if (_relayReturn) { const r = _relayReturn; _relayReturn = null; setTimeout(() => reopenModalFor(r), 0); }
 };
 
 window.closeRelay = function() {
   if (window.innerWidth >= 1080) { closePcRelay(); return; }
+  // 폰: 열 때 쌓은 기록 한 칸을 뒤로가기로 지워서, 뒤로가기 버튼과 같은 동작(팝업으로 복귀)이 되게 한다
+  if (history.state && history.state.relay && document.getElementById('relay-panel')?.style.display === 'flex') { history.back(); return; }
   const box = document.getElementById('relay-box');
   const panel = document.getElementById('relay-panel');
   if (box) box.classList.add('closing');
