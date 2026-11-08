@@ -975,6 +975,61 @@ export default async function handler(req, res) {
       return res.status(200).json(convertGame(g, detail));
     }
 
+    // ── KBO 공식 경기 목록(실시간): 이닝·점수·볼카운트·현재 투수/타자 ──
+    // 네이버가 막히거나 늦을 때 실시간 상황을 대신 채우는 용도.
+    async function fetchKboLive(dateStr) {
+      const r = await fetchWithTimeout('https://www.koreabaseball.com/ws/Main.asmx/GetKboGameList', {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Referer': 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new URLSearchParams({ leId: '1', srId: '0,1,3,4,5,7,9', date: dateStr }).toString(),
+      }, 8000);
+      if (!r.ok) throw new Error('kbo list ' + r.status);
+      const j = JSON.parse((await r.text()).replace(/^\uFEFF/, ''));
+      const nm = v => String(v == null ? '' : v).trim();
+      return (j.game || []).map(k => {
+        const canceled = nm(k.CANCEL_SC_ID) !== '' && nm(k.CANCEL_SC_ID) !== '0';
+        const st = nm(k.GAME_STATE_SC);
+        const status = canceled ? 'CANCELED' : st === '2' ? 'LIVE' : st === '3' ? 'FINAL' : 'SCHEDULED';
+        const inn = Number(k.GAME_INN_NO) || 0;
+        const half = nm(k.GAME_TB_SC_NM);
+        const inningInfo = status === 'LIVE' && inn ? `${inn}회${half}` : null;
+        const away = mapTeam(k.AWAY_ID) || nm(k.AWAY_NM);
+        const home = mapTeam(k.HOME_ID) || nm(k.HOME_NM);
+        const bottom = half === '말';
+        const batting = n => (Number(n) > 0 ? 1 : 0);
+        const gs = status === 'LIVE' ? {
+          ball: Number(k.BALL_CN) || 0, strike: Number(k.STRIKE_CN) || 0, out: Number(k.OUT_CN) || 0,
+          base1: batting(k.B1_BAT_ORDER_NO), base2: batting(k.B2_BAT_ORDER_NO), base3: batting(k.B3_BAT_ORDER_NO),
+          pitcherName: nm(k.T_P_NM), batterName: nm(k.B_P_NM),
+          _inningInfo: inningInfo || '', _source: 'kbo',
+        } : null;
+        // KBO: T_P=원정팀 선수, B_P=홈팀 선수. 말(홈 공격)이면 투수=T_P·타자=B_P, 초면 반대.
+        if (gs && !bottom) { gs.pitcherName = nm(k.B_P_NM); gs.batterName = nm(k.T_P_NM); }
+        const p = status === 'LIVE' ? (bottom ? { awayPitcher: nm(k.T_P_NM) } : { homePitcher: nm(k.B_P_NM) }) : {};
+        return {
+          date: todayDash,
+          time: nm(k.G_TM) || null,
+          away, home, status,
+          awayScore: status === 'SCHEDULED' ? null : Number(k.T_SCORE_CN) || 0,
+          homeScore: status === 'SCHEDULED' ? null : Number(k.B_SCORE_CN) || 0,
+          awayInnings: [], homeInnings: [],
+          inning: inn || null, inningInfo,
+          currentGameState: gs,
+          stad: nm(k.S_NM) || null,
+          awayStarter: nm(k.T_PIT_P_NM) || null,
+          homeStarter: nm(k.B_PIT_P_NM) || null,
+          cancelReason: canceled ? nm(k.CANCEL_SC_NM) : null,
+          ...p,
+          _source: 'kbo',
+        };
+      });
+    }
+
     // ── 오늘 전체 경기 목록 ──
     const rawGames = await fetchSchedule(todayDash).catch(() => []);
 
@@ -995,6 +1050,24 @@ export default async function handler(req, res) {
       } catch(e) {}
     }));
     const allGames = rawGames.map(g => convertGame(g, detailMap[g.gameId] || null));
+
+    // 네이버에 없거나 아직 '예정'인데 KBO 공식이 진행 중/종료로 알려주면 KBO 값으로 채운다
+    try {
+      const kboGames = await fetchKboLive(todayStr);
+      kboGames.forEach(k => {
+        const cur = allGames.find(a => a.away === k.away && a.home === k.home);
+        if (!cur) { allGames.push(k); return; }
+        if (cur.status === 'SCHEDULED' && k.status !== 'SCHEDULED') {
+          Object.assign(cur, {
+            status: k.status, awayScore: k.awayScore, homeScore: k.homeScore,
+            inning: k.inning, inningInfo: k.inningInfo, cancelReason: k.cancelReason,
+            currentGameState: k.currentGameState,
+          });
+          if (k.awayPitcher) cur.awayPitcher = k.awayPitcher;
+          if (k.homePitcher) cur.homePitcher = k.homePitcher;
+        }
+      });
+    } catch (e) { /* KBO 목록 실패는 무시 */ }
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.status(200).json({ games: allGames, date: todayStr });

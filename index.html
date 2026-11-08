@@ -3841,6 +3841,39 @@ function renderLeadSection(d) {
     </div>`;
 }
 
+// 라인업이 없어도(네이버 접속 불가 등) 진행 중 경기의 이닝·점수·볼카운트·주자·투수/타자를 보여주는 간단 상황판
+function liveBoardHtml(g, d) {
+  const gs = g.currentGameState || {};
+  const aw = T[g.away] || {}, hw = T[g.home] || {};
+  const on = v => v === '1' || Number(v) > 0;
+  const dots = (n, max, color) => Array.from({length: max}, (_, i) =>
+    `<span style="display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:4px;background:${i < n ? color : 'rgba(128,128,128,0.25)'}"></span>`).join('');
+  const base = (x, y, active) => `<div style="position:absolute;left:${x}px;top:${y}px;width:16px;height:16px;transform:rotate(45deg);border-radius:3px;background:${active ? '#FFB400' : 'rgba(128,128,128,0.25)'}"></div>`;
+  const inning = g.inningInfo || (g.inning ? g.inning + '회' : '진행 중');
+  const score = (g.awayScore != null && g.homeScore != null) ? `${g.awayScore} : ${g.homeScore}` : '';
+  const row = (label, val) => val ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0"><span style="color:${d.sub}">${label}</span><span style="font-weight:800;color:${d.text}">${val}</span></div>` : '';
+  return `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:16px 18px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <span style="font-size:11px;background:#E31837;color:#fff;border-radius:4px;padding:2px 7px;font-weight:700">🔴 LIVE</span>
+      <span style="font-size:15px;font-weight:900;color:${d.text}">${inning}</span>
+    </div>
+    ${score ? `<div style="text-align:center;font-size:30px;font-weight:900;color:${d.text};margin-bottom:12px">
+      <span style="color:${aw.color || d.text}">${g.awayScore}</span><span style="color:${d.sub};margin:0 10px">:</span><span style="color:${hw.color || d.text}">${g.homeScore}</span></div>` : ''}
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:16px">
+      <div style="position:relative;width:64px;height:52px;flex:none">${base(24,0,on(gs.base2))}${base(2,22,on(gs.base3))}${base(46,22,on(gs.base1))}</div>
+      <div style="font-size:12px;line-height:1.9;color:${d.sub}">
+        <div>B <span style="margin-left:6px">${dots(gs.ball || 0, 4, '#00C864')}</span></div>
+        <div>S <span style="margin-left:7px">${dots(gs.strike || 0, 3, '#FFB400')}</span></div>
+        <div>O <span style="margin-left:6px">${dots(gs.out || 0, 3, '#E31837')}</span></div>
+      </div>
+    </div>
+    <div style="margin-top:10px;border-top:1px solid ${d.bgB};padding-top:6px">
+      ${row('투수', gs.pitcherName)}${row('타자', gs.batterName)}
+    </div>
+    <div style="margin-top:8px;font-size:10px;color:${d.sub};text-align:center">KBO 공식 데이터 · 10초마다 자동 갱신</div>
+  </div>`;
+}
+
 function renderModal(d) {
   const g=state.modalGame; if(!g) return;
   const aw=T[g.away]||{name:g.away,color:'#888'};
@@ -4050,7 +4083,7 @@ function renderModal(d) {
             ${((isLive||isFinal)&&g.gameId)?`<button onclick="openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1});closeModal();" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
           </div>
         </div>
-        ${!hasLU?`<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:26px 20px;text-align:center">
+        ${!hasLU&&isLive&&g.currentGameState?liveBoardHtml(g,d):!hasLU?`<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:26px 20px;text-align:center">
           <div style="font-size:24px;margin-bottom:6px">${(isLive||isFinal)?'⏳':'📋'}</div>
           <div style="font-size:13px;color:${d.sub}">${(isLive||isFinal)?'라인업 불러오는 중...':'라인업은 경기 당일 발표됩니다'}</div>
         </div>`:
