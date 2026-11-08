@@ -1026,8 +1026,55 @@ export default async function handler(req, res) {
           cancelReason: canceled ? nm(k.CANCEL_SC_NM) : null,
           ...p,
           _source: 'kbo',
+          _kbo: { gid: nm(k.G_ID), srId: nm(k.SR_ID), homeId: nm(k.HOME_ID), awayId: nm(k.AWAY_ID), lineupOk: !!k.LINEUP_CK || !!k.START_PIT_CK },
         };
       });
+    }
+
+    // ── KBO 공식 선발 라인업(타순·포지션) → 앱이 쓰는 lineup 형태로 변환 ──
+    async function fetchKboLineup(kb, awayStarter, homeStarter) {
+      const r = await fetchWithTimeout('https://www.koreabaseball.com/ws/Schedule.asmx/GetLineUpAnalysis', {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Referer': 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx',
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new URLSearchParams({ leId: '1', srId: kb.srId, seasonId: todayDash.slice(0, 4), gameId: kb.gid }).toString(),
+      }, 8000);
+      if (!r.ok) return null;
+      const j = JSON.parse((await r.text()).replace(/^\uFEFF/, ''));
+      if (!Array.isArray(j) || j.length < 5) return null;
+      const strip = v => String(v == null ? '' : v).replace(/<[^>]*>/g, '').trim();
+      const rows = tblStr => {
+        try { return (JSON.parse(tblStr).rows || []).map(rw => (rw.row || []).map(c => strip(c.Text))); } catch (e) { return []; }
+      };
+      const POS = { '중견수':'CF','좌익수':'LF','우익수':'RF','유격수':'SS','2루수':'2B','1루수':'1B','3루수':'3B','포수':'C','투수':'P','지명타자':'DH' };
+      // j[1], j[2]: 팀 정보(T_ID), j[3], j[4]: 같은 순서의 타순 표
+      const sides = {};
+      [[1, 3], [2, 4]].forEach(([ti, li]) => {
+        const tid = j[ti] && j[ti][0] && j[ti][0].T_ID;
+        const raw = j[li] && j[li][0];
+        if (!tid || !raw) return;
+        sides[tid] = rows(raw).filter(c => /^\d+$/.test(c[0] || '')).map(c => {
+          const pos = POS[c[1]] || '';
+          return {
+            n: +c[0], order: +c[0], name: c[2] || '', p: pos, pos,
+            starterName: c[2] || '', starterPos: pos, chain: null, sub: null,
+            hit: 0, ab: 0, rbi: 0, bb: 0, run: 0,
+            curHit: 0, curAb: 0, curRbi: 0, curBb: 0, curRun: 0,
+            subHit: 0, subAb: 0, subRbi: 0, subBb: 0, subRun: 0,
+          };
+        });
+      });
+      const homeB = sides[kb.homeId] || [], awayB = sides[kb.awayId] || [];
+      if (!homeB.length && !awayB.length) return null;
+      const sp = nm0 => (nm0 ? [{ seqno: 1, name: nm0, inn: '0', er: 0, r: 0, kk: 0 }] : []);
+      return {
+        away: { batters: awayB, pitchers: sp(awayStarter) },
+        home: { batters: homeB, pitchers: sp(homeStarter) },
+      };
     }
 
     // ── 오늘 전체 경기 목록 ──
@@ -1054,6 +1101,13 @@ export default async function handler(req, res) {
     // 네이버에 없거나 아직 '예정'인데 KBO 공식이 진행 중/종료로 알려주면 KBO 값으로 채운다
     try {
       const kboGames = await fetchKboLive(todayStr);
+      await Promise.all(kboGames.map(async k => {
+        const cur = allGames.find(a => a.away === k.away && a.home === k.home);
+        const target = cur || k;
+        if (!target.lineup && k._kbo && k._kbo.lineupOk) {
+          try { target.lineup = await fetchKboLineup(k._kbo, k.awayStarter, k.homeStarter); } catch (e) {}
+        }
+      }));
       kboGames.forEach(k => {
         const cur = allGames.find(a => a.away === k.away && a.home === k.home);
         if (!cur) { allGames.push(k); return; }
