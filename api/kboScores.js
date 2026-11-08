@@ -525,6 +525,8 @@ export default async function handler(req, res) {
     const gameId = req.query.gameId;
     const inning = req.query.inning ? parseInt(req.query.inning) : null;
     const action = req.query.action || '';
+    const KBO_ID_RE = /^\d{8}[A-Z]{4}\d$/;
+    const KBO_CODE_BY_TEAM = { 'KIA': 'HT', 'KT': 'KT', 'LG': 'LG', 'SSG': 'SK', 'NC': 'NC', '두산': 'OB', '롯데': 'LT', '삼성': 'SS', '한화': 'HH', '키움': 'WO' };
 
     // ── 변환 전용: 휴대폰이 네이버에서 직접 받아 온 원본(일정 1건 + 중계)을 앱 형식으로 바꿔 준다 ──
     // 서버가 네이버에 접속하지 않으므로 네이버가 서버 접속을 막아도 동작한다.
@@ -804,6 +806,7 @@ export default async function handler(req, res) {
       return res.status(200).json({ standings: rows, source });
     }
 
+    if (gameId && action === 'lineup' && KBO_ID_RE.test(String(gameId))) return res.status(404).json({ error: 'kbo id has no naver lineup' });
     if (gameId && action === 'lineup') {
       const inn = inning || 1;
 
@@ -964,6 +967,17 @@ export default async function handler(req, res) {
       });
     }
 
+    // ── KBO 경기 번호(예: 20261108KTSS0)로 온 중계 요청: KBO 문자중계로 응답 ──
+    if (gameId && KBO_ID_RE.test(String(gameId)) && !action) {
+      try {
+        const out = await buildKboRelay(String(gameId), inning);
+        if (!out) return res.status(404).json({ error: 'Game not found' });
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', out.status === 'FINAL' ? 's-maxage=600' : 's-maxage=5, stale-while-revalidate=10');
+        return res.status(200).json(out);
+      } catch (e) { return res.status(502).json({ error: String(e && e.message || e) }); }
+    }
+
     // ── 단일 경기 relay 조회 (gameId만, action 없음) ──
     if (gameId) {
       const m = String(gameId).match(/^(\d{4})(\d{2})(\d{2})/);
@@ -982,6 +996,14 @@ export default async function handler(req, res) {
       if (!detail) {
         console.log('[gameId] fetchGameDetail returned null for', gameId, 'inning', targetInning);
         const minimalResult = convertGame(g, null);
+        // 네이버 중계를 못 받으면 KBO 문자중계로 대신 채운다
+        try {
+          const ac = KBO_CODE_BY_TEAM[minimalResult.away], hc = KBO_CODE_BY_TEAM[minimalResult.home];
+          if (ac && hc) {
+            const kb = await buildKboRelay(`${gameDateDash.replace(/-/g, '')}${ac}${hc}0`, inning || targetInning);
+            if (kb && kb.textRelays && kb.textRelays.length) return res.status(200).json({ ...minimalResult, ...kb, gameId: minimalResult.gameId });
+          }
+        } catch (e) {}
         return res.status(200).json(minimalResult);
       }
 
@@ -1039,6 +1061,7 @@ export default async function handler(req, res) {
           cancelReason: canceled ? nm(k.CANCEL_SC_NM) : null,
           ...p,
           _source: 'kbo',
+          gameId: nm(k.G_ID),
           _kbo: { gid: nm(k.G_ID), srId: nm(k.SR_ID), homeId: nm(k.HOME_ID), awayId: nm(k.AWAY_ID), lineupOk: !!k.LINEUP_CK || !!k.START_PIT_CK },
         };
       });
@@ -1054,7 +1077,7 @@ export default async function handler(req, res) {
           'Referer': 'https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx',
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: new URLSearchParams({ leId: '1', srId: kb.srId, seasonId: todayDash.slice(0, 4), gameId: kb.gid }).toString(),
+        body: new URLSearchParams({ leId: '1', srId: kb.srId, seasonId: kb.gid.slice(0, 4), gameId: kb.gid }).toString(),
       }, 8000);
       if (!r.ok) return null;
       const j = JSON.parse((await r.text()).replace(/^\uFEFF/, ''));
@@ -1126,10 +1149,10 @@ export default async function handler(req, res) {
         headers: {
           'User-Agent': 'Mozilla/5.0',
           'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-          'Referer': `https://www.koreabaseball.com/Game/LiveText.aspx?leagueId=1&seriesId=${kb.srId}&gameId=${kb.gid}&gyear=${todayDash.slice(0, 4)}`,
+          'Referer': `https://www.koreabaseball.com/Game/LiveText.aspx?leagueId=1&seriesId=${kb.srId}&gameId=${kb.gid}&gyear=${kb.gid.slice(0, 4)}`,
           'X-Requested-With': 'XMLHttpRequest',
         },
-        body: new URLSearchParams({ leagueId: '1', seriesId: kb.srId, gameId: kb.gid, gyear: todayDash.slice(0, 4) }).toString(),
+        body: new URLSearchParams({ leagueId: '1', seriesId: kb.srId, gameId: kb.gid, gyear: kb.gid.slice(0, 4) }).toString(),
       }, 12000);
       if (!r.ok) throw new Error('livetext ' + r.status);
       const html = await r.text();
@@ -1138,6 +1161,15 @@ export default async function handler(req, res) {
       for (const m of html.matchAll(/<span id="rptLiveText(\d+)_spanLiveText_\d+" class="([^"]*)">([\s\S]*?)<\/span>/g)) {
         (byBlock[m[1]] = byBlock[m[1]] || []).push({ cls: m[2], t: clean(m[3]) });
       }
+      const kindOf = t => {
+        if (/^-\s/.test(t)) return 'pitch';
+        if (/^\d+번타자/.test(t)) return 'intro';
+        if (/투수판 이탈|마운드 방문/.test(t)) return 'noise';
+        if (/^(1루주자|2루주자|3루주자|타자주자)\s/.test(t)) return 'runner';
+        if (/^(투수|대타|대주자|포수|1루수|2루수|3루수|유격수|좌익수|중견수|우익수|지명타자)\s/.test(t)) return 'info';
+        if (/^[^:]{1,12} : /.test(t)) return 'pa';
+        return 'info';
+      };
       const groups = [];
       Object.keys(byBlock).map(Number).sort((a, b) => a - b).forEach(bn => {
         const perBlock = [];
@@ -1146,14 +1178,71 @@ export default async function handler(req, res) {
           if (cls === 'blue') {                       // "3회말 삼성 공격 ----": 그 반이닝의 맨 끝(=가장 오래된 줄) 표시
             perBlock.push({ title: t.replace(/-+$/, '').trim(), events: cur.reverse() });
             cur = [];
-          } else if (t && !/^-\s/.test(t) && !/^\d+번타자/.test(t) && !/투수판 이탈|마운드 방문/.test(t)) {
-            cur.push({ x: t, red: cls === 'red' });
+          } else if (t) {
+            const k = kindOf(t);
+            if (k !== 'noise') cur.push({ x: t, red: cls === 'red', k });
           }
         });
         if (cur.length) perBlock.push({ title: bn + '회 진행 중', events: cur.reverse() });
         groups.push(...perBlock.reverse());           // 한 블록 안에서는 최근 반이닝이 먼저 오므로 뒤집는다
       });
       return groups;
+    }
+
+    // ── 이전 중계 화면이 읽는 형식(textRelays)으로 KBO 문자중계를 바꿔 준다 ──
+    async function buildKboRelay(gid, inning) {
+      const dstr = gid.slice(0, 8);
+      const list = await fetchKboLive(dstr);
+      const kg = list.find(k => k._kbo && k._kbo.gid === gid);
+      if (!kg) return null;
+      kg.date = `${dstr.slice(0, 4)}-${dstr.slice(4, 6)}-${dstr.slice(6, 8)}`;
+      const groups = kg.status === 'SCHEDULED' ? [] : await fetchKboLiveText(kg._kbo);
+
+      // 시간순으로 훑으며 항목을 만들고, 홈인/홈런으로 진행 점수를 센다
+      let aS = 0, hS = 0;
+      const items = [];      // { inn, item }
+      groups.forEach(gr => {
+        const m = /^(\d+)회(초|말)/.exec(gr.title);
+        const inn = m ? Number(m[1]) : 0, top = m ? m[2] === '초' : true;
+        items.push({ inn, item: { title: gr.title, type: 0 } });
+        let lastPa = null, intro = '';
+        const stamp = it => { it.currentGameState = { awayScore: aS, homeScore: hS }; };
+        gr.events.forEach(ev => {
+          if (ev.k === 'pitch') return;
+          if (ev.k === 'intro') { intro = ev.x; return; }
+          if (ev.k === 'pa') {
+            if (/홈런/.test(ev.x)) { if (top) aS++; else hS++; }
+            lastPa = { title: ev.x, resultText: '', textOptions: intro ? [{ type: 14, text: intro }] : [] };
+            intro = '';
+            stamp(lastPa);
+            items.push({ inn, item: lastPa });
+          } else if (ev.k === 'runner' && lastPa) {
+            if (/홈인/.test(ev.x)) { if (top) aS++; else hS++; }
+            lastPa.textOptions.push({ type: 8, text: ev.x });
+            stamp(lastPa);
+          } else {
+            const it = { title: ev.x, textOptions: [] };
+            stamp(it);
+            items.push({ inn, item: it });
+          }
+        });
+      });
+      // 계산한 점수가 실제 합계와 다르면(드문 경우) 틀린 점수를 보여주지 않는다
+      const scoresOk = Number(kg.awayScore) === aS && Number(kg.homeScore) === hS;
+      const inn = inning || kg.inning || 1;
+      const picked = items.filter(x => x.inn === inn).map(x => x.item);
+      if (!scoresOk) picked.forEach(it => { delete it.currentGameState; });
+      return {
+        gameId: gid, date: kg.date, away: kg.away, home: kg.home,
+        status: kg.status, statusCode: kg.status === 'LIVE' ? 'STARTED' : kg.status === 'FINAL' ? 'RESULT' : 'BEFORE',
+        awayScore: kg.awayScore, homeScore: kg.homeScore,
+        inning: kg.inning, inningInfo: kg.inningInfo,
+        awayInnings: [], homeInnings: [],
+        currentGameState: kg.currentGameState ? { ...kg.currentGameState, awayScore: kg.awayScore, homeScore: kg.homeScore } : null,
+        textRelays: picked.reverse(),                 // 앱은 최신이 앞(역순)인 목록을 기대한다
+        awayStarter: kg.awayStarter, homeStarter: kg.homeStarter,
+        stad: kg.stad, _source: 'kbo',
+      };
     }
 
     // ── 문자중계 조회: ?action=livetext&date=YYYY-MM-DD&away=KT&home=삼성 ──
@@ -1167,7 +1256,8 @@ export default async function handler(req, res) {
         const groups = await fetchKboLiveText(kg._kbo);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', kg.status === 'FINAL' ? 's-maxage=600' : 's-maxage=5, stale-while-revalidate=10');
-        return res.status(200).json({ available: groups.some(g => g.events.length), status: kg.status, groups });
+        const slim = groups.map(gr => ({ title: gr.title, events: gr.events.filter(e => e.k !== 'pitch' && e.k !== 'intro').map(e => ({ x: e.x, red: e.red })) }));
+        return res.status(200).json({ available: slim.some(g => g.events.length), status: kg.status, groups: slim });
       } catch (e) {
         return res.status(200).json({ available: false, reason: String(e && e.message || e) });
       }
