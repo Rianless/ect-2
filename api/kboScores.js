@@ -1,3 +1,8 @@
+// 네이버가 막혀 응답 없이 멈추는 동안 매 요청이 몇 초씩 기다리지 않도록, 한 번 실패하면 잠시 시도하지 않는다 (웜 인스턴스 간 공유)
+let naverDownUntil = 0;
+// 선발 라인업은 경기 중 바뀌지 않으므로 잠시 보관한다
+const kboLineupCache = new Map();
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
@@ -77,11 +82,17 @@ export default async function handler(req, res) {
 
   // fetch with timeout helper
   async function fetchWithTimeout(url, options = {}, timeoutMs = 8000) {
+    const isNaver = /sports\.naver\.com/.test(String(url));
+    if (isNaver && Date.now() < naverDownUntil) throw new Error('naver temporarily skipped');
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
+    const timer = setTimeout(() => controller.abort(), isNaver ? Math.min(timeoutMs, 3000) : timeoutMs);
     try {
       const r = await fetch(url, { ...options, signal: controller.signal });
+      if (isNaver) naverDownUntil = (r.status === 403 || r.status === 429 || r.status >= 500) ? Date.now() + 60000 : 0;
       return r;
+    } catch (e) {
+      if (isNaver) naverDownUntil = Date.now() + 60000;
+      throw e;
     } finally {
       clearTimeout(timer);
     }
@@ -973,7 +984,7 @@ export default async function handler(req, res) {
         const out = await buildKboRelay(String(gameId), inning);
         if (!out) return res.status(404).json({ error: 'Game not found' });
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', out.status === 'FINAL' ? 's-maxage=600' : 's-maxage=5, stale-while-revalidate=10');
+        res.setHeader('Cache-Control', out.status === 'FINAL' ? 's-maxage=600' : 's-maxage=3, stale-while-revalidate=5');
         return res.status(200).json(out);
       } catch (e) { return res.status(502).json({ error: String(e && e.message || e) }); }
     }
@@ -1255,7 +1266,7 @@ export default async function handler(req, res) {
         if (kg.status === 'SCHEDULED') return res.status(200).json({ available: false, reason: 'not started' });
         const groups = await fetchKboLiveText(kg._kbo);
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Cache-Control', kg.status === 'FINAL' ? 's-maxage=600' : 's-maxage=5, stale-while-revalidate=10');
+        res.setHeader('Cache-Control', kg.status === 'FINAL' ? 's-maxage=600' : 's-maxage=3, stale-while-revalidate=5');
         const slim = groups.map(gr => ({ title: gr.title, events: gr.events.filter(e => e.k !== 'pitch' && e.k !== 'intro').map(e => ({ x: e.x, red: e.red })) }));
         return res.status(200).json({ available: slim.some(g => g.events.length), status: kg.status, groups: slim });
       } catch (e) {
@@ -1264,6 +1275,9 @@ export default async function handler(req, res) {
     }
 
     // ── 오늘 전체 경기 목록 ──
+    // KBO 공식 요청은 네이버와 동시에 시작한다 (네이버가 느려도 KBO 값이 기다리지 않게)
+    const kboLiveP = fetchKboLive(todayStr).catch(() => null);
+    const kboSbP = fetchKboScoreboard(todayStr).catch(() => null);
     const rawGames = await fetchSchedule(todayDash).catch(() => []);
 
     const detailMap = {};
@@ -1286,12 +1300,20 @@ export default async function handler(req, res) {
 
     // 네이버에 없거나 아직 '예정'인데 KBO 공식이 진행 중/종료로 알려주면 KBO 값으로 채운다
     try {
-      const kboGames = await fetchKboLive(todayStr);
+      const kboGames = await kboLiveP;
+      if (!kboGames) throw new Error('kbo list failed');
       await Promise.all(kboGames.map(async k => {
         const cur = allGames.find(a => a.away === k.away && a.home === k.home);
         const target = cur || k;
         if (!target.lineup && k._kbo && k._kbo.lineupOk) {
-          try { target.lineup = await fetchKboLineup(k._kbo, k.awayStarter, k.homeStarter); } catch (e) {}
+          try {
+            const hit = kboLineupCache.get(k._kbo.gid);
+            if (hit && Date.now() - hit.t < 600000) target.lineup = hit.v;
+            else {
+              const lu = await fetchKboLineup(k._kbo, k.awayStarter, k.homeStarter);
+              if (lu) { kboLineupCache.set(k._kbo.gid, { t: Date.now(), v: lu }); target.lineup = lu; }
+            }
+          } catch (e) {}
         }
       }));
       kboGames.forEach(k => {
@@ -1311,7 +1333,8 @@ export default async function handler(req, res) {
 
     // KBO 스코어보드로 이닝별 점수·안타·실책·볼넷을 채운다 (진행 중·종료 경기)
     try {
-      const sbs = await fetchKboScoreboard(todayStr);
+      const sbs = await kboSbP;
+      if (!sbs) throw new Error('kbo scoreboard failed');
       sbs.forEach(sb => {
         const cur = allGames.find(a => a.away === sb.away && a.home === sb.home);
         if (!cur || cur.status === 'SCHEDULED') return;
@@ -1328,6 +1351,7 @@ export default async function handler(req, res) {
     } catch (e) { /* 스코어보드 실패는 무시 */ }
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
+    res.setHeader('Cache-Control', 's-maxage=2, stale-while-revalidate=3');
     return res.status(200).json({ games: allGames, date: todayStr });
   } catch(e) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');

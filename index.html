@@ -4005,7 +4005,7 @@ function liveTextHtml(g, d) {
       </div>${evs}</div>`;
   }).join('');
   return `<div style="margin:0 16px 18px">
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:15px">📋</span><span style="font-size:13px;font-weight:800;color:${d.text}">문자중계</span><span style="font-size:10px;color:${d.sub}">KBO 공식${g.status === 'LIVE' ? ' · 10초마다 갱신' : ''}</span></div>
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:15px">📋</span><span style="font-size:13px;font-weight:800;color:${d.text}">문자중계</span><span style="font-size:10px;color:${d.sub}">KBO 공식${g.status === 'LIVE' ? ' · 5초마다 갱신' : ''}</span></div>
     <div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:16px;padding:2px 14px 8px;max-height:460px;overflow-y:auto;box-shadow:0 1px 6px rgba(0,0,0,0.04)">${body}</div>
   </div>`;
 }
@@ -4062,7 +4062,7 @@ function liveBoardHtml(g, d) {
     <div style="margin-top:10px;border-top:1px solid ${d.bgB};padding-top:6px">
       ${row('투수', gs.pitcherName)}${row('타자', gs.batterName)}
     </div>
-    <div style="margin-top:8px;font-size:10px;color:${d.sub};text-align:center">KBO 공식 데이터 · 10초마다 자동 갱신</div>
+    <div style="margin-top:8px;font-size:10px;color:${d.sub};text-align:center">KBO 공식 데이터 · 5초마다 자동 갱신</div>
   </div>`;
 }
 
@@ -5322,16 +5322,25 @@ function openModal(idx,date) {
 // 팝업이 열려 있는 동안 실시간 경기 상황을 자동 갱신 (진행 중이거나 시작 시각이 지난 경기)
 let _modalLiveTimer = null;
 function stopModalLivePoll() { if (_modalLiveTimer) { clearInterval(_modalLiveTimer); _modalLiveTimer = null; } }
+let _modalTickBusy = false;
 async function modalLiveTick() {
   const mg = state.modalGame;
-  if (!mg || document.hidden) return;
+  if (!mg || document.hidden || _modalTickBusy) return;
+  _modalTickBusy = true;
+  try { await _modalLiveTickInner(mg); } finally { _modalTickBusy = false; }
+}
+async function _modalLiveTickInner(mg) {
   const started = mg.time && new Date(mg.date + 'T' + mg.time + ':00+09:00').getTime() <= Date.now() + 10*60*1000;
   if (!(mg.status === 'LIVE' || (mg.status === 'SCHEDULED' && started))) return;
   try {
-    await fetchTodayScores(mg.date); // 상태·스코어·이닝 갱신
+    // 문자중계는 스코어 갱신과 동시에 요청한다 (순서대로 기다리지 않는다)
+    ensureLiveText(mg);
+    // 오늘 경기는 전체 갱신(5초)이 이미 돌고 있어 중복 요청하지 않는다. 다른 날짜만 직접 갱신
+    if (mg.date !== _today0) await fetchTodayScores(mg.date);
     const cur = SCH.find(s => s.date===mg.date && s.away===mg.away && s.home===mg.home);
     if (!cur || state.modalGame?.gameId !== mg.gameId && mg.gameId) return;
-    if (cur.gameId) {
+    // 네이버 경기 번호일 때만 네이버 라인업을 시도 (KBO 번호는 해당 없음)
+    if (cur.gameId && !/^\d{8}[A-Z]{4}\d$/.test(String(cur.gameId))) {
       const lu = await fetchLineupDirect(cur.gameId, cur.inning || 1);
       if (lu) {
         if (lu.home || lu.away) cur.lineup = lu;
@@ -5339,13 +5348,12 @@ async function modalLiveTick() {
       }
     }
     if (state.modalGame) { state.modalGame = cur; renderModal(D()); }
-    ensureLiveText(cur);
   } catch(e) {}
 }
 function startModalLivePoll() {
   stopModalLivePoll();
   modalLiveTick();
-  _modalLiveTimer = setInterval(modalLiveTick, 10000);
+  _modalLiveTimer = setInterval(modalLiveTick, 5000);
 }
 
 function closeModal() {
@@ -6306,12 +6314,16 @@ async function fetchTodayScores(targetDate='') {
 
 // 실시간 스코어 폴링 (앱 init에서 시작)
 // 30초마다 갱신
-let _pollTick = 0;
+let _pollTick = 0, _pollBusy = false;
 setInterval(() => {
   _pollTick++;
-  // 진행 중인 경기가 있으면 10초마다(진행 기록이 촘촘하도록), 없으면 30초마다
-  if (SCH.some(g => g.status === 'LIVE') || _pollTick % 3 === 0) fetchTodayScores();
-}, 10000);
+  if (_pollBusy || document.hidden) return;
+  // 진행 중인 경기가 있으면 5초마다, 없으면 30초마다. 이전 요청이 끝나기 전에는 새로 보내지 않는다
+  if (SCH.some(g => g.status === 'LIVE') || _pollTick % 6 === 0) {
+    _pollBusy = true;
+    Promise.resolve(fetchTodayScores()).catch(() => {}).finally(() => { _pollBusy = false; });
+  }
+}, 5000);
 
 // ── 중계 전체화면 ──
 
@@ -7323,10 +7335,15 @@ window.openRelay = async function(gameId, away, home, inn) {
 
   clearInterval(_relayInterval);
   if (schGame?.status === 'LIVE') {
+    let _relayBusy = false;
     _relayInterval = setInterval(async () => {
-      const d = await fetchRelayData(gameId, _relayInn);
-      if (d) { _relayData = d; updateRelayUI(); }
-    }, 20000);
+      if (_relayBusy || document.hidden) return;
+      _relayBusy = true;
+      try {
+        const d = await fetchRelayData(gameId, _relayInn);
+        if (d) { _relayData = d; updateRelayUI(); }
+      } finally { _relayBusy = false; }
+    }, 5000);
   }
 
   // 헤더 + 다이아몬드 영역: 아래 스와이프로 닫기
