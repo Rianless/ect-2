@@ -1090,6 +1090,89 @@ export default async function handler(req, res) {
       };
     }
 
+    // ── KBO 공식 스코어보드 페이지: 경기 중에도 이닝별 점수·H/E/B 를 준다 ──
+    async function fetchKboScoreboard(dateStr) {
+      const r = await fetchWithTimeout(`https://www.koreabaseball.com/Schedule/ScoreBoard.aspx?gameDate=${dateStr}`, {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      }, 10000);
+      if (!r.ok) throw new Error('scoreboard ' + r.status);
+      const html = await r.text();
+      const text = v => String(v == null ? '' : v).replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').trim();
+      const out = [];
+      html.split(/<div class=["']smsScore["']/).slice(1).forEach(blk => {
+        const names = [...blk.matchAll(/<strong class=['"]teamT['"]>([^<]*)<\/strong>/g)].map(m => text(m[1]));
+        if (names.length < 2) return;
+        const rows = [...blk.matchAll(/<tr>\s*<th scope="row">([^<]*)<\/th>([\s\S]*?)<\/tr>/g)].map(m => ({
+          name: text(m[1]),
+          cells: [...m[2].matchAll(/<td[^>]*>([\s\S]*?)<\/td>/g)].map(c => text(c[1])),
+        }));
+        if (rows.length < 2) return;
+        const toSide = row => {
+          const c = row.cells;                    // 이닝 15칸 + R H E B
+          const inn = c.slice(0, 15).map(v => (/^\d+$/.test(v) ? Number(v) : -1));
+          const tail = c.slice(15).map(v => (/^\d+$/.test(v) ? Number(v) : null));
+          return { inn, r: tail[0], h: tail[1], e: tail[2], b: tail[3] };
+        };
+        out.push({ away: mapTeam(names[0]), home: mapTeam(names[1]), a: toSide(rows[0]), h: toSide(rows[1]) });
+      });
+      return out;
+    }
+
+    // ── KBO 공식 문자중계(LiveTextView2): 타석 결과·득점·교체 등 ──
+    // 반환: [{ title:'3회말 삼성 공격', events:[{x, red}] }]  (시간순: 오래된 것 → 최신)
+    async function fetchKboLiveText(kb) {
+      const r = await fetchWithTimeout('https://www.koreabaseball.com/Game/LiveTextView2.aspx', {
+        method: 'POST',
+        headers: {
+          'User-Agent': 'Mozilla/5.0',
+          'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+          'Referer': `https://www.koreabaseball.com/Game/LiveText.aspx?leagueId=1&seriesId=${kb.srId}&gameId=${kb.gid}&gyear=${todayDash.slice(0, 4)}`,
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+        body: new URLSearchParams({ leagueId: '1', seriesId: kb.srId, gameId: kb.gid, gyear: todayDash.slice(0, 4) }).toString(),
+      }, 12000);
+      if (!r.ok) throw new Error('livetext ' + r.status);
+      const html = await r.text();
+      const clean = t => String(t).replace(/<br\s*\/?>/gi, ' ').replace(/<[^>]*>/g, '').replace(/&nbsp;/g, ' ').replace(/\s+/g, ' ').trim();
+      const byBlock = {};
+      for (const m of html.matchAll(/<span id="rptLiveText(\d+)_spanLiveText_\d+" class="([^"]*)">([\s\S]*?)<\/span>/g)) {
+        (byBlock[m[1]] = byBlock[m[1]] || []).push({ cls: m[2], t: clean(m[3]) });
+      }
+      const groups = [];
+      Object.keys(byBlock).map(Number).sort((a, b) => a - b).forEach(bn => {
+        const perBlock = [];
+        let cur = [];
+        byBlock[bn].forEach(({ cls, t }) => {
+          if (cls === 'blue') {                       // "3회말 삼성 공격 ----": 그 반이닝의 맨 끝(=가장 오래된 줄) 표시
+            perBlock.push({ title: t.replace(/-+$/, '').trim(), events: cur.reverse() });
+            cur = [];
+          } else if (t && !/^-\s/.test(t) && !/^\d+번타자/.test(t) && !/투수판 이탈|마운드 방문/.test(t)) {
+            cur.push({ x: t, red: cls === 'red' });
+          }
+        });
+        if (cur.length) perBlock.push({ title: bn + '회 진행 중', events: cur.reverse() });
+        groups.push(...perBlock.reverse());           // 한 블록 안에서는 최근 반이닝이 먼저 오므로 뒤집는다
+      });
+      return groups;
+    }
+
+    // ── 문자중계 조회: ?action=livetext&date=YYYY-MM-DD&away=KT&home=삼성 ──
+    if (action === 'livetext') {
+      const aw = String(req.query.away || ''), hm = String(req.query.home || '');
+      try {
+        const list = await fetchKboLive(todayStr);
+        const kg = list.find(k => k.away === aw && k.home === hm);
+        if (!kg || !kg._kbo) return res.status(200).json({ available: false, reason: 'game not found' });
+        if (kg.status === 'SCHEDULED') return res.status(200).json({ available: false, reason: 'not started' });
+        const groups = await fetchKboLiveText(kg._kbo);
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Cache-Control', kg.status === 'FINAL' ? 's-maxage=600' : 's-maxage=5, stale-while-revalidate=10');
+        return res.status(200).json({ available: groups.some(g => g.events.length), status: kg.status, groups });
+      } catch (e) {
+        return res.status(200).json({ available: false, reason: String(e && e.message || e) });
+      }
+    }
+
     // ── 오늘 전체 경기 목록 ──
     const rawGames = await fetchSchedule(todayDash).catch(() => []);
 
@@ -1135,6 +1218,24 @@ export default async function handler(req, res) {
         }
       });
     } catch (e) { /* KBO 목록 실패는 무시 */ }
+
+    // KBO 스코어보드로 이닝별 점수·안타·실책·볼넷을 채운다 (진행 중·종료 경기)
+    try {
+      const sbs = await fetchKboScoreboard(todayStr);
+      sbs.forEach(sb => {
+        const cur = allGames.find(a => a.away === sb.away && a.home === sb.home);
+        if (!cur || cur.status === 'SCHEDULED') return;
+        const hasNaverInn = (cur.awayInnings || []).some(x => x >= 0);
+        if (!hasNaverInn && (sb.a.inn.some(x => x >= 0) || sb.h.inn.some(x => x >= 0))) {
+          const len = Math.max(9, sb.a.inn.reduce((m, v, i) => (v >= 0 ? i + 1 : m), 0), sb.h.inn.reduce((m, v, i) => (v >= 0 ? i + 1 : m), 0));
+          cur.awayInnings = sb.a.inn.slice(0, len);
+          cur.homeInnings = sb.h.inn.slice(0, len);
+        }
+        if (sb.a.h != null) { cur.awayHit = sb.a.h; cur.homeHit = sb.h.h; }
+        if (sb.a.e != null) { cur.awayError = sb.a.e; cur.homeError = sb.h.e; }
+        if (sb.a.b != null) { cur.awayBallFour = sb.a.b; cur.homeBallFour = sb.h.b; }
+      });
+    } catch (e) { /* 스코어보드 실패는 무시 */ }
 
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.status(200).json({ games: allGames, date: todayStr });
