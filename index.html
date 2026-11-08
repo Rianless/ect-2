@@ -3973,6 +3973,8 @@ async function ensureLiveText(g) {
     const r = await fetch(`/api/kboScores?action=livetext&date=${g.date}&away=${encodeURIComponent(g.away)}&home=${encodeURIComponent(g.home)}`);
     if (!r.ok) throw new Error('livetext ' + r.status);
     g._lt = { t: Date.now(), d: await r.json() };
+    // 타자·투수 기록: 경기 중에는 문자중계로 집계한 값을 쓴다 (끝난 경기는 공식 리뷰 기록이 우선)
+    if (g._lt.d && g._lt.d.box && (g.status === 'LIVE' || (g.status === 'FINAL' && !g._review))) applyLiveBox(g, g._lt.d.box);
   } catch (e) {
     g._lt = g._lt || { t: Date.now(), d: { available: false, reason: String(e && e.message || e) } };
   } finally {
@@ -4004,6 +4006,16 @@ function relayChip(x) {
   ];
   for (const [re, label, color, bg] of M) if (re.test(x)) return { label, color, bg };
   return null;
+}
+function applyLiveBox(g, box) {
+  if (!box || !((box.awayBatters || []).length || (box.homeBatters || []).length)) return;
+  const cur = g.lineup;
+  if (cur && !cur.starting && !cur.live) return;      // 네이버 라인업·공식 리뷰 기록이 있으면 그대로 둔다
+  g.lineup = {
+    away: _kboLineupSide(box.awayBatters, box.awayPitchers),
+    home: _kboLineupSide(box.homeBatters, box.homePitchers),
+    fromKbo: true, live: true,
+  };
 }
 function liveTextHtml(g, d) {
   const lt = g._lt && g._lt.d;
@@ -4600,12 +4612,13 @@ function renderModal(d) {
         </div>
       </div>` : ''}
 
-      ${isFinal && g.lineup ? `
+      ${(isFinal || isLive) && g.lineup && !g.lineup.starting ? `
       <!-- ── 타자/투수 기록 섹션 ── -->
       <div style="margin-bottom:18px;margin-left:16px;margin-right:16px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
           <span style="font-size:15px">📊</span>
           <span style="font-size:13px;font-weight:800;color:${d.text}">경기 기록</span>
+          ${(isLive || g.lineup.live) ? `<span style="font-size:10px;color:${d.sub}">${isLive ? '경기 중 · ' : ''}문자중계로 집계</span>` : ''}
         </div>
         <!-- 팀 선택 탭 -->
         <div style="display:flex;gap:4px;margin-bottom:10px">
@@ -6231,7 +6244,7 @@ async function fetchTodayScores(targetDate='') {
       if (g.homeError != null) upd.homeError = g.homeError;
       if (g.awayBallFour != null) upd.awayBallFour = g.awayBallFour;
       if (g.homeBallFour != null) upd.homeBallFour = g.homeBallFour;
-      if (g.lineup) upd.lineup = g.lineup;
+      if (g.lineup && !(g.lineup.starting && SCH[idx].lineup && !SCH[idx].lineup.starting)) upd.lineup = g.lineup;
       if (g.currentGameState) {
         // 기존 currentGameState에 이름이 이미 있으면 보존 (숫자 ID로 덮어쓰기 방지)
         const prevGs = SCH[idx].currentGameState;
@@ -7919,7 +7932,7 @@ async function ensureGameReview(g) {
     if (!g.homeStarter) g.homeStarter = (rv.homePitchers.find(p => p.role === '선발') || {}).name || g.homeStarter;
 
     // 라인업(다이아몬드·타자/투수 기록): 이미 있으면 유지
-    if (!g.lineup || !(g.lineup.away?.batters?.length || g.lineup.home?.batters?.length)) {
+    if (!g.lineup || g.lineup.starting || g.lineup.live || !(g.lineup.away?.batters?.length || g.lineup.home?.batters?.length)) {
       g.lineup = {
         away: _kboLineupSide(rv.awayBatters, rv.awayPitchers),
         home: _kboLineupSide(rv.homeBatters, rv.homePitchers),
