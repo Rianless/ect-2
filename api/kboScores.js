@@ -1121,6 +1121,7 @@ export default async function handler(req, res) {
       return {
         away: { batters: awayB, pitchers: sp(awayStarter) },
         home: { batters: homeB, pitchers: sp(homeStarter) },
+        fromKbo: true, starting: true,   // 선발 라인업(기록은 0): 경기 기록이 생기면 교체된다
       };
     }
 
@@ -1256,6 +1257,101 @@ export default async function handler(req, res) {
       };
     }
 
+    // ── 문자중계로 타자·투수 기록을 직접 집계 (경기 중에는 KBO 박스스코어가 아직 없다) ──
+    // 반환: 리뷰(action=review)와 같은 모양의 { awayBatters, homeBatters, awayPitchers, homePitchers }
+    function deriveBox(groups, lineup, starters) {
+      const innStr = o => { const f = Math.floor(o / 3), r = o % 3; return f ? (r ? `${f} ${r}/3` : `${f}`) : (r ? `${r}/3` : '0'); };
+      const mkB = (order, name, pos) => ({ order, name, pos: pos || '', ab: 0, h: 0, rbi: 0, r: 0, bb: 0, pa: [] });
+      const bat = { away: {}, home: {} };           // order -> [entries]
+      ['away', 'home'].forEach(side => {
+        ((lineup && lineup[side] && lineup[side].batters) || []).forEach(b => { (bat[side][b.order] = bat[side][b.order] || []).push(mkB(b.order, b.name, b.pos)); });
+      });
+      const pit = { away: [], home: [] }, pitBy = { away: {}, home: {} };
+      const getP = (side, name) => {
+        if (!name) return null;
+        if (!pitBy[side][name]) { const o = { name, role: pit[side].length ? '' : '선발', result: '', outs: 0, pc: 0, hit: 0, hr: 0, bb: 0, kk: 0, r: 0 }; pitBy[side][name] = o; pit[side].push(o); }
+        return pitBy[side][name];
+      };
+      const curP = { away: starters.away || '', home: starters.home || '' };
+      const resp = { away: {}, home: {} };           // 타자/주자 이름 -> 그 주자를 내보낸 투수 (실점 책임)
+      getP('away', curP.away); getP('home', curP.home);
+      const findB = (side, name) => { for (const o of Object.keys(bat[side])) { const e = bat[side][o].find(x => x.name === name); if (e) return e; } return null; };
+      let pending = 0, tail = null;                 // 진행 중인 타석의 투구 수 / 마지막 반이닝의 수비 쪽
+      groups.forEach(gr => {
+        const top = /초/.test(gr.title.split(' ')[0] || ''), bs = top ? 'away' : 'home', fs = top ? 'home' : 'away';
+        let outs = 0, intro = null, last = null;
+        pending = 0; tail = fs;
+        gr.events.forEach(ev => {
+          if (ev.k === 'pitch') { pending++; return; }
+          if (ev.k === 'intro') { const m = /^(\d+)번타자\s+(\S+)/.exec(ev.x); if (m) intro = { order: Number(m[1]), name: m[2] }; return; }
+          if (ev.k === 'info') {
+            last = null;
+            const m = /^투수 (\S+) : 투수 (\S+)/.exec(ev.x);
+            if (m) {
+              const oldP = getP(fs, curP[fs]);            // 교체 전까지 던진 공은 이전 투수 몫
+              if (oldP) oldP.pc += pending;
+              pending = 0;
+              curP[fs] = m[2]; getP(fs, m[2]);
+            }
+            return;
+          }
+          if (ev.k === 'pa') {
+            const m = /^([^:]{1,12}) : (.*)$/.exec(ev.x); if (!m) return;
+            const name = m[1].trim(), res = m[2];
+            let e = findB(bs, name);
+            if (!e) { const ord = (intro && intro.name === name) ? intro.order : 0; e = mkB(ord, name, ''); (bat[bs][ord] = bat[bs][ord] || []).push(e); }
+            else if (e.order === 0 && intro && intro.name === name && intro.order) {   // 대주자로 먼저 득점한 선수가 뒤늦게 타석에 선 경우
+              bat[bs][0] = (bat[bs][0] || []).filter(x => x !== e); e.order = intro.order; (bat[bs][intro.order] = bat[bs][intro.order] || []).push(e);
+            }
+            const P = getP(fs, curP[fs]);
+            const hit = /1루타|2루타|3루타|홈런|안타/.test(res) && !/희생|병살/.test(res);
+            const hr = /홈런/.test(res), walk = /볼넷|고의4구|고의사구/.test(res);
+            const hbp = !walk && /몸에 맞는|몸맞|사구/.test(res), sac = /희생/.test(res), err = /실책/.test(res);
+            const notOut = /낫 ?아웃/.test(res) && /출루|폭투|포일|실책/.test(res);
+            let o = 0;
+            // 병살타도 타자는 1아웃이다. 함께 잡힌 주자의 아웃은 아래 주자 줄에서 센다
+            if (!notOut && /아웃/.test(res) && !err) o = 1;
+            if (!(walk || hbp || sac)) e.ab++;
+            if (hit) e.h++;
+            if (walk) e.bb++;
+            e.pa.push(res);
+            if (P) { P.pc += pending; if (hit) P.hit++; if (hr) P.hr++; if (walk || hbp) P.bb++; if (/삼진|스트라이크 낫 ?아웃/.test(res)) P.kk++; P.outs += o; }
+            if (P && (hit || walk || hbp || err || notOut || /야수선택/.test(res))) resp[bs][name] = P.name;
+            if (hr) { e.r++; e.rbi++; if (P) P.r++; }
+            outs = Math.min(3, outs + o);
+            pending = 0; intro = null;
+            last = { e, ok: !/병살|실책/.test(res) };
+          } else if (ev.k === 'runner') {
+            const m = /^(?:[123]루주자|타자주자)\s+(\S+)\s*:\s*(.*)$/.exec(ev.x); if (!m) return;
+            const P = getP(fs, curP[fs]);
+            const pr = /대주자\s+(\S+)\s*\(으\)로 교체/.exec(m[2]);
+            if (pr) {                                    // 대주자 교체: 같은 타순에 새 선수를 만든다
+              const old = findB(bs, m[1]), ord = old ? old.order : 0;
+              if (!findB(bs, pr[1])) (bat[bs][ord] = bat[bs][ord] || []).push(mkB(ord, pr[1], ''));
+              if (resp[bs][m[1]]) resp[bs][pr[1]] = resp[bs][m[1]];
+              return;
+            }
+            if (/홈인/.test(m[2])) {
+              let rb = findB(bs, m[1]);
+              if (!rb) { rb = mkB(0, m[1], ''); (bat[bs][0] = bat[bs][0] || []).push(rb); }
+              rb.r++;
+              const charge = (resp[bs][m[1]] && pitBy[fs][resp[bs][m[1]]]) || P;
+              if (charge) charge.r++;
+              if (last && last.ok && !/실책/.test(m[2])) last.e.rbi++;
+            } else if (/아웃/.test(m[2]) && !/진루/.test(m[2])) {
+              if (P) P.outs++;
+              outs = Math.min(3, outs + 1);
+            }
+          }
+        });
+      });
+      // 끝나지 않은 타석의 투구 수도 현재 투수에 더한다
+      if (tail && pending) { const P = getP(tail, curP[tail]); if (P) P.pc += pending; }
+      const flat = side => Object.keys(bat[side]).map(Number).sort((a, b) => a - b).flatMap(o => bat[side][o]);
+      const pits = side => pit[side].map(x => ({ name: x.name, role: x.role, result: '', inn: innStr(x.outs), pc: x.pc, hit: x.hit, hr: x.hr, bb: x.bb, kk: x.kk, r: x.r, er: x.r, era: '' }));
+      return { awayBatters: flat('away'), homeBatters: flat('home'), awayPitchers: pits('away'), homePitchers: pits('home') };
+    }
+
     // ── 문자중계 조회: ?action=livetext&date=YYYY-MM-DD&away=KT&home=삼성 ──
     if (action === 'livetext') {
       const aw = String(req.query.away || ''), hm = String(req.query.home || '');
@@ -1268,7 +1364,14 @@ export default async function handler(req, res) {
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', kg.status === 'FINAL' ? 's-maxage=600' : 's-maxage=3, stale-while-revalidate=5');
         const slim = groups.map(gr => ({ title: gr.title, events: gr.events.filter(e => e.k !== 'pitch' && e.k !== 'intro').map(e => ({ x: e.x, red: e.red })) }));
-        return res.status(200).json({ available: slim.some(g => g.events.length), status: kg.status, groups: slim });
+        // 타자·투수 기록 집계 (선발 라인업은 서버에 보관한 것을 쓴다)
+        let box = null;
+        try {
+          let lu = (kboLineupCache.get(kg._kbo.gid) || {}).v;
+          if (!lu) { lu = await fetchKboLineup(kg._kbo, kg.awayStarter, kg.homeStarter); if (lu) kboLineupCache.set(kg._kbo.gid, { t: Date.now(), v: lu }); }
+          box = deriveBox(groups, lu, { away: kg.awayStarter, home: kg.homeStarter });
+        } catch (e) {}
+        return res.status(200).json({ available: slim.some(g => g.events.length), status: kg.status, groups: slim, box });
       } catch (e) {
         return res.status(200).json({ available: false, reason: String(e && e.message || e) });
       }
