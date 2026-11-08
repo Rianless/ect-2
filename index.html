@@ -121,6 +121,11 @@
     .cal-day.sat{color:#4FC3F7}.cal-day.sun{color:#EF5350}
     .inn-table{width:100%;border-collapse:collapse;font-size:12px;min-width:300px}
     .inn-table td{text-align:center;padding:6px 3px}
+    .inn-table thead td{border-bottom:1px solid rgba(128,128,128,0.18)}
+    .inn-table tbody tr:nth-child(even) td{background:rgba(128,128,128,0.06)}
+    @keyframes liveBlink{0%,100%{opacity:1}50%{opacity:.3}}
+    .live-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:#fff;margin-right:5px;vertical-align:middle;animation:liveBlink 1.2s ease-in-out infinite}
+    .tl-chip{flex:none;min-width:46px;text-align:center;font-size:10px;font-weight:800;border-radius:6px;padding:3px 6px;margin-top:1px;white-space:nowrap}
     .inn-table .team-cell{text-align:left;padding:8px 6px;font-size:11px;font-weight:700}
     .tag-kia{font-size:9.5px;font-weight:800;letter-spacing:0.2px;background:linear-gradient(135deg,#E31837,#b80e2c);color:#fff;border-radius:6px;padding:2px 7px;box-shadow:0 2px 8px rgba(227,24,55,0.35),var(--edge-top)}
     .tag-lu{font-size:9.5px;font-weight:800;background:rgba(0,230,118,0.15);color:#00C853;border-radius:5px;padding:2px 6px;border:1px solid rgba(0,230,118,0.35)}
@@ -1400,7 +1405,7 @@ function renderCalSplit(d) {
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
           <div style="display:flex;align-items:center;gap:5px">
             <button onclick="event.stopPropagation();toggleFavByKey('${g.date}','${g.away}','${g.home}')" style="font-size:16px;line-height:1;padding:0 2px">${isFav(g)?'⭐':'☆'}</button>
-            ${isLive?`<span style="font-size:9px;background:#E31837;color:#fff;border-radius:4px;padding:1px 5px;font-weight:700;animation:fadeIn 0.5s infinite alternate">🔴 LIVE</span>`:
+            ${isLive?`<span style="font-size:9px;background:#E31837;color:#fff;border-radius:4px;padding:1px 5px;font-weight:700;animation:fadeIn 0.5s infinite alternate"><span class="live-dot"></span>LIVE</span>`:
               isFinal?`<span style="font-size:9px;background:rgba(0,0,0,0.25);color:${d.text};border-radius:4px;padding:1px 5px;font-weight:700">종료</span>`:
               isCanceled?`<span style="font-size:9px;background:${cancelMeta.bg};color:${cancelMeta.color};border-radius:4px;padding:1px 5px;font-weight:700;border:1px solid ${cancelMeta.border}">${cancelMeta.icon} ${cancelMeta.label}</span>`:
               `<span style="font-size:11px;font-weight:700;color:#FFB300">${g.time} 시작</span>`}
@@ -3943,21 +3948,65 @@ async function ensureLiveText(g) {
   }
   if (state.modalGame && state.modalGame.date === g.date && state.modalGame.away === g.away && state.modalGame.home === g.home) renderModal(D());
 }
+// 타석 결과 문장 → 배지(이름, 글자색, 배경색)
+function relayChip(x) {
+  const M = [
+    [/홈런/, '홈런', '#E31837', 'rgba(227,24,55,0.14)'],
+    [/3루타/, '3루타', '#E31837', 'rgba(227,24,55,0.11)'],
+    [/2루타/, '2루타', '#E31837', 'rgba(227,24,55,0.11)'],
+    [/내야안타/, '내야안타', '#FF6600', 'rgba(255,102,0,0.12)'],
+    [/1루타|안타/, '안타', '#E31837', 'rgba(227,24,55,0.09)'],
+    [/삼진/, '삼진', '#6b7280', 'rgba(128,128,128,0.16)'],
+    [/볼넷|고의4구|고의사구/, '볼넷', '#0078ff', 'rgba(0,120,255,0.11)'],
+    [/몸에 맞는|사구/, '사구', '#FF6600', 'rgba(255,102,0,0.12)'],
+    [/병살/, '병살', '#374151', 'rgba(128,128,128,0.2)'],
+    [/희생/, '희생', '#6b7280', 'rgba(128,128,128,0.16)'],
+    [/실책/, '실책', '#FF6600', 'rgba(255,102,0,0.12)'],
+    [/비디오 판독/, '판독', '#9C27B0', 'rgba(156,39,176,0.12)'],
+    [/교체|수비위치 변경/, '교체', '#9C27B0', 'rgba(156,39,176,0.12)'],
+    [/도루/, '도루', '#0a9d6b', 'rgba(0,200,100,0.13)'],
+    [/폭투|보크|포일/, '폭투', '#9C27B0', 'rgba(156,39,176,0.12)'],
+    [/땅볼/, '땅볼', '#6b7280', 'rgba(128,128,128,0.14)'],
+    [/플라이|뜬공|라인드라이브/, '뜬공', '#6b7280', 'rgba(128,128,128,0.14)'],
+    [/아웃/, '아웃', '#6b7280', 'rgba(128,128,128,0.14)'],
+  ];
+  for (const [re, label, color, bg] of M) if (re.test(x)) return { label, color, bg };
+  return null;
+}
 function liveTextHtml(g, d) {
   const lt = g._lt && g._lt.d;
   if (!lt || !lt.available) return '';
   const groups = [...lt.groups].reverse();            // 최신 반이닝이 위
   const body = groups.map(gr => {
+    const tm = (/^\d+회(?:초|말)\s+(\S+)/.exec(gr.title) || [])[1] || '';
+    const tcolor = (T[tm] || {}).color || '#888';
+    const runs = gr.events.filter(e => /홈인/.test(e.x)).length + gr.events.filter(e => /^[^:]{1,12} : .*홈런/.test(e.x)).length;
     const evs = [...gr.events].reverse().map(e => {
-      const hr = /홈런/.test(e.x), sub = /교체|비디오 판독/.test(e.x), run = e.red || /홈인/.test(e.x);
-      const color = hr ? '#E31837' : run ? '#E31837' : sub ? d.sub : d.text;
-      return `<div style="padding:5px 0;font-size:12px;line-height:1.5;color:${color};font-weight:${hr || run ? 800 : 500}">${hr ? '💥 ' : run ? '🏃 ' : sub ? '🔁 ' : ''}${e.x}</div>`;
-    }).join('') || `<div style="padding:5px 0;font-size:12px;color:${d.sub}">아직 기록이 없어요</div>`;
-    return `<div style="margin-bottom:6px"><div style="position:sticky;top:0;background:${d.bg};padding:6px 0 4px;font-size:12px;font-weight:900;color:${d.text};border-bottom:1px solid ${d.bgB}">${gr.title}</div>${evs}</div>`;
+      const runner = /^(1루주자|2루주자|3루주자|타자주자)\s/.test(e.x);
+      const scored = /홈인/.test(e.x);
+      if (runner) {
+        return `<div style="display:flex;gap:6px;align-items:baseline;padding:2px 0 2px 54px;font-size:11px;line-height:1.5;color:${scored ? '#E31837' : d.sub};font-weight:${scored ? 800 : 500}"><span>↳</span><span>${scored ? '🏃 ' : ''}${e.x}</span></div>`;
+      }
+      const chip = relayChip(e.x);
+      const m = /^([^:]{1,12}) : (.*)$/.exec(e.x);
+      const hr = /홈런/.test(e.x);
+      const text = m
+        ? `<span style="font-weight:800;color:${d.text}">${m[1]}</span><span style="color:${hr ? '#E31837' : d.sub};font-weight:${hr ? 800 : 500}"> ${m[2]}</span>`
+        : `<span style="color:${d.sub}">${e.x}</span>`;
+      return `<div style="display:flex;gap:8px;align-items:flex-start;padding:7px 0 3px;font-size:12px;line-height:1.5">
+        ${chip ? `<span class="tl-chip" style="color:${chip.color};background:${chip.bg}">${hr ? '💥 ' : ''}${chip.label}</span>` : `<span class="tl-chip" style="color:${d.sub}">•</span>`}
+        <div style="flex:1;min-width:0">${text}</div></div>`;
+    }).join('') || `<div style="padding:8px 0;font-size:12px;color:${d.sub}">아직 기록이 없어요</div>`;
+    return `<div style="margin-bottom:10px">
+      <div style="position:sticky;top:0;z-index:1;display:flex;align-items:center;gap:8px;background:${d.bg};padding:8px 0 6px;border-bottom:1px solid ${d.bgB}">
+        <span style="width:4px;height:16px;border-radius:2px;background:${tcolor}"></span>
+        <span style="flex:1;font-size:12px;font-weight:900;color:${d.text}">${gr.title}</span>
+        ${runs ? `<span style="font-size:10px;font-weight:800;color:#fff;background:#E31837;border-radius:10px;padding:2px 8px">${runs}득점</span>` : ''}
+      </div>${evs}</div>`;
   }).join('');
   return `<div style="margin:0 16px 18px">
     <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:15px">📋</span><span style="font-size:13px;font-weight:800;color:${d.text}">문자중계</span><span style="font-size:10px;color:${d.sub}">KBO 공식${g.status === 'LIVE' ? ' · 10초마다 갱신' : ''}</span></div>
-    <div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:4px 14px 8px;max-height:460px;overflow-y:auto">${body}</div>
+    <div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:16px;padding:2px 14px 8px;max-height:460px;overflow-y:auto;box-shadow:0 1px 6px rgba(0,0,0,0.04)">${body}</div>
   </div>`;
 }
 
@@ -3997,7 +4046,7 @@ function liveBoardHtml(g, d) {
   const row = (label, val) => val ? `<div style="display:flex;justify-content:space-between;font-size:13px;padding:5px 0"><span style="color:${d.sub}">${label}</span><span style="font-weight:800;color:${d.text}">${val}</span></div>` : '';
   return `<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:16px 18px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
-      <span style="font-size:11px;background:#E31837;color:#fff;border-radius:4px;padding:2px 7px;font-weight:700">🔴 LIVE</span>
+      <span style="font-size:11px;background:#E31837;color:#fff;border-radius:4px;padding:2px 7px;font-weight:700"><span class="live-dot"></span>LIVE</span>
       <span style="font-size:15px;font-weight:900;color:${d.text}">${inning}</span>
     </div>
     ${score ? `<div style="text-align:center;font-size:30px;font-weight:900;color:${d.text};margin-bottom:12px">
@@ -4104,7 +4153,7 @@ function renderModal(d) {
           <tr>
             <td class="team-cell" style="color:${awayTeam==='KIA'?'#ff6b6b':d.text}">${awayTeam}</td>
             ${Array.from({length:totalInnings},(_,i)=>cellSt(awayInn[i]??-1,i,g.inning)).join('')}
-            <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${awayScore}</td>
+            <td style="font-weight:900;font-size:15px;color:${awayScore>=homeScore?d.text:d.sub};border-left:1px solid ${d.bgB};padding:6px 5px">${awayScore}</td>
             <td style="font-size:11px;color:${d.sub}">${awayHit}</td>
             <td style="font-size:11px;color:${awayErr>0?'#E31837':d.sub}">${awayErr}</td>
             <td style="font-size:11px;color:${d.sub}">${awayBall}</td>
@@ -4112,7 +4161,7 @@ function renderModal(d) {
           <tr>
             <td class="team-cell" style="color:${homeTeam==='KIA'?'#ff6b6b':d.text}">${homeTeam}</td>
             ${Array.from({length:totalInnings},(_,i)=>cellSt(homeInn[i]??-1,i,g.inning)).join('')}
-            <td style="font-weight:900;color:${d.text};border-left:1px solid ${d.bgB};padding:6px 5px">${homeScore}</td>
+            <td style="font-weight:900;font-size:15px;color:${homeScore>=awayScore?d.text:d.sub};border-left:1px solid ${d.bgB};padding:6px 5px">${homeScore}</td>
             <td style="font-size:11px;color:${d.sub}">${homeHit}</td>
             <td style="font-size:11px;color:${homeErr>0?'#E31837':d.sub}">${homeErr}</td>
             <td style="font-size:11px;color:${d.sub}">${homeBall}</td>
@@ -4126,10 +4175,10 @@ function renderModal(d) {
     <div style="display:flex;justify-content:center;padding:10px 0 2px">
       <div style="width:34px;height:4px;border-radius:2px;background:${d.muted}"></div>
     </div>
-    <div style="padding:10px 18px 14px;border-bottom:1px solid ${d.bgB}">
+    <div style="padding:10px 18px 14px;border-bottom:1px solid ${d.bgB};background:linear-gradient(135deg,${(T[lTeam]||{}).color||'#888'}1c,transparent 42%,transparent 58%,${(T[rTeam]||{}).color||'#888'}1c)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:6px">
-          ${isLive?`<span style="font-size:10px;background:#E31837;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700">🔴 LIVE</span>`:''}
+          ${isLive?`<span style="font-size:10px;background:#E31837;color:#fff;border-radius:4px;padding:1px 6px;font-weight:700"><span class="live-dot"></span>LIVE</span>`:''}
           ${isFinal?`<span style="font-size:10px;background:rgba(0,0,0,0.25);color:#fff;border-radius:4px;padding:1px 6px;font-weight:700">경기종료</span>`:''}
           ${isCanceled?`<span style="font-size:10px;background:${cancelMeta.bg};color:${cancelMeta.color};border:1px solid ${cancelMeta.border};border-radius:4px;padding:1px 6px;font-weight:700">${cancelMeta.icon} ${cancelMeta.label}</span>`:''}
           <span style="font-size:11px;font-weight:700;color:#FFB300">${g.time} · 📍${g.stad}</span>
@@ -4152,9 +4201,9 @@ function renderModal(d) {
           ${isCanceled?`<div style="font-size:12px;font-weight:900;color:${cancelMeta.color}">${cancelMeta.icon}<br>${cancelMeta.label}</div>`:
           isSch?`<div style="font-size:18px;font-weight:800;color:#FFB300">VS</div>`:
           `<div style="display:flex;align-items:center;gap:8px">
-            <span style="font-size:28px;font-weight:900;color:${d.text}">${lScore}</span>
-            <span style="color:${d.sub}">:</span>
-            <span style="font-size:28px;font-weight:900;color:${d.text}">${rScore}</span>
+            <span style="font-size:34px;font-weight:900;letter-spacing:-1px;color:${Number(lScore)>=Number(rScore)?d.text:d.sub}">${lScore}</span>
+            <span style="color:${d.sub};font-weight:700">:</span>
+            <span style="font-size:34px;font-weight:900;letter-spacing:-1px;color:${Number(rScore)>=Number(lScore)?d.text:d.sub}">${rScore}</span>
           </div>`}
         </div>
         <div style="display:flex;align-items:center;gap:10px;flex:1;flex-direction:row-reverse">
