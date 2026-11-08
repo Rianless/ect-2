@@ -526,6 +526,19 @@ export default async function handler(req, res) {
     const inning = req.query.inning ? parseInt(req.query.inning) : null;
     const action = req.query.action || '';
 
+    // ── 변환 전용: 휴대폰이 네이버에서 직접 받아 온 원본(일정 1건 + 중계)을 앱 형식으로 바꿔 준다 ──
+    // 서버가 네이버에 접속하지 않으므로 네이버가 서버 접속을 막아도 동작한다.
+    if (action === 'convert') {
+      if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+      let body = req.body;
+      if (typeof body === 'string') { try { body = JSON.parse(body); } catch (e) { body = null; } }
+      const rawG = body && body.game;
+      if (!rawG || typeof rawG !== 'object' || !rawG.gameId) return res.status(400).json({ error: 'game required' });
+      const rawDetail = body.detail && typeof body.detail === 'object' ? body.detail : null;
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).json(convertGame(rawG, rawDetail));
+    }
+
     // ── 경기 리뷰: KBO 공식 경기센터(스코어보드 + 박스스코어) ──
     // ?action=review&date=YYYY-MM-DD&away=KIA&home=두산[&round=WC 1차전]
     // 이닝별 점수, H/E/B, 타자(타순·포지션·이닝별 타석 결과·타수/안타/타점/득점), 투수 기록, 결승타·홈런 등 경기 요약을 돌려준다.

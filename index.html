@@ -5946,6 +5946,11 @@ async function fetchTodayScores(targetDate='') {
     const games = data?.games || [];
     if (!games.length) return;
 
+    // 서버가 경기 번호를 못 줬고(네이버 접속 불가) 진행 중·종료된 경기가 있으면 휴대폰이 직접 받아 채운다
+    const _needIds = [...new Set(games.filter(g => !g.gameId && (g.status === 'LIVE' || g.status === 'FINAL') && g.date).map(g => g.date))]
+      .filter(dt => SCH.some(x => x.date === dt && !x.gameId));
+    if (_needIds.length) attachNaverGameIds(_needIds);
+
     let updated = false;
     // 디버그: 첫 게임의 전체 필드 확인
     if (games.length > 0) console.log('[DEBUG] API game sample:', JSON.stringify(games[0]));
@@ -6098,6 +6103,75 @@ setInterval(fetchTodayScores, 30000);
 
 // ── 중계 전체화면 ──
 
+// ── 휴대폰이 네이버에서 직접 받아 오기 (서버가 네이버 접속을 못 할 때의 대안) ──
+// 브라우저는 자기 주소(Origin)를 그대로 보내며 별도 위장은 하지 않는다. 네이버가 허용하지 않으면 조용히 실패한다.
+const _nvDirectCache = {};
+async function naverDirectSchedule(date) {
+  const c = _nvDirectCache[date];
+  if (c && Date.now() - c.t < 60000) return c.v;
+  const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball%2CmanualRelayUrl&upperCategoryId=kbaseball&fromDate=${date}&toDate=${date}&size=500`;
+  const r = await fetch(url, { headers: { Accept: 'application/json' } });
+  if (!r.ok) throw new Error('direct schedule ' + r.status);
+  const data = await r.json();
+  const v = (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
+  _nvDirectCache[date] = { t: Date.now(), v };
+  return v;
+}
+
+// 서버가 경기 번호(gameId)를 못 받았을 때, 휴대폰이 직접 받아 SCH에 채운다 → "중계 전체보기" 버튼이 다시 나온다
+async function attachNaverGameIds(dates) {
+  let changed = false;
+  for (const date of dates) {
+    try {
+      const raws = await naverDirectSchedule(date);
+      raws.forEach(rg => {
+        const away = normalizeApiTeam(rg.awayTeamCode, rg.awayTeamName);
+        const home = normalizeApiTeam(rg.homeTeamCode, rg.homeTeamName);
+        const sg = SCH.find(x => x.date === date && x.away === away && x.home === home);
+        if (sg && !sg.gameId && rg.gameId) { sg.gameId = String(rg.gameId); changed = true; }
+      });
+    } catch (e) { /* 막혀 있으면 그대로 둔다 */ }
+  }
+  if (changed) {
+    render();
+    if (state.modalGame) {
+      const mg = SCH.find(x => x.date === state.modalGame.date && x.away === state.modalGame.away && x.home === state.modalGame.home);
+      if (mg) { state.modalGame = mg; renderModal(D()); }
+    }
+  }
+}
+
+async function fetchRelayDirect(gameId, inning) {
+  try {
+    const m = String(gameId).match(/^(\d{4})(\d{2})(\d{2})/);
+    if (!m) return null;
+    const date = `${m[1]}-${m[2]}-${m[3]}`;
+    const raws = await naverDirectSchedule(date);
+    const rawGame = raws.find(x => String(x.gameId) === String(gameId));
+    if (!rawGame) return null;
+    let detail = null;
+    for (const kind of ['text-relay', 'game-polling']) {
+      try {
+        const r = await fetch(`https://api-gw.sports.naver.com/schedule/games/${gameId}/${kind}?inning=${inning}&isHighlight=false`, { headers: { Accept: 'application/json' } });
+        if (!r.ok) continue;
+        const d = (await r.json())?.result;
+        if (d) { detail = d; break; }
+      } catch (e) {}
+    }
+    if (!detail) return null;
+    // 원본 → 앱 형식 변환은 서버가 맡는다 (네이버 접속 없음)
+    const cr = await fetch('/api/kboScores?action=convert', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ game: rawGame, detail }),
+    });
+    if (!cr.ok) return null;
+    return await cr.json();
+  } catch (e) {
+    console.warn('[Relay] direct fetch failed:', e && e.message);
+    return null;
+  }
+}
+
 async function fetchRelayData(gameId, inn) {
   if (!gameId) return null;
   const inning = Math.max(1, inn || 1);
@@ -6112,7 +6186,8 @@ async function fetchRelayData(gameId, inn) {
     return data || null;
   } catch(e) {
     console.error("[Relay] fetchRelayData error:", e);
-    return null;
+    // 서버가 실패하면 휴대폰이 네이버에서 직접 받아 온다
+    return await fetchRelayDirect(gameId, inning);
   }
 }
 
