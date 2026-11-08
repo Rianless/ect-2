@@ -3919,8 +3919,44 @@ function recordLiveEvent(g) {
   _liveLogSave(all);
   return added;
 }
+// ── KBO 공식 문자중계 (서버가 KBO에서 받아 줌 · 네이버와 무관) ──
+async function ensureLiveText(g) {
+  if (!g || !(g.status === 'LIVE' || g.status === 'FINAL') || g._ltLoading) return;
+  if (g.status === 'FINAL' && g._lt && g._lt.d && g._lt.d.available) return;
+  g._ltLoading = true;
+  try {
+    const r = await fetch(`/api/kboScores?action=livetext&date=${g.date}&away=${encodeURIComponent(g.away)}&home=${encodeURIComponent(g.home)}`);
+    if (!r.ok) throw new Error('livetext ' + r.status);
+    g._lt = { t: Date.now(), d: await r.json() };
+  } catch (e) {
+    g._lt = g._lt || { t: Date.now(), d: { available: false, reason: String(e && e.message || e) } };
+  } finally {
+    g._ltLoading = false;
+  }
+  if (state.modalGame && state.modalGame.date === g.date && state.modalGame.away === g.away && state.modalGame.home === g.home) renderModal(D());
+}
+function liveTextHtml(g, d) {
+  const lt = g._lt && g._lt.d;
+  if (!lt || !lt.available) return '';
+  const groups = [...lt.groups].reverse();            // 최신 반이닝이 위
+  const body = groups.map(gr => {
+    const evs = [...gr.events].reverse().map(e => {
+      const hr = /홈런/.test(e.x), sub = /교체|비디오 판독/.test(e.x), run = e.red || /홈인/.test(e.x);
+      const color = hr ? '#E31837' : run ? '#E31837' : sub ? d.sub : d.text;
+      return `<div style="padding:5px 0;font-size:12px;line-height:1.5;color:${color};font-weight:${hr || run ? 800 : 500}">${hr ? '💥 ' : run ? '🏃 ' : sub ? '🔁 ' : ''}${e.x}</div>`;
+    }).join('') || `<div style="padding:5px 0;font-size:12px;color:${d.sub}">아직 기록이 없어요</div>`;
+    return `<div style="margin-bottom:6px"><div style="position:sticky;top:0;background:${d.bg};padding:6px 0 4px;font-size:12px;font-weight:900;color:${d.text};border-bottom:1px solid ${d.bgB}">${gr.title}</div>${evs}</div>`;
+  }).join('');
+  return `<div style="margin:0 16px 18px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:15px">📋</span><span style="font-size:13px;font-weight:800;color:${d.text}">문자중계</span><span style="font-size:10px;color:${d.sub}">KBO 공식${g.status === 'LIVE' ? ' · 10초마다 갱신' : ''}</span></div>
+    <div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:4px 14px 8px;max-height:460px;overflow-y:auto">${body}</div>
+  </div>`;
+}
+
 function liveLogHtml(g, d) {
   if (!g || !(g.status === 'LIVE' || g.status === 'FINAL')) return '';
+  const _rel = liveTextHtml(g, d);
+  if (_rel) return _rel;
   const ev = ((_liveLogLoad()[liveLogKey(g)] || {}).ev || []).slice(-80).reverse();
   if (!ev.length && g.status !== 'LIVE') return '';
   const rows = ev.map(e => {
@@ -4182,7 +4218,7 @@ function renderModal(d) {
             ${((isLive||isFinal)&&g.gameId)?`<button onclick="openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1});closeModal();" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
           </div>
         </div>
-        ${((isLive||isFinal)&&!g.gameId)?`<div style="font-size:11px;color:${d.sub};margin:-4px 2px 10px;line-height:1.5">네이버 중계 연결 안 됨${window._nvDirectErr?' ('+window._nvDirectErr+')':''} · 아래 '진행 기록'은 앱이 직접 기록한 추정 결과예요</div>`:''}
+        ${((isLive||isFinal)&&!g.gameId&&!(g._lt&&g._lt.d&&g._lt.d.available))?`<div style="font-size:11px;color:${d.sub};margin:-4px 2px 10px;line-height:1.5">문자중계를 불러오는 중이에요${window._nvDirectErr?' (네이버: '+window._nvDirectErr+')':''} · 안 나오면 아래 '진행 기록'(앱이 직접 기록한 추정)을 보세요</div>`:''}
         ${!hasLU&&isLive&&g.currentGameState?liveBoardHtml(g,d):!hasLU?`<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:26px 20px;text-align:center">
           <div style="font-size:24px;margin-bottom:6px">${(isLive||isFinal)?'⏳':'📋'}</div>
           <div style="font-size:13px;color:${d.sub}">${(isLive||isFinal)?'라인업 불러오는 중...':'라인업은 경기 당일 발표됩니다'}</div>
@@ -5093,6 +5129,7 @@ function openModal(idx,date) {
 
         // 끝난 경기: 이닝 스코어·라인업·타석 결과·경기 요약 자동 로드
         ensureGameReview(gPc);
+        ensureLiveText(gPc);
         startModalLivePoll();
 
         // 라인업 fetch
@@ -5195,6 +5232,7 @@ function openModal(idx,date) {
 
   // 끝난 경기: 이닝 스코어·라인업·타석 결과·경기 요약 자동 로드
   ensureGameReview(state.modalGame);
+  ensureLiveText(state.modalGame);
   startModalLivePoll();
 
   let ty=null, txStart=0, canSwipeClose=false;
@@ -5237,6 +5275,7 @@ async function modalLiveTick() {
       }
     }
     if (state.modalGame) { state.modalGame = cur; renderModal(D()); }
+    ensureLiveText(cur);
   } catch(e) {}
 }
 function startModalLivePoll() {
@@ -6152,7 +6191,7 @@ async function fetchTodayScores(targetDate='') {
       }
       if (state.modalGame) {
         const mg = SCH.find(s => s.date===state.modalGame.date && s.away===state.modalGame.away && s.home===state.modalGame.home);
-        if (mg) { state.modalGame = mg; renderModal(D()); }
+        if (mg) { state.modalGame = mg; renderModal(D()); ensureLiveText(mg); }
       }
     }
 
@@ -6191,7 +6230,7 @@ async function fetchTodayScores(targetDate='') {
         render();
         if (state.modalGame) {
           const mg = SCH.find(s => s.date===state.modalGame.date && s.away===state.modalGame.away && s.home===state.modalGame.home);
-          if (mg) { state.modalGame = mg; renderModal(D()); }
+          if (mg) { state.modalGame = mg; renderModal(D()); ensureLiveText(mg); }
         }
       }
     }
@@ -6217,11 +6256,12 @@ const _nvDirectCache = {};
 async function naverDirectSchedule(date) {
   const c = _nvDirectCache[date];
   if (c && Date.now() - c.t < 60000) return c.v;
+  if (window._nvFailAt && Date.now() - window._nvFailAt < 300000) throw new Error('direct blocked (recently failed)');
   const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball%2CmanualRelayUrl&upperCategoryId=kbaseball&fromDate=${date}&toDate=${date}&size=500`;
   let r;
   try { r = await fetch(url, { headers: { Accept: 'application/json' } }); }
-  catch (e) { window._nvDirectErr = '브라우저 접속 거부(CORS)'; throw e; }
-  if (!r.ok) { window._nvDirectErr = '응답 ' + r.status; throw new Error('direct schedule ' + r.status); }
+  catch (e) { window._nvDirectErr = '브라우저 접속 거부(CORS)'; window._nvFailAt = Date.now(); throw e; }
+  if (!r.ok) { window._nvDirectErr = '응답 ' + r.status; window._nvFailAt = Date.now(); throw new Error('direct schedule ' + r.status); }
   const data = await r.json();
   const v = (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
   window._nvDirectErr = '';
