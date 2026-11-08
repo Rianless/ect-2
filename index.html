@@ -1261,6 +1261,29 @@ function renderNav() {
   }).join('');
 }
 
+// ── 화면 갱신 최적화: 내용이 같으면 다시 그리지 않고, 다시 그릴 때는 안쪽 스크롤 위치를 유지한다 ──
+function _scrollables(root) {
+  return [...root.querySelectorAll('*')].filter(el => {
+    if (el.scrollHeight <= el.clientHeight && el.scrollWidth <= el.clientWidth) return false;
+    const cs = getComputedStyle(el);
+    return /auto|scroll/.test(cs.overflowY + cs.overflowX);
+  });
+}
+function setHtmlKeepScroll(el, html) {
+  if (!el) return false;
+  if (el._h === html) return false;               // 같은 내용: 그대로 둔다
+  const saved = _scrollables(el).map(n => [n.scrollTop, n.scrollLeft]);
+  const selfTop = el.scrollTop, selfLeft = el.scrollLeft;
+  el._h = html;
+  el.innerHTML = html;
+  const after = _scrollables(el);
+  saved.forEach((v, i) => { if (after[i]) { after[i].scrollTop = v[0]; after[i].scrollLeft = v[1]; } });
+  if (selfTop) el.scrollTop = selfTop;
+  if (selfLeft) el.scrollLeft = selfLeft;
+  return true;
+}
+const _CLOCK_RE = /(<[^>]*data-clock[^>]*>)[^<]*/g;
+
 function renderContent(d) {
   // PC 인라인 중계 열려있으면 content 재렌더 스킵 (새 방식: pc-relay-inline-wrapper 존재 여부)
   if (window.innerWidth >= 1080) {
@@ -1289,10 +1312,19 @@ function renderContent(d) {
   const focusedVal = focusedId ? focused.value : null;
   const focusedSel = focusedId ? [focused.selectionStart, focused.selectionEnd] : null;
 
-  if(state.tab==='cal') el.innerHTML=renderCal(d);
-  else if(state.tab==='stand') el.innerHTML=renderBaseballRecord(d);
-  else if(state.tab==='my') el.innerHTML=renderMyPage(d);
-  else el.innerHTML=renderCal(d);
+  const _html = state.tab==='cal' ? renderCal(d)
+    : state.tab==='stand' ? renderBaseballRecord(d)
+    : state.tab==='my' ? renderMyPage(d)
+    : renderCal(d);
+  const _key = _html.replace(_CLOCK_RE, '$1');
+  if (el._k === _key) {
+    // 시계 숫자만 달라졌으면 그 글자만 바꾼다 (화면 전체를 다시 그리면 깜빡인다)
+    const t = state.clock.toLocaleTimeString('ko-KR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    el.querySelectorAll('[data-clock]').forEach(n => { if (n.textContent !== t) n.textContent = t; });
+    return;
+  }
+  el._k = _key;
+  setHtmlKeepScroll(el, _html);
 
   // 포커스 복원
   if (focusedId) {
@@ -4171,7 +4203,7 @@ function renderModal(d) {
     </div>`;
           })() : `<div style="text-align:center;padding:16px;color:${d.sub};font-size:12px">${isLive?`${g.inningInfo||g.inning+'회'||''} 진행 중`:'경기 예정 · 경기 후 스코어가 표시됩니다'}</div>`;
 
-  document.getElementById('modal-content').innerHTML = `
+  const __html = `
     <div style="display:flex;justify-content:center;padding:10px 0 2px">
       <div style="width:34px;height:4px;border-radius:2px;background:${d.muted}"></div>
     </div>
@@ -4752,6 +4784,9 @@ function renderModal(d) {
         <button onclick="closeModal()" style="width:100%;margin-top:14px;padding:14px;background:#E31837;color:#fff;border-radius:12px;font-size:15px;font-weight:800;font-family:'Noto Sans KR',sans-serif;border:none;cursor:pointer">✓ 완료</button>
       </div>
     </div>`;
+  const __mc = document.getElementById('modal-content');
+  if (__mc._h === __html) return;   // 내용이 같으면 다시 그리지 않는다 (깜빡임 방지)
+  setHtmlKeepScroll(__mc, __html);
   const memoKey = `m_${g.date}_${g.away}_${g.home}`;
 
   function getMemoData() {
@@ -5188,6 +5223,7 @@ function openModal(idx,date) {
         const cal = document.getElementById('pc-cal-content');
         if (cal) cal.style.display = 'none';
 
+        { const _mc0 = document.getElementById('modal-content'); if (_mc0) _mc0._h = ''; }
         // 모달 내용 렌더링 (renderModal이 자동으로 inlineBox에 싱크)
         renderModal(D());
 
@@ -5227,6 +5263,7 @@ function openModal(idx,date) {
   const overlay=document.getElementById('modal-overlay');
   const box=document.getElementById('modal-box');
   box.classList.remove('closing'); overlay.classList.add('open');
+  { const _mc0 = document.getElementById('modal-content'); if (_mc0) _mc0._h = ''; }
   box.scrollTop = 0;
   renderModal(D()); history.pushState({modal:true},'');
   document.body.style.overflow='hidden';
@@ -6842,7 +6879,7 @@ function updateRelayUI() {
     }
   }
   if (diamondEl) {
-    diamondEl.innerHTML = renderRelayDiamond(gs, relayLineup, _relayAway, _relayHome);
+    setHtmlKeepScroll(diamondEl, renderRelayDiamond(gs, relayLineup, _relayAway, _relayHome));
     diamondEl.style.background = dark ? '#111827' : '#f8f8f8';
   }
 
@@ -6872,7 +6909,7 @@ function updateRelayUI() {
       const sel = _relayTab === 'inn' && i === _relayInn;
       tabHtml += `<button onclick="switchRelayInn(${i})" style="flex-shrink:0;padding:5px 12px;background:${sel?'#E31837':'transparent'};color:${sel?'#fff':dark?'rgba(255,255,255,0.45)':'rgba(0,0,0,0.4)'};border:${sel?'none':dark?'1px solid rgba(255,255,255,0.12)':'1px solid rgba(0,0,0,0.12)'};border-radius:20px;font-size:12px;font-weight:${sel?700:400};cursor:pointer;font-family:'Noto Sans KR',sans-serif;margin-bottom:6px">${i}회</button>`;
     }
-    tabs.innerHTML = tabHtml;
+    setHtmlKeepScroll(tabs, tabHtml);
   }
 
   // 중계 텍스트 업데이트
@@ -6881,18 +6918,18 @@ function updateRelayUI() {
     if (_relayTab === 'score') {
       // 득점 탭: 캐시 있으면 바로 표시, 없으면 로딩 표시 (fetchAllScoringPlays가 채워줌)
       if (_scoringCache && _scoringCache.gameId === _relayGameId) {
-        body.innerHTML = renderScoringPlays(_scoringCache.plays, dark);
+        setHtmlKeepScroll(body, renderScoringPlays(_scoringCache.plays, dark));
       } else {
-        body.innerHTML = '<div style="text-align:center;padding:40px"><div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div><div style="font-size:13px;color:rgba(0,0,0,0.35);margin-top:8px">전 이닝 득점 장면 불러오는 중...</div></div>';
+        setHtmlKeepScroll(body, '<div style="text-align:center;padding:40px"><div style="font-size:28px;margin-bottom:12px;animation:spin 1s linear infinite;display:inline-block">⚾</div><div style="font-size:13px;color:rgba(0,0,0,0.35);margin-top:8px">전 이닝 득점 장면 불러오는 중...</div></div>');
       }
     } else if (!_relayData) {
-      body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(0,0,0,0.35)">⏳ 불러오는 중...</div>';
+      setHtmlKeepScroll(body, '<div style="text-align:center;padding:40px;color:rgba(0,0,0,0.35)">⏳ 불러오는 중...</div>');
     } else {
       const relays = [...(game.textRelays || [])].reverse();
       if (relays.length === 0) {
-        body.innerHTML = '<div style="text-align:center;padding:40px;color:rgba(0,0,0,0.35)">해당 이닝에 중계 데이터가 없습니다.</div>';
+        setHtmlKeepScroll(body, '<div style="text-align:center;padding:40px;color:rgba(0,0,0,0.35)">해당 이닝에 중계 데이터가 없습니다.</div>');
       } else {
-        body.innerHTML = renderRelayText(relays, _relayAway, _relayHome);
+        setHtmlKeepScroll(body, renderRelayText(relays, _relayAway, _relayHome));
       }
     }
   }
