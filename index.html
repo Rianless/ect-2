@@ -3842,6 +3842,15 @@ function renderLeadSection(d) {
     </div>`;
 }
 
+// KBO 공식 게임센터 주소 (네이버와 무관하게 열림). 경기 번호 = 날짜 + 원정 코드 + 홈 코드 + 0
+const KBO_TEAM_CODE = { 'KIA':'HT', 'KT':'KT', 'LG':'LG', 'SSG':'SK', 'NC':'NC', '두산':'OB', '롯데':'LT', '삼성':'SS', '한화':'HH', '키움':'WO' };
+function kboGameUrl(g, section) {
+  const a = KBO_TEAM_CODE[g.away], h = KBO_TEAM_CODE[g.home];
+  if (!a || !h || !g.date) return '';
+  const ds = String(g.date).replace(/-/g, '');
+  return `https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=${ds}&gameId=${ds}${a}${h}0&section=${section}`;
+}
+
 // 라인업이 없어도(네이버 접속 불가 등) 진행 중 경기의 이닝·점수·볼카운트·주자·투수/타자를 보여주는 간단 상황판
 function liveBoardHtml(g, d) {
   const gs = g.currentGameState || {};
@@ -4080,10 +4089,12 @@ function renderModal(d) {
             <span style="font-size:13px;font-weight:800;color:${d.text}">${isLive?'실시간 경기 상황':isFinal?'경기 상황':'경기 상황'}</span>
           </div>
           <div style="display:flex;align-items:center;gap:6px">
-            ${isLive?`<button onclick="refreshModalSituation('${g.gameId}','${g.date}','${g.away}','${g.home}')" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="경기 상황 새로고침">🔄</button>`:''}
+            ${(isLive&&g.gameId)?`<button onclick="refreshModalSituation('${g.gameId}','${g.date}','${g.away}','${g.home}')" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="경기 상황 새로고침">🔄</button>`:''}
+            ${((isLive||isFinal)&&kboGameUrl(g,isLive?'RELAY':'REVIEW'))?`<a href="${kboGameUrl(g,isLive?'RELAY':'REVIEW')}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:20px;color:${d.text};font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;text-decoration:none">🔗 KBO 공식 ${isLive?'중계':'리뷰'}</a>`:''}
             ${((isLive||isFinal)&&g.gameId)?`<button onclick="openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1});closeModal();" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
           </div>
         </div>
+        ${((isLive||isFinal)&&!g.gameId)?`<div style="font-size:11px;color:${d.sub};margin:-4px 2px 10px;line-height:1.5">네이버 중계 연결 안 됨${window._nvDirectErr?' ('+window._nvDirectErr+')':''} · 위 KBO 공식 ${isLive?'중계':'리뷰'} 버튼으로 보세요</div>`:''}
         ${!hasLU&&isLive&&g.currentGameState?liveBoardHtml(g,d):!hasLU?`<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:26px 20px;text-align:center">
           <div style="font-size:24px;margin-bottom:6px">${(isLive||isFinal)?'⏳':'📋'}</div>
           <div style="font-size:13px;color:${d.sub}">${(isLive||isFinal)?'라인업 불러오는 중...':'라인업은 경기 당일 발표됩니다'}</div>
@@ -6110,10 +6121,13 @@ async function naverDirectSchedule(date) {
   const c = _nvDirectCache[date];
   if (c && Date.now() - c.t < 60000) return c.v;
   const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball%2CmanualRelayUrl&upperCategoryId=kbaseball&fromDate=${date}&toDate=${date}&size=500`;
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!r.ok) throw new Error('direct schedule ' + r.status);
+  let r;
+  try { r = await fetch(url, { headers: { Accept: 'application/json' } }); }
+  catch (e) { window._nvDirectErr = '브라우저 접속 거부(CORS)'; throw e; }
+  if (!r.ok) { window._nvDirectErr = '응답 ' + r.status; throw new Error('direct schedule ' + r.status); }
   const data = await r.json();
   const v = (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
+  window._nvDirectErr = '';
   _nvDirectCache[date] = { t: Date.now(), v };
   return v;
 }
