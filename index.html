@@ -4007,10 +4007,23 @@ function relayChip(x) {
   for (const [re, label, color, bg] of M) if (re.test(x)) return { label, color, bg };
   return null;
 }
+// 기록이 하나도 없는 라인업인지 (KBO 선발 라인업 자리표시 / 옛 버전이 폰에 저장해 둔 것)
+function lineupHasStats(l) {
+  if (!l) return false;
+  return ['away', 'home'].some(side => {
+    const sd = l[side] || {};
+    return (sd.batters || []).some(b => (b.ab || 0) > 0 || (b.hit || 0) > 0 || (b.bb || 0) > 0 || (b.run || 0) > 0 || (b.rbi || 0) > 0)
+      || (sd.pitchers || []).some(p => (p.pc || 0) > 0 || (p.kk || 0) > 0 || (p.hit || 0) > 0 || (p.inn && String(p.inn) !== '0'));
+  });
+}
+// 공식 기록·집계 값으로 교체해도 되는 라인업 (네이버 라인업은 pcodeMap이 있어 제외)
+function isPlaceholderLineup(l) {
+  return !l || l.starting || l.live || (!lineupHasStats(l) && !l.pcodeMap);
+}
 function applyLiveBox(g, box) {
   if (!box || !((box.awayBatters || []).length || (box.homeBatters || []).length)) return;
   const cur = g.lineup;
-  if (cur && !cur.starting && !cur.live) return;      // 네이버 라인업·공식 리뷰 기록이 있으면 그대로 둔다
+  if (cur && !isPlaceholderLineup(cur)) return;      // 네이버 라인업·공식 리뷰 기록이 있으면 그대로 둔다
   g.lineup = {
     away: _kboLineupSide(box.awayBatters, box.awayPitchers),
     home: _kboLineupSide(box.homeBatters, box.homePitchers),
@@ -4612,7 +4625,7 @@ function renderModal(d) {
         </div>
       </div>` : ''}
 
-      ${(isFinal || isLive) && g.lineup && !g.lineup.starting ? `
+      ${(isFinal || isLive) && g.lineup && lineupHasStats(g.lineup) ? `
       <!-- ── 타자/투수 기록 섹션 ── -->
       <div style="margin-bottom:18px;margin-left:16px;margin-right:16px">
         <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px">
@@ -5914,7 +5927,7 @@ function initGameCache() {
       if (dataToApply.lineup) {
         const checkBatters = (batters) => (batters||[]).some(b => b.starterPos);
         const hasStarterPos = checkBatters(dataToApply.lineup?.home?.batters) || checkBatters(dataToApply.lineup?.away?.batters);
-        if (!hasStarterPos) delete dataToApply.lineup;
+        if (!hasStarterPos || !lineupHasStats(dataToApply.lineup)) delete dataToApply.lineup;   // 기록 없는 라인업은 복원하지 않는다
       }
       Object.assign(SCH[idx], dataToApply);
     });
@@ -6244,7 +6257,7 @@ async function fetchTodayScores(targetDate='') {
       if (g.homeError != null) upd.homeError = g.homeError;
       if (g.awayBallFour != null) upd.awayBallFour = g.awayBallFour;
       if (g.homeBallFour != null) upd.homeBallFour = g.homeBallFour;
-      if (g.lineup && !(g.lineup.starting && SCH[idx].lineup && !SCH[idx].lineup.starting)) upd.lineup = g.lineup;
+      if (g.lineup && !(!lineupHasStats(g.lineup) && lineupHasStats(SCH[idx].lineup))) upd.lineup = g.lineup;
       if (g.currentGameState) {
         // 기존 currentGameState에 이름이 이미 있으면 보존 (숫자 ID로 덮어쓰기 방지)
         const prevGs = SCH[idx].currentGameState;
@@ -6298,6 +6311,7 @@ async function fetchTodayScores(targetDate='') {
         const cacheData = {};
         if (g.status === 'FINAL' || g.status === 'CANCELED') Object.assign(cacheData, upd);
         else if (g.time) cacheData.time = g.time; // 시간 변경만 저장
+        if (cacheData.lineup && !lineupHasStats(cacheData.lineup)) delete cacheData.lineup;       // 기록 없는 라인업은 저장하지 않는다
         if (Object.keys(cacheData).length) saveGameCache(g.date+'_'+g.away+'_'+g.home, cacheData);
       }
       updated = true;
@@ -7932,7 +7946,7 @@ async function ensureGameReview(g) {
     if (!g.homeStarter) g.homeStarter = (rv.homePitchers.find(p => p.role === '선발') || {}).name || g.homeStarter;
 
     // 라인업(다이아몬드·타자/투수 기록): 이미 있으면 유지
-    if (!g.lineup || g.lineup.starting || g.lineup.live || !(g.lineup.away?.batters?.length || g.lineup.home?.batters?.length)) {
+    if (isPlaceholderLineup(g.lineup) || !(g.lineup.away?.batters?.length || g.lineup.home?.batters?.length)) {
       g.lineup = {
         away: _kboLineupSide(rv.awayBatters, rv.awayPitchers),
         home: _kboLineupSide(rv.homeBatters, rv.homePitchers),
