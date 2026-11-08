@@ -3842,13 +3842,77 @@ function renderLeadSection(d) {
     </div>`;
 }
 
-// KBO 공식 게임센터 주소 (네이버와 무관하게 열림). 경기 번호 = 날짜 + 원정 코드 + 홈 코드 + 0
-const KBO_TEAM_CODE = { 'KIA':'HT', 'KT':'KT', 'LG':'LG', 'SSG':'SK', 'NC':'NC', '두산':'OB', '롯데':'LT', '삼성':'SS', '한화':'HH', '키움':'WO' };
-function kboGameUrl(g, section) {
-  const a = KBO_TEAM_CODE[g.away], h = KBO_TEAM_CODE[g.home];
-  if (!a || !h || !g.date) return '';
-  const ds = String(g.date).replace(/-/g, '');
-  return `https://www.koreabaseball.com/Schedule/GameCenter/Main.aspx?gameDate=${ds}&gameId=${ds}${a}${h}0&section=${section}`;
+// ── 진행 기록(추정): 네이버 중계 없이, KBO 경기 상황을 10초마다 비교해 타석 결과를 기록 ──
+// 앱이 열려 있는 동안만 쌓이고, 안타·볼넷은 구분되지 않아 '출루'로 적는다.
+const LIVE_LOG_KEY = 'kbo_live_log';
+function _liveLogLoad() { try { return JSON.parse(localStorage.getItem(LIVE_LOG_KEY) || '{}'); } catch (e) { return {}; } }
+function _liveLogSave(all) {
+  try {
+    const ks = Object.keys(all);
+    if (ks.length > 6) ks.sort().slice(0, ks.length - 6).forEach(k => delete all[k]);
+    localStorage.setItem(LIVE_LOG_KEY, JSON.stringify(all));
+  } catch (e) {}
+}
+const liveLogKey = g => g.date + '_' + g.away + '_' + g.home;
+function recordLiveEvent(g) {
+  const gs = g && g.currentGameState;
+  if (!g || g.status !== 'LIVE' || !gs || !g.inningInfo) return false;
+  const all = _liveLogLoad(), key = liveLogKey(g);
+  const log = all[key] || (all[key] = { ev: [], last: null });
+  const cur = {
+    inn: g.inningInfo, a: Number(g.awayScore) || 0, h: Number(g.homeScore) || 0, out: Number(gs.out) || 0,
+    b: (Number(gs.base1) > 0 ? 1 : 0) + (Number(gs.base2) > 0 ? 1 : 0) + (Number(gs.base3) > 0 ? 1 : 0),
+    bat: gs.batterName || '', pit: gs.pitcherName || '',
+  };
+  const prev = log.last;
+  let added = false;
+  const add = (inn, t, x) => { log.ev.push({ i: inn, t, x, s: cur.a + ':' + cur.h }); added = true; };
+  if (!prev) {
+    add(cur.inn, 's', '이 기기에서 기록 시작');
+  } else if (prev.inn !== cur.inn) {
+    if (prev.bat && prev.out === 2 && (cur.a + cur.h) === (prev.a + prev.h)) add(prev.inn, 'r', prev.bat + ' · 아웃 (3아웃 교대)');
+    add(cur.inn, 'n', cur.inn + ' 시작');
+  } else {
+    const runs = (cur.a + cur.h) - (prev.a + prev.h);
+    if (prev.bat && cur.bat && prev.bat !== cur.bat) {
+      const outsD = cur.out - prev.out;
+      if (outsD === 0 && runs === 0 && cur.b === prev.b) {
+        // 아무 변화 없이 타자만 바뀜 → 대타·교체로 보고 기록하지 않는다
+      } else {
+        let res;
+        if (outsD === 0 && runs > 0 && cur.b === 0 && runs === prev.b + 1) res = '홈런 (' + runs + '점)';
+        else if (outsD > 0) res = outsD >= 2 ? outsD + '아웃 (병살 등)' : '아웃';
+        else res = '출루 (안타·볼넷 등)';
+        if (runs > 0 && !/홈런/.test(res)) res += ' · ' + runs + '점 득점';
+        add(cur.inn, 'r', prev.bat + ' · ' + res);
+      }
+    } else if (runs > 0) {
+      add(cur.inn, 'r', runs + '점 득점 (주루·폭투 등)');
+    }
+  }
+  log.last = cur;
+  _liveLogSave(all);
+  return added;
+}
+function liveLogHtml(g, d) {
+  if (!g || !(g.status === 'LIVE' || g.status === 'FINAL')) return '';
+  const ev = ((_liveLogLoad()[liveLogKey(g)] || {}).ev || []).slice(-80).reverse();
+  if (!ev.length && g.status !== 'LIVE') return '';
+  const rows = ev.map(e => {
+    const hr = /홈런/.test(e.x), run = /득점/.test(e.x);
+    const color = hr ? '#E31837' : e.t === 'n' ? d.sub : d.text;
+    return `<div style="display:flex;gap:8px;align-items:baseline;padding:6px 0;border-bottom:1px solid ${d.bgB};font-size:12px">
+      <span style="flex:none;min-width:46px;font-size:11px;color:${d.sub}">${e.t === 'n' ? '' : e.i}</span>
+      <span style="flex:1;font-weight:${hr || e.t === 'n' ? 800 : 600};color:${color}">${hr ? '💥 ' : run ? '🏃 ' : ''}${e.x}</span>
+      <span style="flex:none;font-size:11px;color:${d.sub}">${e.s}</span></div>`;
+  }).join('');
+  return `<div style="margin:0 16px 18px">
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px"><span style="font-size:15px">📝</span><span style="font-size:13px;font-weight:800;color:${d.text}">진행 기록</span><span style="font-size:10px;color:${d.sub}">자동 · 추정</span></div>
+    <div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:6px 14px;max-height:280px;overflow-y:auto">
+      ${rows || `<div style="padding:16px 0;text-align:center;font-size:12px;color:${d.sub}">경기 상황이 바뀌면 여기에 쌓여요</div>`}
+    </div>
+    <div style="margin-top:6px;font-size:10px;line-height:1.5;color:${d.sub}">앱이 열려 있는 동안 10초마다 KBO 경기 상황을 비교해 만든 기록이에요. 안타·볼넷은 구분되지 않고 '출루'로 표시되며, 앱을 연 시점부터만 쌓여요.</div>
+  </div>`;
 }
 
 // 라인업이 없어도(네이버 접속 불가 등) 진행 중 경기의 이닝·점수·볼카운트·주자·투수/타자를 보여주는 간단 상황판
@@ -4090,11 +4154,10 @@ function renderModal(d) {
           </div>
           <div style="display:flex;align-items:center;gap:6px">
             ${(isLive&&g.gameId)?`<button onclick="refreshModalSituation('${g.gameId}','${g.date}','${g.away}','${g.home}')" style="background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:50%;width:28px;height:28px;font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center" title="경기 상황 새로고침">🔄</button>`:''}
-            ${((isLive||isFinal)&&kboGameUrl(g,isLive?'RELAY':'REVIEW'))?`<a href="${kboGameUrl(g,isLive?'RELAY':'REVIEW')}" target="_blank" rel="noopener" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:rgba(0,0,0,0.07);border:1px solid rgba(0,0,0,0.12);border-radius:20px;color:${d.text};font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;text-decoration:none">🔗 KBO 공식 ${isLive?'중계':'리뷰'}</a>`:''}
             ${((isLive||isFinal)&&g.gameId)?`<button onclick="openRelay('${g.gameId}','${g.away}','${g.home}',${g.inning||1});closeModal();" style="display:flex;align-items:center;gap:5px;padding:6px 12px;background:#E31837;border:none;border-radius:20px;color:#fff;font-size:11px;font-weight:700;font-family:'Noto Sans KR',sans-serif;cursor:pointer">📋 중계 전체보기</button>`:''}
           </div>
         </div>
-        ${((isLive||isFinal)&&!g.gameId)?`<div style="font-size:11px;color:${d.sub};margin:-4px 2px 10px;line-height:1.5">네이버 중계 연결 안 됨${window._nvDirectErr?' ('+window._nvDirectErr+')':''} · 위 KBO 공식 ${isLive?'중계':'리뷰'} 버튼으로 보세요</div>`:''}
+        ${((isLive||isFinal)&&!g.gameId)?`<div style="font-size:11px;color:${d.sub};margin:-4px 2px 10px;line-height:1.5">네이버 중계 연결 안 됨${window._nvDirectErr?' ('+window._nvDirectErr+')':''} · 아래 '진행 기록'은 앱이 직접 기록한 추정 결과예요</div>`:''}
         ${!hasLU&&isLive&&g.currentGameState?liveBoardHtml(g,d):!hasLU?`<div style="background:${d.bg};border:1px solid ${d.bgB};border-radius:14px;padding:26px 20px;text-align:center">
           <div style="font-size:24px;margin-bottom:6px">${(isLive||isFinal)?'⏳':'📋'}</div>
           <div style="font-size:13px;color:${d.sub}">${(isLive||isFinal)?'라인업 불러오는 중...':'라인업은 경기 당일 발표됩니다'}</div>
@@ -4532,6 +4595,8 @@ function renderModal(d) {
           return html2;
         })()}
       </div>` : ''}
+
+      ${liveLogHtml(g, d)}
 
       ${renderReviewSection(g, d)}
 
@@ -6039,6 +6104,7 @@ async function fetchTodayScores(targetDate='') {
         }
       }
       Object.assign(SCH[idx], upd);
+      if (SCH[idx].status === 'LIVE') recordLiveEvent(SCH[idx]);
       // FINAL, CANCELED이거나 시간이 변경된 경우 localStorage에 영구 저장
       if (g.status === 'FINAL' || g.status === 'CANCELED' || (g.time && g.time !== SCH[idx]._origTime)) {
         const cacheData = {};
@@ -6110,7 +6176,12 @@ async function fetchTodayScores(targetDate='') {
 
 // 실시간 스코어 폴링 (앱 init에서 시작)
 // 30초마다 갱신
-setInterval(fetchTodayScores, 30000);
+let _pollTick = 0;
+setInterval(() => {
+  _pollTick++;
+  // 진행 중인 경기가 있으면 10초마다(진행 기록이 촘촘하도록), 없으면 30초마다
+  if (SCH.some(g => g.status === 'LIVE') || _pollTick % 3 === 0) fetchTodayScores();
+}, 10000);
 
 // ── 중계 전체화면 ──
 
