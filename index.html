@@ -1566,6 +1566,7 @@ function renderCalSplit(d) {
   const listHtml = `<div style="display:flex;align-items:baseline;gap:8px;margin-bottom:10px;padding-top:8px">
       <div style="font-size:14px;font-weight:900;color:${d.text}">${sm}월 ${sd}일 (${dw})</div>
       <span style="font-size:11px;color:${d.sub}">· ${selGs.length>0?selGs.length+'경기':'경기 없음'}</span>
+      ${state.sel!==_today0?`<button onclick="goToday()" style="margin-left:auto;font-size:11px;font-weight:700;color:#E31837;border:1.5px solid #E31837;border-radius:8px;padding:3px 10px;white-space:nowrap">오늘로</button>`:''}
     </div>
     ${gameList}`;
   return {bannerHtml, gridHtml, listHtml};
@@ -1981,7 +1982,7 @@ function renderCal(d) {
       background:${dark?'rgba(255,255,255,0.06)':'rgba(0,0,0,0.06)'};
       border-radius:14px;padding:4px;margin-bottom:14px;
     ">
-    <button onclick="if(state.modalGame)closeModal();state.calView='game';state.sel=_today0;render()" style="
+    <button onclick="if(state.modalGame)closeModal();state.calView='game';render()" style="
       flex:1;padding:7px 0;font-size:13px;font-weight:700;border-radius:10px;
       font-family:'Noto Sans KR',sans-serif;transition:all 0.18s;
       ${cv==='game'
