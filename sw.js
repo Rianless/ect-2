@@ -1,5 +1,5 @@
 // KBO 대시보드 Service Worker v8
-const CACHE_NAME = 'kbo-v10';
+const CACHE_NAME = 'kbo-v11';
 const STATIC_ASSETS = ['/manifest.json'];
 
 self.addEventListener('install', e => {

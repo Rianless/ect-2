@@ -5642,6 +5642,11 @@ function normalizeApiTeam(code, name) {
   if (upperCode === 'SS' || /삼성|Lions/i.test(teamText)) return '삼성';
   if (upperCode === 'HH' || /한화|Eagles/i.test(teamText)) return '한화';
   if (upperCode === 'WO' || /키움|Heroes/i.test(teamText)) return '키움';
+  // APBC 국가대표팀
+  if (/^(KOR|KR)$/.test(upperCode) || /대한민국|^한국|Korea/i.test(rawName)) return '한국';
+  if (/^(JPN|JP)$/.test(upperCode) || /^일본|Japan/i.test(rawName)) return '일본';
+  if (/^(TPE|TWN|TW)$/.test(upperCode) || /^대만|타이완|타이베이|Taiwan/i.test(rawName)) return '대만';
+  if (/^(AUS|AU)$/.test(upperCode) || /^호주|Australia/i.test(rawName)) return '호주';
   return rawName || rawCode;
 }
 
@@ -5857,18 +5862,38 @@ function convertBrowserGame(game, detail) {
   };
 }
 
-async function fetchScoresDirectByDate(targetDate='') {
+const NATION_KEYS = new Set(['한국','일본','대만','호주']);
+const isApbcDate = d => d >= '2026-11-12' && d <= '2026-11-15';
+async function fetchScoresDirectByDate(targetDate='', apbcOnly=false) {
   const now = new Date();
   const kst = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
   const yyyy = kst.getFullYear();
   const mm = String(kst.getMonth() + 1).padStart(2, '0');
   const dd = String(kst.getDate()).padStart(2, '0');
   const todayDash = targetDate || `${yyyy}-${mm}-${dd}`;
-  const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball%2CmanualRelayUrl&upperCategoryId=kbaseball&fromDate=${todayDash}&toDate=${todayDash}&size=500`;
-  const r = await fetch(url, { headers: { Accept: 'application/json' } });
-  if (!r.ok) throw new Error(`direct schedule ${r.status}`);
-  const data = await r.json();
-  const rawGames = (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
+  const getSchedule = async upper => {
+    const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball%2CmanualRelayUrl&upperCategoryId=${upper}&fromDate=${todayDash}&toDate=${todayDash}&size=500`;
+    const r = await fetch(url, { headers: { Accept: 'application/json' } });
+    if (!r.ok) throw new Error(`direct schedule ${r.status}`);
+    return (await r.json())?.result?.games || [];
+  };
+  const isNation = t => NATION_KEYS.has(t);
+  let all;
+  if (apbcOnly) {
+    all = [];
+    for (const upper of ['kbaseball', 'wbaseball', 'baseball']) {
+      try { all.push(...await getSchedule(upper)); } catch (e) {}
+    }
+  } else {
+    all = await getSchedule('kbaseball');
+  }
+  const seenIds = new Set();
+  const rawGames = all.filter(g => {
+    const ok = apbcOnly
+      ? isNation(normalizeApiTeam(g.awayTeamCode, g.awayTeamName)) && isNation(normalizeApiTeam(g.homeTeamCode, g.homeTeamName))
+      : g.categoryId === 'kbo';
+    return ok && !seenIds.has(g.gameId) && seenIds.add(g.gameId);
+  });
   const detailMap = {};
 
   await Promise.all(rawGames.map(async game => {
@@ -5894,7 +5919,18 @@ async function fetchScoresPayload(targetDate='') {
     try {
       const r = await fetch(url);
       if (!r.ok) continue;
-      return await r.json();
+      const data = await r.json();
+      // APBC 기간인데 서버(네이버 차단 등)가 APBC 경기를 못 가져왔으면 폰에서 직접 가져와 합친다
+      try {
+        const kst = new Date(Date.now() + 9 * 3600 * 1000).toISOString().slice(0, 10);
+        const d = targetDate || kst;
+        const games = data?.games || [];
+        if (isApbcDate(d) && !games.some(g => NATION_KEYS.has(g.away) && NATION_KEYS.has(g.home))) {
+          const direct = await fetchScoresDirectByDate(d, true);
+          if (direct?.games?.length) data.games = [...games, ...direct.games.map(g => ({ ...g, date: g.date || d }))];
+        }
+      } catch (e) {}
+      return data;
     } catch(e) {}
   }
 
