@@ -4916,13 +4916,13 @@ function _positionModalBelowToggle(overlay, box) {
   if (!tg || tg.offsetParent === null) return;
   const vh = window.innerHeight;
   let r = tg.getBoundingClientRect();
-  if (r.top < 0 || r.bottom > vh * 0.45) {
-    // 스크롤 때문에 버튼이 화면 밖이면 버튼이 보이도록 먼저 올려준다
+  if (r.top < 0 || r.top > 12) {
+    // 어떤 경기든 팝업이 같은 높이(버튼 바로 아래)에서 시작하도록 버튼을 항상 화면 맨 위로 올린다
     tg.scrollIntoView({ block: 'start', behavior: 'instant' });
     r = tg.getBoundingClientRect();
   }
   const top = Math.max(0, Math.round(r.bottom + 8));
-  if (top > vh * 0.5) return;
+  if (top > vh * 0.3) return; // 페이지가 짧아 버튼을 못 올리면 기본(거의 전체 높이)으로
   overlay.style.top = top + 'px';
   box.style.height = (vh - top) + 'px';
 }
