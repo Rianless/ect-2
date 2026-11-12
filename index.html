@@ -1167,7 +1167,7 @@ const buildDisplayLineup = lineup => {
 };
 const formatInningBadge = g => g?.status === 'LIVE' ? (g.inningInfo || (g.inning ? `${g.inning}\uD68C` : 'LIVE')) : '';
 const splitTeamName = team => {
-  const full = T[team]?.name || team || '';
+  const full = (T[team]||EXTRA_TEAMS[team])?.name || team || '';
   const parts = full.split(' ');
   return { top: parts[0] || full, bottom: parts.slice(1).join(' ') || '' };
 };
@@ -3846,8 +3846,8 @@ function renderLeadSection(d) {
 
 function renderModal(d) {
   const g=state.modalGame; if(!g) return;
-  const aw=T[g.away]||{name:g.away,color:'#888'};
-  const hw=T[g.home]||{name:g.home,color:'#888'};
+  const aw=T[g.away]||EXTRA_TEAMS[g.away]||{name:g.away,color:'#888'};
+  const hw=T[g.home]||EXTRA_TEAMS[g.home]||{name:g.home,color:'#888'};
   const isSch=!g.status||g.status==='BEFORE'||g.status==='SCHEDULED';
   const hasLU=!!g.lineup;
   const lineupSides = (()=>{

@@ -35,7 +35,22 @@ export default async function handler(req, res) {
     if (/삼성|라이온즈/i.test(team)) return '삼성';
     if (/한화|이글스/i.test(team)) return '한화';
     if (/키움|히어로즈/i.test(team)) return '키움';
+    // APBC(아시아 프로야구 챔피언십) 국가대표팀
+    if (/^(KOR|KR|KOREA)$|대한민국|^한국/i.test(team)) return '한국';
+    if (/^(JPN|JP|JAPAN)$|^일본/i.test(team)) return '일본';
+    if (/^(TPE|TW|TWN|TAIWAN)$|^대만|타이완|타이베이/i.test(team)) return '대만';
+    if (/^(AUS|AU|AUSTRALIA)$|^호주/i.test(team)) return '호주';
     return team;
+  };
+  const NATION_TEAMS = new Set(['한국', '일본', '대만', '호주']);
+  // KBO 경기이거나, 양 팀이 모두 APBC 국가대표팀이면 우리 앱에서 다루는 경기
+  const isTrackedGame = g => {
+    if (g.categoryId === 'kbo') return true;
+    const a = mapTeam(g.awayTeamCode) || mapTeam(g.awayTeamName);
+    const h = mapTeam(g.homeTeamCode) || mapTeam(g.homeTeamName);
+    const an = NATION_TEAMS.has(mapTeam(g.awayTeamName)) || NATION_TEAMS.has(a);
+    const hn = NATION_TEAMS.has(mapTeam(g.homeTeamName)) || NATION_TEAMS.has(h);
+    return an && hn;
   };
   const TEAM_FULL = {
     'KIA': 'KIA 타이거즈',
@@ -124,11 +139,22 @@ export default async function handler(req, res) {
   }
 
   async function fetchSchedule(date) {
-    const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball%2CmanualRelayUrl&upperCategoryId=kbaseball&fromDate=${date}&toDate=${date}&size=500`;
-    const r = await fetchWithTimeout(url, { headers: HEADERS });
-    if (!r.ok) throw new Error(`schedule ${r.status}`);
-    const data = await r.json();
-    return (data?.result?.games || []).filter(g => g.categoryId === 'kbo');
+    const get = async upper => {
+      const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball%2CmanualRelayUrl&upperCategoryId=${upper}&fromDate=${date}&toDate=${date}&size=500`;
+      const r = await fetchWithTimeout(url, { headers: HEADERS });
+      if (!r.ok) throw new Error(`schedule ${r.status}`);
+      const data = await r.json();
+      return data?.result?.games || [];
+    };
+    const games = await get('kbaseball');
+    // APBC 기간(11/12~11/15)에는 국제대회 분류도 함께 조회해 경기가 빠지지 않게 한다
+    if (date >= '2026-11-12' && date <= '2026-11-15') {
+      for (const upper of ['wbaseball', 'baseball']) {
+        try { games.push(...(await get(upper))); } catch (e) { /* 해당 분류가 없으면 무시 */ }
+      }
+    }
+    const seen = new Set();
+    return games.filter(g => isTrackedGame(g) && !seen.has(g.gameId) && seen.add(g.gameId));
   }
 
   // ── 병렬 fetch: 유효한 결과를 가장 빨리 반환한 URL 사용 ──
