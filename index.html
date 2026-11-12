@@ -5645,7 +5645,7 @@ function normalizeApiTeam(code, name) {
   // APBC 국가대표팀
   if (/^(KOR|KR)$/.test(upperCode) || /대한민국|^한국|Korea/i.test(rawName)) return '한국';
   if (/^(JPN|JP)$/.test(upperCode) || /^일본|Japan/i.test(rawName)) return '일본';
-  if (/^(TPE|TWN|TW)$/.test(upperCode) || /^대만|타이완|타이베이|Taiwan/i.test(rawName)) return '대만';
+  if (/^(TPE|TWN|TW)$/.test(upperCode) || /^대만|타이완|타이베이|중화|Taiwan/i.test(rawName)) return '대만';
   if (/^(AUS|AU)$/.test(upperCode) || /^호주|Australia/i.test(rawName)) return '호주';
   return rawName || rawCode;
 }

@@ -38,7 +38,7 @@ export default async function handler(req, res) {
     // APBC(아시아 프로야구 챔피언십) 국가대표팀
     if (/^(KOR|KR|KOREA)$|대한민국|^한국/i.test(team)) return '한국';
     if (/^(JPN|JP|JAPAN)$|^일본/i.test(team)) return '일본';
-    if (/^(TPE|TW|TWN|TAIWAN)$|^대만|타이완|타이베이/i.test(team)) return '대만';
+    if (/^(TPE|TW|TWN|TAIWAN)$|^대만|타이완|타이베이|중화/i.test(team)) return '대만';
     if (/^(AUS|AU|AUSTRALIA)$|^호주/i.test(team)) return '호주';
     return team;
   };
@@ -564,6 +564,26 @@ export default async function handler(req, res) {
     const action = req.query.action || '';
     const KBO_ID_RE = /^\d{8}[A-Z]{4}\d$/;
     const KBO_CODE_BY_TEAM = { 'KIA': 'HT', 'KT': 'KT', 'LG': 'LG', 'SSG': 'SK', 'NC': 'NC', '두산': 'OB', '롯데': 'LT', '삼성': 'SS', '한화': 'HH', '키움': 'WO' };
+
+    // ── 진단: 네이버가 해당 날짜에 어떤 분류/경기를 내려주는지 그대로 보여 준다 (APBC 연동 확인용) ──
+    if (action === 'apbcDebug') {
+      const out = [];
+      for (const upper of ['kbaseball', 'wbaseball', 'baseball', '']) {
+        const url = `https://api-gw.sports.naver.com/schedule/games?fields=basic%2Cschedule%2Cbaseball&${upper ? `upperCategoryId=${upper}&` : ''}fromDate=${todayDash}&toDate=${todayDash}&size=500`;
+        try {
+          const r = await fetchWithTimeout(url, { headers: HEADERS }, 6000);
+          const txt = await r.text();
+          let games = [];
+          try { games = JSON.parse(txt)?.result?.games || []; } catch (e) {}
+          out.push({ upper: upper || '(없음)', http: r.status, count: games.length,
+            games: games.filter(g => /baseball/i.test(String(g.superCategoryId || g.upperCategoryId || '')) || g.categoryId).slice(0, 40)
+              .map(g => [g.categoryId, g.gameId, g.awayTeamCode, g.awayTeamName, g.homeTeamCode, g.homeTeamName, g.statusCode, g.statusInfo, g.awayTeamScore, g.homeTeamScore].join('|')),
+            head: games.length ? '' : txt.slice(0, 200) });
+        } catch (e) { out.push({ upper: upper || '(없음)', error: String(e && e.message || e) }); }
+      }
+      res.setHeader('Content-Type', 'application/json; charset=utf-8');
+      return res.status(200).json({ date: todayDash, results: out });
+    }
 
     // ── 변환 전용: 휴대폰이 네이버에서 직접 받아 온 원본(일정 1건 + 중계)을 앱 형식으로 바꿔 준다 ──
     // 서버가 네이버에 접속하지 않으므로 네이버가 서버 접속을 막아도 동작한다.
